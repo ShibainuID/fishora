@@ -54,6 +54,11 @@ def load_taxonomy_csv(path: Path) -> list[TaxonomySeed]:
             f"taxonomy CSV normalized labels must be exactly the {len(TAXONOMY_STATUS_BY_LABEL)} "
             f"supported labels, got {sorted(labels)}"
         )
+    if len(rows) != len(TAXONOMY_STATUS_BY_LABEL):
+        raise ValueError(
+            f"taxonomy CSV must contain exactly {len(TAXONOMY_STATUS_BY_LABEL)} rows, "
+            f"one per supported label, got {len(rows)}"
+        )
     return rows
 
 

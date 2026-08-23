@@ -60,6 +60,17 @@ def test_taxonomy_rejects_duplicate_and_missing_label(tmp_path):
         load_taxonomy_csv(path)
 
 
+def test_taxonomy_rejects_extra_duplicate_row_with_all_labels_present(tmp_path):
+    # All 11 supported labels plus one duplicate row (12 rows total): the
+    # label-set check alone would accept this, the row-count check must reject it.
+    def mutate(rows):
+        rows.append(dict(rows[0]))  # duplicate tuna
+
+    path = _write_taxonomy_csv(tmp_path, mutate=mutate)
+    with pytest.raises(ValueError, match="rows"):
+        load_taxonomy_csv(path)
+
+
 def test_taxonomy_preserves_notes_verbatim(tmp_path):
     padded = "  note with surrounding whitespace  "
 
