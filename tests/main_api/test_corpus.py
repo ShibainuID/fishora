@@ -50,6 +50,7 @@ def claim(claim_id, source_id, category, content, source_quote, stage, species_l
 
 
 def write_offline_dir(tmp_path, sources, claims_by_stage):
+    tmp_path.mkdir(parents=True, exist_ok=True)
     for stage in STAGES:
         payload = {"stage": stage, "sources": sources, "records": claims_by_stage[stage]}
         (tmp_path / f"{stage}.json").write_text(json.dumps(payload), encoding="utf-8")
@@ -116,6 +117,59 @@ def _collect(tmp_path, sources, claims_by_stage):
 
     stage_dir = write_offline_dir(tmp_path, sources, claims_by_stage)
     return collect_candidate_stages(stage_dir, tmp_path / "candidates")
+
+
+def approve_test_corpus(tmp_path, *, long_processing=False, approval_key="test-key"):
+    """Build a throwaway approved corpus (never the committed artifacts).
+
+    Two bandeng claims (identity + processing); the processing claim carries a
+    180-sentence section when ``long_processing`` is set. Returns the approved
+    directory and the signed approval manifest path.
+    """
+    from apps.main_api.services.corpus import approve_candidates, collect_candidate_stages
+
+    long_text = " ".join("Kalimat ikan bandeng menjelaskan ciri tubuh dan konteks sumber." for _ in range(180))
+    claims = [
+        claim(
+            "claim_bandeng_identity_001",
+            "fishbase_chanos_chanos",
+            "identity",
+            "Bandeng is the milkfish Chanos chanos, family Chanidae.",
+            "Teleostei (teleosts) > Gonorynchiformes",
+            "x",
+        ),
+        claim(
+            "claim_bandeng_processing_001",
+            "marinade_4962",
+            "processing_methods",
+            long_text if long_processing else "Bandeng presto is pressure-cooked milkfish at UMKM scale.",
+            "KARAKTERISTIK PROSES PENGOLAHAN BANDENG",
+            "x",
+        ),
+    ]
+    stage_dir = write_offline_dir(
+        tmp_path / "offline",
+        [FISHBASE_SOURCE, MARINADE_SOURCE],
+        {stage: [dict(c, stage=stage) for c in claims] for stage in STAGES},
+    )
+    candidate_dir = tmp_path / "candidates"
+    collect_candidate_stages(stage_dir, candidate_dir)
+    review = tmp_path / "review.json"
+    review.write_text(json.dumps({
+        "approved_chunk_ids": ["chunk_bandeng_identity_001", "chunk_bandeng_processing_001"],
+        "approved_source_ids": ["fishbase_chanos_chanos", "marinade_4962"],
+        "source_reviews": {
+            "fishbase_chanos_chanos": {"reviewer": "operator", "reviewed_at": "2026-08-24T08:00:00+00:00"},
+            "marinade_4962": {"reviewer": "operator", "reviewed_at": "2026-08-24T08:00:00+00:00"},
+        },
+    }), encoding="utf-8")
+    approved_dir = tmp_path / "approved"
+    manifest_path = tmp_path / "approval.json"
+    approve_candidates(
+        candidate_dir, review, approved_dir, manifest_path, "operator", "APPROVE",
+        datetime(2026, 8, 24, 8, 0, tzinfo=timezone.utc), approval_key=approval_key,
+    )
+    return approved_dir, manifest_path
 
 
 def _approve(valid_candidate_dir, review_file, tmp_path, approved_at=None, approval_key="test-key"):

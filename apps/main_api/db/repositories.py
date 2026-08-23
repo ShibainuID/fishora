@@ -1,10 +1,12 @@
 import csv
 from pathlib import Path
+from typing import Callable, Sequence
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from apps.main_api.contracts import TaxonomySeed
-from apps.main_api.db.models import FishSpecies
+from apps.main_api.contracts import KnowledgeChunkWrite, KnowledgeSourceWrite, TaxonomySeed
+from apps.main_api.db.models import FishSpecies, KnowledgeChunk, KnowledgeSource
 
 TAXONOMY_STATUS_BY_LABEL = {
     "bandeng": "VERIFIED_TAXONOMY",
@@ -86,3 +88,62 @@ def seed_taxonomy(session: Session, path: Path) -> int:
                 setattr(species, field, value)
             written += 1
     return written
+
+
+class SqlKnowledgeRepository:
+    """Transactional store for approved sources/chunks (pgvector)."""
+
+    def __init__(self, session_factory: Callable[[], Session]):
+        self._session_factory = session_factory
+
+    def embedding_models_in_store(self) -> set[str]:
+        with self._session_factory() as session:
+            return set(session.scalars(select(KnowledgeChunk.embedding_model).distinct()))
+
+    def insert_verified(
+        self,
+        sources: Sequence[KnowledgeSourceWrite],
+        chunks: Sequence[KnowledgeChunkWrite],
+    ) -> int:
+        """Upsert the verified sources and insert every chunk in one transaction.
+
+        The session context commits on success and rolls back every source
+        and chunk on any failure (e.g. a vector with the wrong dimension).
+        """
+        with self._session_factory() as session:
+            for source in sources:
+                row = session.get(KnowledgeSource, source.id)
+                if row is None:
+                    session.add(
+                        KnowledgeSource(
+                            id=source.id,
+                            title=source.title,
+                            source_type=source.source_type,
+                            url=source.url,
+                            publisher=source.publisher,
+                            reviewed_at=source.reviewed_at,
+                            verification_status=source.verification_status,
+                        )
+                    )
+                else:
+                    row.title = source.title
+                    row.source_type = source.source_type
+                    row.url = source.url
+                    row.publisher = source.publisher
+                    row.reviewed_at = source.reviewed_at
+                    row.verification_status = source.verification_status
+            for chunk in chunks:
+                session.add(
+                    KnowledgeChunk(
+                        id=chunk.id,
+                        species_id=chunk.species_id,
+                        source_id=chunk.source_id,
+                        category=chunk.category,
+                        content=chunk.content,
+                        embedding=chunk.embedding,
+                        embedding_model=chunk.embedding_model,
+                        verification_status=chunk.verification_status,
+                    )
+                )
+            session.commit()
+        return len(chunks)
