@@ -119,11 +119,12 @@ def _collect(tmp_path, sources, claims_by_stage):
     return collect_candidate_stages(stage_dir, tmp_path / "candidates")
 
 
-def approve_test_corpus(tmp_path, *, long_processing=False, approval_key="test-key"):
+def approve_test_corpus(tmp_path, *, long_processing=False, include_processing=True, approval_key="test-key"):
     """Build a throwaway approved corpus (never the committed artifacts).
 
     Two bandeng claims (identity + processing); the processing claim carries a
-    180-sentence section when ``long_processing`` is set. Returns the approved
+    180-sentence section when ``long_processing`` is set, and is left out of
+    the approval when ``include_processing`` is False. Returns the approved
     directory and the signed approval manifest path.
     """
     from apps.main_api.services.corpus import approve_candidates, collect_candidate_stages
@@ -154,13 +155,18 @@ def approve_test_corpus(tmp_path, *, long_processing=False, approval_key="test-k
     )
     candidate_dir = tmp_path / "candidates"
     collect_candidate_stages(stage_dir, candidate_dir)
+    approved_chunk_ids = ["chunk_bandeng_identity_001"]
+    approved_source_ids = ["fishbase_chanos_chanos"]
+    if include_processing:
+        approved_chunk_ids.append("chunk_bandeng_processing_001")
+        approved_source_ids.append("marinade_4962")
     review = tmp_path / "review.json"
     review.write_text(json.dumps({
-        "approved_chunk_ids": ["chunk_bandeng_identity_001", "chunk_bandeng_processing_001"],
-        "approved_source_ids": ["fishbase_chanos_chanos", "marinade_4962"],
+        "approved_chunk_ids": approved_chunk_ids,
+        "approved_source_ids": approved_source_ids,
         "source_reviews": {
-            "fishbase_chanos_chanos": {"reviewer": "operator", "reviewed_at": "2026-08-24T08:00:00+00:00"},
-            "marinade_4962": {"reviewer": "operator", "reviewed_at": "2026-08-24T08:00:00+00:00"},
+            source_id: {"reviewer": "operator", "reviewed_at": "2026-08-24T08:00:00+00:00"}
+            for source_id in approved_source_ids
         },
     }), encoding="utf-8")
     approved_dir = tmp_path / "approved"
@@ -724,6 +730,40 @@ def test_committed_corpus_has_no_synthetic_approval_and_covers_all_labels():
 
 
 # --- require_approved_manifest --------------------------------------------
+
+
+def test_load_verified_records_returns_strictly_verified_records(tmp_path, valid_candidate_dir, review_file):
+    from apps.main_api.services.corpus import load_verified_records
+
+    _approve(valid_candidate_dir, review_file, tmp_path)
+    records = load_verified_records(tmp_path / "approved", tmp_path / "approval.json", approval_key="test-key")
+    assert [record.chunk.id for record in records] == ["chunk_bandeng_identity_001"]
+    assert records[0].chunk.verification_status == "verified"
+    assert records[0].source.verification_status == "verified"
+    assert records[0].source.reviewer == "operator"
+
+
+def test_load_verified_records_rechecks_hashes_after_gate(tmp_path, valid_candidate_dir, review_file, monkeypatch):
+    """A file swapped after require_approved_manifest passes is caught before
+    parsing: no TOCTOU window between signature verification and record use."""
+    from apps.main_api.services import corpus
+
+    _approve(valid_candidate_dir, review_file, tmp_path)
+    approved_dir = tmp_path / "approved"
+    manifest_path = tmp_path / "approval.json"
+    original = corpus.require_approved_manifest
+
+    def gate_with_swap(*args, **kwargs):
+        result = original(*args, **kwargs)
+        path = approved_dir / "chunk_bandeng_identity_001.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["chunk"]["content"] = "SWAPPED AFTER VERIFICATION"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        return result
+
+    monkeypatch.setattr(corpus, "require_approved_manifest", gate_with_swap)
+    with pytest.raises(ValueError, match="altered|signature"):
+        corpus.load_verified_records(approved_dir, manifest_path, approval_key="test-key")
 
 
 def test_require_approved_manifest_rejects_missing_file(tmp_path):

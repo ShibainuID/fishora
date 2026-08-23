@@ -2,11 +2,15 @@ import csv
 from pathlib import Path
 from typing import Callable, Sequence
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from apps.main_api.contracts import KnowledgeChunkWrite, KnowledgeSourceWrite, TaxonomySeed
 from apps.main_api.db.models import FishSpecies, KnowledgeChunk, KnowledgeSource
+
+# Fixed bigint key ('Fish') for the transaction advisory lock: all Fishora
+# ingests serialize on it, so concurrent mixed-model ingests cannot both pass.
+FISHORA_INGEST_ADVISORY_LOCK = 0x46697368
 
 TAXONOMY_STATUS_BY_LABEL = {
     "bandeng": "VERIFIED_TAXONOMY",
@@ -105,15 +109,43 @@ class SqlKnowledgeRepository:
         sources: Sequence[KnowledgeSourceWrite],
         chunks: Sequence[KnowledgeChunkWrite],
     ) -> int:
-        """Upsert the verified sources and insert every chunk in one transaction.
+        """Upsert verified sources/chunks in one transaction, all or nothing.
 
-        The session context commits on success and rolls back every source
-        and chunk on any failure (e.g. a vector with the wrong dimension).
-        Sources are flushed before chunks are added: the mappers declare no
-        relationship(), so the unit of work has no cross-mapper ordering and
-        would otherwise insert chunks first (alphabetical mapper order).
+        Under a Postgres transaction advisory lock the existing embedding
+        models and verified chunk ids are re-checked inside this same write
+        transaction before any upsert: another embedding model or an existing
+        verified chunk missing from the incoming manifest (stale partial
+        corpus) raises and rolls everything back, and two concurrent ingests
+        cannot both pass a mixed-model check. Sources are flushed before
+        chunks are added: the mappers declare no relationship(), so the unit
+        of work has no cross-mapper ordering and would otherwise insert
+        chunks first (alphabetical mapper order).
         """
+        if not chunks:
+            return 0
         with self._session_factory() as session:
+            session.execute(
+                text("SELECT pg_advisory_xact_lock(:key)"),
+                {"key": FISHORA_INGEST_ADVISORY_LOCK},
+            )
+            model = chunks[0].embedding_model
+            existing_models = set(session.scalars(select(KnowledgeChunk.embedding_model).distinct()))
+            if existing_models and existing_models != {model}:
+                raise ValueError(
+                    "knowledge store already contains another embedding model "
+                    f"({sorted(existing_models)}); refusing to mix with {model}"
+                )
+            existing_ids = set(
+                session.scalars(
+                    select(KnowledgeChunk.id).where(KnowledgeChunk.verification_status == "verified")
+                )
+            )
+            incoming_ids = {chunk.id for chunk in chunks}
+            if not existing_ids <= incoming_ids:
+                raise ValueError(
+                    "existing verified chunks are not a subset of the incoming "
+                    f"approved manifest: {sorted(existing_ids - incoming_ids)}"
+                )
             for source in sources:
                 row = session.get(KnowledgeSource, source.id)
                 if row is None:
@@ -137,17 +169,27 @@ class SqlKnowledgeRepository:
                     row.verification_status = source.verification_status
             session.flush()
             for chunk in chunks:
-                session.add(
-                    KnowledgeChunk(
-                        id=chunk.id,
-                        species_id=chunk.species_id,
-                        source_id=chunk.source_id,
-                        category=chunk.category,
-                        content=chunk.content,
-                        embedding=chunk.embedding,
-                        embedding_model=chunk.embedding_model,
-                        verification_status=chunk.verification_status,
+                row = session.get(KnowledgeChunk, chunk.id)
+                if row is None:
+                    session.add(
+                        KnowledgeChunk(
+                            id=chunk.id,
+                            species_id=chunk.species_id,
+                            source_id=chunk.source_id,
+                            category=chunk.category,
+                            content=chunk.content,
+                            embedding=chunk.embedding,
+                            embedding_model=chunk.embedding_model,
+                            verification_status=chunk.verification_status,
+                        )
                     )
-                )
+                else:
+                    row.species_id = chunk.species_id
+                    row.source_id = chunk.source_id
+                    row.category = chunk.category
+                    row.content = chunk.content
+                    row.embedding = chunk.embedding
+                    row.embedding_model = chunk.embedding_model
+                    row.verification_status = chunk.verification_status
             session.commit()
         return len(chunks)

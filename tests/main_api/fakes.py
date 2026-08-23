@@ -181,10 +181,14 @@ class FakeEmbedder:
 
 
 class FakeKnowledgeRepository:
-    """In-memory knowledge store; records every verified write."""
+    """In-memory knowledge store enforcing the insert_verified contract:
+    rejects mixed embedding models and stale partial manifests (existing
+    verified chunks must be a subset of the incoming approved chunks), and
+    upserts sources/chunks so re-ingest is idempotent."""
 
     def __init__(self, embedding_models: set[str] | None = None):
         self._embedding_models = set(embedding_models or [])
+        self._chunks_by_id: dict = {}
         self.sources: list = []
         self.chunks: list = []
 
@@ -192,6 +196,23 @@ class FakeKnowledgeRepository:
         return set(self._embedding_models)
 
     def insert_verified(self, sources, chunks):
-        self.sources.extend(sources)
-        self.chunks.extend(chunks)
+        model = chunks[0].embedding_model
+        if self._embedding_models and self._embedding_models != {model}:
+            raise ValueError(
+                "knowledge store already contains another embedding model "
+                f"({sorted(self._embedding_models)}); refusing to mix with {model}"
+            )
+        existing = set(self._chunks_by_id)
+        incoming = {chunk.id for chunk in chunks}
+        if not existing <= incoming:
+            raise ValueError(
+                "existing verified chunks are not a subset of the incoming "
+                f"approved manifest: {sorted(existing - incoming)}"
+            )
+        for source in sources:
+            self.sources = [row for row in self.sources if row.id != source.id] + [source]
+        for chunk in chunks:
+            self.chunks = [row for row in self.chunks if row.id != chunk.id] + [chunk]
+            self._chunks_by_id[chunk.id] = chunk
+        self._embedding_models.add(model)
         return len(chunks)

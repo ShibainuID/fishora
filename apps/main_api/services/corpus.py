@@ -487,6 +487,40 @@ def approve_candidates(
     return manifest
 
 
+def load_verified_records(
+    approved_dir: Path, approval_manifest: Path, approval_key: str | None = None
+) -> list[VerifiedRecord]:
+    """Return the parsed approved records from strictly verified bytes.
+
+    ``require_approved_manifest`` verifies the HMAC signature, but a caller
+    that parses the files afterwards would read them again — a file swapped in
+    that window would slip through. This closes the TOCTOU gap: every file is
+    read exactly once, its bytes are hashed, the signature is re-checked over
+    those exact bytes, and the returned record is parsed from the same bytes.
+    """
+    manifest = require_approved_manifest(approved_dir, approval_manifest, approval_key)
+    try:
+        signed = json.loads(approval_manifest.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        raise ValueError(f"approval manifest is malformed: {error}") from error
+    if not isinstance(signed, dict) or not isinstance(signed.get("signature"), str):
+        raise ValueError("approval manifest is unsigned")
+
+    file_bytes = {
+        chunk_id: _safe_record_path(approved_dir, chunk_id).read_bytes()
+        for chunk_id in manifest.approved_chunk_ids
+    }
+    hashes = {chunk_id: hashlib.sha256(data).hexdigest() for chunk_id, data in file_bytes.items()}
+    payload = _canonical_payload(_manifest_body(manifest), hashes)
+    expected = hmac.new(approval_key.encode("utf-8"), payload, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, signed["signature"]):
+        raise ValueError("approval manifest signature mismatch or approved files were altered")
+    return [
+        VerifiedRecord.model_validate(json.loads(file_bytes[chunk_id].decode("utf-8")))
+        for chunk_id in manifest.approved_chunk_ids
+    ]
+
+
 def require_approved_manifest(
     approved_dir: Path, approval_manifest: Path, approval_key: str | None = None
 ) -> ApprovalManifest:

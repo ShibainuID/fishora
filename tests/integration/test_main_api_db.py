@@ -78,55 +78,64 @@ def test_sql_prediction_repository_create_get_verify_roundtrip(session_factory_)
         session.delete(session.get(Prediction, prediction_id))
         session.commit()
 
-def _clean_knowledge(session, source_ids):
-    session.execute(delete(KnowledgeChunk).where(KnowledgeChunk.source_id.in_(source_ids)))
-    session.execute(delete(KnowledgeSource).where(KnowledgeSource.id.in_(source_ids)))
+
+
+def _clean_all_knowledge(session):
+    """Empty the knowledge tables so insert_verified's global subset check
+    never sees leftovers from another test."""
+    session.execute(delete(KnowledgeChunk))
+    session.execute(delete(KnowledgeSource))
     session.commit()
+
+
+def _source(source_id, title="IT source"):
+    return KnowledgeSourceWrite(id=source_id, title=title, source_type="test",
+                                url="https://example.test", publisher="it",
+                                reviewed_at=datetime(2026, 8, 24, 8, 0, tzinfo=timezone.utc),
+                                verification_status="verified")
+
+
+def _chunk(chunk_id, source_id, content, model="intfloat/multilingual-e5-base", fill=0.1):
+    return KnowledgeChunkWrite(id=chunk_id, species_id="species_bandeng", source_id=source_id,
+                               category="identity", content=content, embedding=[fill] * 768,
+                               embedding_model=model, verification_status="verified")
 
 
 @pytest.mark.integration
 def test_sql_knowledge_repository_inserts_verified_rows_transactionally(session_factory_):
     repo = SqlKnowledgeRepository(session_factory_)
     source_id = "it_source_bandeng_1"
-    reviewed_at = datetime(2026, 8, 24, 8, 0, tzinfo=timezone.utc)
     with session_factory_() as session:
-        _clean_knowledge(session, [source_id])
+        _clean_all_knowledge(session)
 
     count = repo.insert_verified(
-        [KnowledgeSourceWrite(id=source_id, title="IT source", source_type="test",
-                              url="https://example.test", publisher="it", reviewed_at=reviewed_at,
-                              verification_status="verified")],
-        [KnowledgeChunkWrite(id="it_chunk_bandeng_1", species_id="species_bandeng", source_id=source_id,
-                             category="identity", content="IT chunk one", embedding=[0.1] * 768,
-                             embedding_model="intfloat/multilingual-e5-base", verification_status="verified"),
-         KnowledgeChunkWrite(id="it_chunk_bandeng_2", species_id="species_bandeng", source_id=source_id,
-                             category="processing_methods", content="IT chunk two", embedding=[0.2] * 768,
-                             embedding_model="intfloat/multilingual-e5-base", verification_status="verified")],
+        [_source(source_id)],
+        [_chunk("it_chunk_bandeng_1", source_id, "IT chunk one"),
+         _chunk("it_chunk_bandeng_2", source_id, "IT chunk two", fill=0.2)],
     )
     assert count == 2
     with session_factory_() as session:
         source = session.get(KnowledgeSource, source_id)
         assert source is not None and source.verification_status == "verified"
-        assert source.reviewed_at == reviewed_at
+        assert source.reviewed_at == datetime(2026, 8, 24, 8, 0, tzinfo=timezone.utc)
         rows = session.scalars(select(KnowledgeChunk).where(KnowledgeChunk.source_id == source_id)).all()
         assert {row.id for row in rows} == {"it_chunk_bandeng_1", "it_chunk_bandeng_2"}
         assert all(row.embedding_model == "intfloat/multilingual-e5-base" for row in rows)
         assert all(len(row.embedding) == 768 for row in rows)
         assert all(row.verification_status == "verified" for row in rows)
 
-    # Upsert path: the same source id updates, chunks stay insert-only.
+    # Upsert path: the same source id updates; chunks are overwritten in
+    # place by an additive full manifest.
     repo.insert_verified(
-        [KnowledgeSourceWrite(id=source_id, title="IT source v2", source_type="test",
-                              url="https://example.test", publisher="it", reviewed_at=reviewed_at,
-                              verification_status="verified")],
-        [KnowledgeChunkWrite(id="it_chunk_bandeng_3", species_id="species_bandeng", source_id=source_id,
-                             category="identity", content="IT chunk three", embedding=[0.3] * 768,
-                             embedding_model="intfloat/multilingual-e5-base", verification_status="verified")],
+        [_source(source_id, title="IT source v2")],
+        [_chunk("it_chunk_bandeng_1", source_id, "IT chunk one"),
+         _chunk("it_chunk_bandeng_2", source_id, "IT chunk two", fill=0.2),
+         _chunk("it_chunk_bandeng_3", source_id, "IT chunk three", fill=0.3)],
     )
     with session_factory_() as session:
         assert session.get(KnowledgeSource, source_id).title == "IT source v2"
         assert len(session.scalars(select(KnowledgeChunk).where(KnowledgeChunk.source_id == source_id)).all()) == 3
-        _clean_knowledge(session, [source_id])
+        _clean_all_knowledge(session)
 
 
 @pytest.mark.integration
@@ -134,13 +143,11 @@ def test_sql_knowledge_repository_rolls_back_all_rows_on_write_failure(session_f
     repo = SqlKnowledgeRepository(session_factory_)
     source_id = "it_source_rollback_1"
     with session_factory_() as session:
-        _clean_knowledge(session, [source_id])
+        _clean_all_knowledge(session)
 
     with pytest.raises(Exception, match="dimension"):
         repo.insert_verified(
-            [KnowledgeSourceWrite(id=source_id, title="IT rollback", source_type="test",
-                                  url=None, publisher=None, reviewed_at=None,
-                                  verification_status="verified")],
+            [_source(source_id)],
             [KnowledgeChunkWrite(id="it_chunk_rollback_1", species_id="species_bandeng", source_id=source_id,
                                  category="identity", content="bad vector", embedding=[0.1] * 767,
                                  embedding_model="intfloat/multilingual-e5-base", verification_status="verified")],
@@ -151,29 +158,98 @@ def test_sql_knowledge_repository_rolls_back_all_rows_on_write_failure(session_f
 
 
 @pytest.mark.integration
-def test_sql_knowledge_repository_reports_embedding_models_in_store(session_factory_):
+def test_sql_knowledge_repository_rejects_mixed_embedding_models(session_factory_):
     repo = SqlKnowledgeRepository(session_factory_)
     with session_factory_() as session:
-        _clean_knowledge(session, ["it_source_models_1", "it_source_models_2"])
+        _clean_all_knowledge(session)
     assert repo.embedding_models_in_store() == set()
     repo.insert_verified(
-        [KnowledgeSourceWrite(id="it_source_models_1", title="A", source_type="test", url=None,
-                              publisher=None, reviewed_at=None, verification_status="verified")],
-        [KnowledgeChunkWrite(id="it_chunk_models_1", species_id="species_bandeng", source_id="it_source_models_1",
-                             category="identity", content="a", embedding=[0.1] * 768,
-                             embedding_model="intfloat/multilingual-e5-base", verification_status="verified")],
+        [_source("it_source_models_1")],
+        [_chunk("it_chunk_models_1", "it_source_models_1", "a")],
     )
     assert repo.embedding_models_in_store() == {"intfloat/multilingual-e5-base"}
-    repo.insert_verified(
-        [KnowledgeSourceWrite(id="it_source_models_2", title="B", source_type="test", url=None,
-                              publisher=None, reviewed_at=None, verification_status="verified")],
-        [KnowledgeChunkWrite(id="it_chunk_models_2", species_id="species_bandeng", source_id="it_source_models_2",
-                             category="identity", content="b", embedding=[0.1] * 768,
-                             embedding_model="some/other-model", verification_status="verified")],
-    )
-    assert repo.embedding_models_in_store() == {"intfloat/multilingual-e5-base", "some/other-model"}
+    with pytest.raises(ValueError, match="embedding model"):
+        repo.insert_verified(
+            [_source("it_source_models_2")],
+            [_chunk("it_chunk_models_2", "it_source_models_2", "b", model="some/other-model")],
+        )
+    assert repo.embedding_models_in_store() == {"intfloat/multilingual-e5-base"}
     with session_factory_() as session:
-        _clean_knowledge(session, ["it_source_models_1", "it_source_models_2"])
+        _clean_all_knowledge(session)
+
+
+@pytest.mark.integration
+def test_sql_knowledge_repository_reingest_is_idempotent(session_factory_):
+    repo = SqlKnowledgeRepository(session_factory_)
+    source_id = "it_source_reingest_1"
+    with session_factory_() as session:
+        _clean_all_knowledge(session)
+    payload = ([_source(source_id)], [_chunk("it_chunk_reingest_1", source_id, "v1"),
+                                      _chunk("it_chunk_reingest_2", source_id, "v2")])
+    assert repo.insert_verified(*payload) == 2
+    assert repo.insert_verified(*payload) == 2  # identical re-ingest: no error, no duplicates
+    with session_factory_() as session:
+        rows = session.scalars(select(KnowledgeChunk).where(KnowledgeChunk.source_id == source_id)).all()
+        assert len(rows) == 2
+        assert {row.content for row in rows} == {"v1", "v2"}
+        _clean_all_knowledge(session)
+
+
+@pytest.mark.integration
+def test_sql_knowledge_repository_rejects_stale_partial_manifest(session_factory_):
+    repo = SqlKnowledgeRepository(session_factory_)
+    with session_factory_() as session:
+        _clean_all_knowledge(session)
+    repo.insert_verified(
+        [_source("it_source_stale_1")],
+        [_chunk("it_chunk_stale_1", "it_source_stale_1", "a"),
+         _chunk("it_chunk_stale_2", "it_source_stale_1", "b")],
+    )
+    with pytest.raises(ValueError, match="subset"):
+        repo.insert_verified(
+            [_source("it_source_stale_1")],
+            [_chunk("it_chunk_stale_1", "it_source_stale_1", "a")],
+        )
+    with session_factory_() as session:
+        rows = session.scalars(select(KnowledgeChunk).where(KnowledgeChunk.source_id == "it_source_stale_1")).all()
+        assert len(rows) == 2, "rejected partial manifest must not remove or update rows"
+        _clean_all_knowledge(session)
+
+
+@pytest.mark.integration
+def test_sql_knowledge_repository_serializes_concurrent_mixed_model_ingests(session_factory_):
+    """Two ingests racing with different models: the advisory xact lock
+    serializes them, so exactly one succeeds and the other is refused."""
+    import threading
+
+    with session_factory_() as session:
+        _clean_all_knowledge(session)
+    results: list[str] = []
+    barrier = threading.Barrier(2)
+
+    def run(source_id, model):
+        repo = SqlKnowledgeRepository(session_factory_)
+        try:
+            barrier.wait()
+            repo.insert_verified([_source(source_id)], [_chunk(f"{source_id}_c", source_id, "x", model=model)])
+            results.append("ok")
+        except ValueError as error:
+            results.append(f"err:{error}")
+
+    threads = [
+        threading.Thread(target=run, args=("it_conc_a", "intfloat/multilingual-e5-base")),
+        threading.Thread(target=run, args=("it_conc_b", "some/other-model")),
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert len(results) == 2
+    assert sum(result == "ok" for result in results) == 1
+    assert sum(result.startswith("err:") for result in results) == 1
+    assert any("embedding model" in result for result in results if result.startswith("err:"))
+    with session_factory_() as session:
+        _clean_all_knowledge(session)
 
 
 @pytest.mark.integration
@@ -195,16 +271,16 @@ def test_cli_ingest_persists_verified_chunks_after_commit(tmp_path, session_fact
 
     approved_dir, manifest_path = approve_test_corpus(tmp_path, approval_key="cli-it-key")
     with session_factory_() as session:
-        _clean_knowledge(session, ["fishbase_chanos_chanos", "marinade_4962"])
+        _clean_all_knowledge(session)
 
     from scripts.corpus_pipeline import main
 
     monkeypatch.setenv("FISHORA_CORPUS_APPROVAL_KEY", "cli-it-key")
     from apps.main_api.config import MainSettings
 
+    monkeypatch.setenv("FISHORA_DATABASE_URL", MainSettings().database_url)
     result = main(["ingest", "--approved-dir", str(approved_dir),
                    "--approval-manifest", str(manifest_path),
-                   "--database-url", MainSettings().database_url,
                    "--embedding-model", "intfloat/multilingual-e5-base"])
     assert result == 2
     assert "ingested 2 verified chunks" in capsys.readouterr().out
@@ -218,4 +294,4 @@ def test_cli_ingest_persists_verified_chunks_after_commit(tmp_path, session_fact
         assert {chunk.id for chunk in chunks} == {"chunk_bandeng_identity_001", "chunk_bandeng_processing_001"}
         assert all(chunk.embedding_model == "intfloat/multilingual-e5-base" for chunk in chunks)
         assert all(len(chunk.embedding) == 768 for chunk in chunks)
-        _clean_knowledge(session, ["fishbase_chanos_chanos", "marinade_4962"])
+        _clean_all_knowledge(session)

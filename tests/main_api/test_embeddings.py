@@ -214,6 +214,38 @@ def test_ingestion_persists_verified_chunks_with_e5_embeddings(approved_corpus, 
     assert all(chunk.embedding_model == "intfloat/multilingual-e5-base" for chunk in fake_knowledge_repo.chunks)
 
 
+def test_ingestion_reingest_is_idempotent(approved_corpus, species_repo, fake_knowledge_repo, fake_embedder):
+    approved_dir, manifest = approved_corpus
+    first = _ingest(approved_dir, manifest, species_repo, fake_knowledge_repo, fake_embedder)
+    second = _ingest(approved_dir, manifest, species_repo, fake_knowledge_repo, fake_embedder)
+    assert first == second == 2
+    assert len(fake_knowledge_repo.chunks) == 2, "identical re-ingest must upsert, not duplicate"
+    assert len(fake_knowledge_repo.sources) == 2
+
+
+def test_ingestion_accepts_additive_full_manifests(tmp_path, species_repo, fake_knowledge_repo, fake_embedder):
+    from tests.main_api.test_corpus import approve_test_corpus
+
+    small_dir, small_manifest = approve_test_corpus(tmp_path / "small", include_processing=False)
+    assert _ingest(small_dir, small_manifest, species_repo, fake_knowledge_repo, fake_embedder) == 1
+    full_dir, full_manifest = approve_test_corpus(tmp_path / "full")
+    assert _ingest(full_dir, full_manifest, species_repo, fake_knowledge_repo, fake_embedder) == 2
+    assert [chunk.id for chunk in fake_knowledge_repo.chunks] == [
+        "chunk_bandeng_identity_001", "chunk_bandeng_processing_001",
+    ]
+
+
+def test_ingestion_rejects_stale_partial_manifest(tmp_path, species_repo, fake_knowledge_repo, fake_embedder):
+    from tests.main_api.test_corpus import approve_test_corpus
+
+    full_dir, full_manifest = approve_test_corpus(tmp_path / "full")
+    _ingest(full_dir, full_manifest, species_repo, fake_knowledge_repo, fake_embedder)
+    small_dir, small_manifest = approve_test_corpus(tmp_path / "small", include_processing=False)
+    with pytest.raises(ValueError, match="subset"):
+        _ingest(small_dir, small_manifest, species_repo, fake_knowledge_repo, fake_embedder)
+    assert len(fake_knowledge_repo.chunks) == 2, "rejected manifest must not change the store"
+
+
 def test_ingestion_splits_long_approved_sections(approved_corpus_long, species_repo, fake_knowledge_repo, fake_embedder):
     approved_dir, manifest = approved_corpus_long
     count = _ingest(approved_dir, manifest, species_repo, fake_knowledge_repo, fake_embedder)

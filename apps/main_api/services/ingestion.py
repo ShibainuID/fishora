@@ -10,26 +10,14 @@ transaction and rolls everything back on any failure.
 
 from __future__ import annotations
 
-import json
 import math
 from pathlib import Path
 
 from apps.main_api.contracts import KnowledgeChunkWrite, KnowledgeSourceWrite
 from apps.main_api.ports import Embedder, KnowledgeRepository, SpeciesRepository
 from apps.main_api.services.chunking import chunk_candidate
-from apps.main_api.services.corpus import VerifiedRecord, require_approved_manifest
+from apps.main_api.services.corpus import load_verified_records
 from apps.main_api.services.embeddings import E5_DIMENSION, E5_MODEL_NAME
-
-
-def _verified_records(approved_dir: Path, chunk_ids: list[str]) -> list[VerifiedRecord]:
-    """Re-read the approved files; require_approved_manifest already validated
-    their status, attestation and HMAC signature, so this only parses them."""
-    return [
-        VerifiedRecord.model_validate(
-            json.loads((approved_dir / f"{chunk_id}.json").read_text(encoding="utf-8"))
-        )
-        for chunk_id in chunk_ids
-    ]
 
 
 def _validated_vectors(payload_ids: list[str], vectors: list[list[float]]) -> None:
@@ -64,16 +52,19 @@ def ingest_approved_corpus(
 
     Returns the number of verified chunks written. Raises before touching the
     store on: a missing/unsigned/mismatched manifest (no approval key, wrong
-    key, altered files, candidate-only records), an unknown species label, a
-    store already containing another embedding model, or any vector whose
-    length is not 768.
+    key, altered files, candidate-only records), a non-E5 embedder, an unknown
+    species label, a store already containing another embedding model, or any
+    malformed embedding (wrong batch size, wrong dimension, non-finite or
+    unnormalized values). The repository re-checks the embedding model and the
+    approved-chunk subset under a transaction advisory lock before upserting,
+    so identical re-ingests and additive manifests are idempotent and stale
+    partial manifests are refused.
     """
-    manifest = require_approved_manifest(approved_dir, approval_manifest, approval_key)
     if embedder.model_name != E5_MODEL_NAME:
         raise ValueError(
             f"ingestion requires the {E5_MODEL_NAME} embedding model, got {embedder.model_name!r}"
         )
-    records = _verified_records(approved_dir, manifest.approved_chunk_ids)
+    records = load_verified_records(approved_dir, approval_manifest, approval_key)
 
     species_ids: dict[str, str] = {}
     for record in records:
