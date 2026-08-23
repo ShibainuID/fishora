@@ -7,7 +7,8 @@ from apps.main_api.db.models import Prediction
 from apps.main_api.db.repositories import seed_taxonomy
 from apps.main_api.db.sql_repositories import SqlPredictionRepository, SqlSpeciesRepository
 
-TAXONOMY_CSV = Path("/home/athilla/Documents/IF_ITB/Lomba/COMPFEST/AIC-2026/artifacts/Dataset/fishora_dataset/metadata/taxonomy.csv")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+TAXONOMY_CSV = REPO_ROOT / "artifacts" / "Dataset" / "fishora_dataset" / "metadata" / "taxonomy.csv"
 
 
 @pytest.fixture
