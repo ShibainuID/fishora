@@ -109,6 +109,9 @@ class SqlKnowledgeRepository:
 
         The session context commits on success and rolls back every source
         and chunk on any failure (e.g. a vector with the wrong dimension).
+        Sources are flushed before chunks are added: the mappers declare no
+        relationship(), so the unit of work has no cross-mapper ordering and
+        would otherwise insert chunks first (alphabetical mapper order).
         """
         with self._session_factory() as session:
             for source in sources:
@@ -132,6 +135,7 @@ class SqlKnowledgeRepository:
                     row.publisher = source.publisher
                     row.reviewed_at = source.reviewed_at
                     row.verification_status = source.verification_status
+            session.flush()
             for chunk in chunks:
                 session.add(
                     KnowledgeChunk(

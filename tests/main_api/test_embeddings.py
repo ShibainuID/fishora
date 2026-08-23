@@ -11,7 +11,7 @@ import math
 
 import pytest
 
-from tests.main_api.fakes import WhitespaceTokenizer
+from tests.main_api.fakes import FakeEmbedder, FakeKnowledgeRepository, WhitespaceTokenizer
 
 
 def test_e5_embedder_uses_distinct_shared_prefixes_and_dimension(monkeypatch):
@@ -107,3 +107,96 @@ def test_real_e5_model_dimension_and_normalization_if_cached():
         assert len(vector) == 768
         norm = math.sqrt(sum(value * value for value in vector))
         assert math.isclose(norm, 1.0, rel_tol=1e-3), "E5 vectors must be normalized"
+
+
+# --- approved-only ingestion ----------------------------------------------
+
+
+def _ingest(approved_dir, approval_manifest, species_repo, knowledge_repo, embedder, approval_key="test-key"):
+    from apps.main_api.services.ingestion import ingest_approved_corpus
+
+    return ingest_approved_corpus(
+        approved_dir, approval_manifest, species_repo, knowledge_repo, embedder, approval_key
+    )
+
+
+def test_ingestion_rejects_unapproved_directory(unapproved_dir, approval_manifest, species_repo, fake_knowledge_repo, fake_embedder):
+    with pytest.raises(ValueError, match="candidate-only"):
+        _ingest(unapproved_dir, approval_manifest, species_repo, fake_knowledge_repo, fake_embedder)
+
+
+def test_ingestion_rejects_missing_approval_manifest(tmp_path, unapproved_dir, species_repo, fake_knowledge_repo, fake_embedder):
+    with pytest.raises(FileNotFoundError, match="approval manifest"):
+        _ingest(unapproved_dir, tmp_path / "missing.json", species_repo, fake_knowledge_repo, fake_embedder)
+
+
+def test_ingestion_requires_approval_hmac_key(approved_corpus, species_repo, fake_knowledge_repo, fake_embedder):
+    approved_dir, manifest = approved_corpus
+    with pytest.raises(ValueError, match="approval key"):
+        _ingest(approved_dir, manifest, species_repo, fake_knowledge_repo, fake_embedder, approval_key=None)
+
+
+def test_ingestion_rejects_wrong_approval_key(approved_corpus, species_repo, fake_knowledge_repo, fake_embedder):
+    approved_dir, manifest = approved_corpus
+    with pytest.raises(ValueError, match="signature"):
+        _ingest(approved_dir, manifest, species_repo, fake_knowledge_repo, fake_embedder, approval_key="wrong-key")
+
+
+def test_ingestion_rejects_unknown_species_label(approved_corpus, fake_knowledge_repo, fake_embedder):
+    from tests.main_api.fakes import FakeSpeciesRepository
+
+    approved_dir, manifest = approved_corpus
+    empty_repo = FakeSpeciesRepository([])
+    with pytest.raises(ValueError, match="species"):
+        _ingest(approved_dir, manifest, empty_repo, fake_knowledge_repo, fake_embedder)
+
+
+def test_ingestion_refuses_store_with_another_embedding_model(approved_corpus, species_repo, fake_embedder):
+    approved_dir, manifest = approved_corpus
+    mixed_repo = FakeKnowledgeRepository(embedding_models={"some/other-model"})
+    with pytest.raises(ValueError, match="embedding model"):
+        _ingest(approved_dir, manifest, species_repo, mixed_repo, fake_embedder)
+    assert mixed_repo.sources == [] and mixed_repo.chunks == []
+
+
+def test_ingestion_rejects_wrong_embedding_dimension(approved_corpus, species_repo, fake_knowledge_repo):
+    approved_dir, manifest = approved_corpus
+    with pytest.raises(ValueError, match="768"):
+        _ingest(approved_dir, manifest, species_repo, fake_knowledge_repo, FakeEmbedder(dimension=767))
+    assert fake_knowledge_repo.sources == [] and fake_knowledge_repo.chunks == []
+
+
+def test_ingestion_persists_verified_chunks_with_e5_embeddings(approved_corpus, species_repo, fake_knowledge_repo, fake_embedder):
+    approved_dir, manifest = approved_corpus
+    count = _ingest(approved_dir, manifest, species_repo, fake_knowledge_repo, fake_embedder)
+    assert count == 2
+    assert {source.id for source in fake_knowledge_repo.sources} == {
+        "fishbase_chanos_chanos", "marinade_4962",
+    }
+    assert all(source.verification_status == "verified" for source in fake_knowledge_repo.sources)
+    assert all(source.reviewed_at is not None for source in fake_knowledge_repo.sources)
+    assert [chunk.id for chunk in fake_knowledge_repo.chunks] == [
+        "chunk_bandeng_identity_001", "chunk_bandeng_processing_001",
+    ]
+    assert all(chunk.species_id == "species_bandeng" for chunk in fake_knowledge_repo.chunks)
+    assert all(chunk.verification_status == "verified" for chunk in fake_knowledge_repo.chunks)
+    assert all(len(chunk.embedding) == 768 for chunk in fake_knowledge_repo.chunks)
+    assert all(chunk.embedding_model == "intfloat/multilingual-e5-base" for chunk in fake_knowledge_repo.chunks)
+
+
+def test_ingestion_splits_long_approved_sections(approved_corpus_long, species_repo, fake_knowledge_repo, fake_embedder):
+    approved_dir, manifest = approved_corpus_long
+    count = _ingest(approved_dir, manifest, species_repo, fake_knowledge_repo, fake_embedder)
+    assert count == 4  # identity stays whole; 1620-token processing section splits into 3
+    split_ids = [chunk.id for chunk in fake_knowledge_repo.chunks
+                 if chunk.id.startswith("chunk_bandeng_processing_001")]
+    split_chunks = [chunk for chunk in fake_knowledge_repo.chunks if chunk.id.startswith("chunk_bandeng_processing_001")]
+    assert split_ids == ["chunk_bandeng_processing_001", "chunk_bandeng_processing_001__2",
+                         "chunk_bandeng_processing_001__3"]
+    tokenizer = WhitespaceTokenizer()
+    for chunk in fake_knowledge_repo.chunks:
+        assert chunk.category in {"identity", "processing_methods"}
+        assert chunk.species_id == "species_bandeng"
+        assert len(tokenizer.encode(chunk.content)) <= 600
+    for previous, following in zip(split_chunks, split_chunks[1:]):
+        assert tokenizer.encode(following.content)[:50] == tokenizer.encode(previous.content)[-50:]
