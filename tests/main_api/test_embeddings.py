@@ -36,7 +36,7 @@ def test_local_e5_embedder_construction_is_lazy(monkeypatch):
     def boom(*args, **kwargs):
         raise AssertionError("model must not load at construction time")
 
-    monkeypatch.setattr("apps.main_api.services.embeddings.SentenceTransformer", boom)
+    monkeypatch.setattr("apps.main_api.services.embeddings.HuggingFaceEmbeddings", boom)
     LocalE5Embedder()
 
 
@@ -46,18 +46,21 @@ def test_local_e5_embedder_loads_model_once_per_instance(monkeypatch):
 
     from apps.main_api.services.embeddings import LocalE5Embedder
 
-    class FakeSentenceTransformer:
+    class FakeHuggingFaceEmbeddings:
         instances = 0
 
         def __init__(self, *args, **kwargs):
             type(self).instances += 1
-            self.tokenizer = WhitespaceTokenizer()
+            self.client = type("Client", (), {"tokenizer": WhitespaceTokenizer()})()
 
-        def encode(self, sentences, **kwargs):
-            return [np.full(768, 0.01 * index, dtype="float32") for index in range(len(sentences))]
+        def embed_documents(self, texts):
+            return [np.full(768, 0.01 * index, dtype="float32").tolist() for index in range(len(texts))]
 
-    fake = FakeSentenceTransformer
-    monkeypatch.setattr("apps.main_api.services.embeddings.SentenceTransformer", fake)
+        def embed_query(self, text):
+            return np.full(768, 0.01, dtype="float32").tolist()
+
+    fake = FakeHuggingFaceEmbeddings
+    monkeypatch.setattr("apps.main_api.services.embeddings.HuggingFaceEmbeddings", fake)
     embedder = LocalE5Embedder()
     passages = embedder.embed_passages(["Ciri ikan", "Bandeng presto"])
     query = embedder.embed_query("ciri ikan")
@@ -73,21 +76,25 @@ def test_local_e5_embedder_prefixes_and_float32_output(monkeypatch):
 
     from apps.main_api.services.embeddings import LocalE5Embedder
 
-    class FakeSentenceTransformer:
+    class FakeHuggingFaceEmbeddings:
         def __init__(self, *args, **kwargs):
-            self.tokenizer = WhitespaceTokenizer()
-            self.sentences = []
+            self.client = type("Client", (), {"tokenizer": WhitespaceTokenizer()})()
+            self.texts = []
 
-        def encode(self, sentences, **kwargs):
-            self.sentences.extend(sentences)
-            return [np.full(768, 0.01, dtype="float32") for _ in sentences]
+        def embed_documents(self, texts):
+            self.texts.extend(texts)
+            return [np.full(768, 0.01, dtype="float32").tolist() for _ in texts]
 
-    fake = FakeSentenceTransformer()
-    monkeypatch.setattr("apps.main_api.services.embeddings.SentenceTransformer", lambda *a, **k: fake)
+        def embed_query(self, text):
+            self.texts.append(text)
+            return np.full(768, 0.01, dtype="float32").tolist()
+
+    fake = FakeHuggingFaceEmbeddings()
+    monkeypatch.setattr("apps.main_api.services.embeddings.HuggingFaceEmbeddings", lambda *a, **k: fake)
     embedder = LocalE5Embedder()
     embedder.embed_passages(["Ciri ikan"])
     embedder.embed_query("ciri ikan")
-    assert fake.sentences == ["passage: Ciri ikan", "query: ciri ikan"]
+    assert fake.texts == ["passage: Ciri ikan", "query: ciri ikan"]
 
 
 def test_local_e5_embedder_defaults_to_local_files_only(monkeypatch):
@@ -98,17 +105,19 @@ def test_local_e5_embedder_defaults_to_local_files_only(monkeypatch):
 
     captured = {}
 
-    class FakeSentenceTransformer:
+    class FakeHuggingFaceEmbeddings:
         def __init__(self, *args, **kwargs):
             captured["kwargs"] = kwargs
-            self.tokenizer = WhitespaceTokenizer()
+            self.client = type("Client", (), {"tokenizer": WhitespaceTokenizer()})()
 
-        def encode(self, sentences, **kwargs):
-            return [np.full(768, 0.01, dtype="float32") for _ in sentences]
+        def embed_documents(self, texts):
+            return [np.full(768, 0.01, dtype="float32").tolist() for _ in texts]
 
-    monkeypatch.setattr("apps.main_api.services.embeddings.SentenceTransformer", FakeSentenceTransformer)
+    monkeypatch.setattr("apps.main_api.services.embeddings.HuggingFaceEmbeddings", FakeHuggingFaceEmbeddings)
     LocalE5Embedder().embed_passages(["Ciri ikan"])
-    assert captured["kwargs"]["local_files_only"] is True
+    assert captured["kwargs"]["model"] == "intfloat/multilingual-e5-base"
+    assert captured["kwargs"]["model_kwargs"]["local_files_only"] is True
+    assert captured["kwargs"]["encode_kwargs"]["normalize_embeddings"] is True
 
 
 def test_local_e5_embedder_can_opt_out_of_local_files_only(monkeypatch):
@@ -118,17 +127,17 @@ def test_local_e5_embedder_can_opt_out_of_local_files_only(monkeypatch):
 
     captured = {}
 
-    class FakeSentenceTransformer:
+    class FakeHuggingFaceEmbeddings:
         def __init__(self, *args, **kwargs):
             captured["kwargs"] = kwargs
-            self.tokenizer = WhitespaceTokenizer()
+            self.client = type("Client", (), {"tokenizer": WhitespaceTokenizer()})()
 
-        def encode(self, sentences, **kwargs):
-            return [np.full(768, 0.01, dtype="float32") for _ in sentences]
+        def embed_query(self, text):
+            return np.full(768, 0.01, dtype="float32").tolist()
 
-    monkeypatch.setattr("apps.main_api.services.embeddings.SentenceTransformer", FakeSentenceTransformer)
+    monkeypatch.setattr("apps.main_api.services.embeddings.HuggingFaceEmbeddings", FakeHuggingFaceEmbeddings)
     LocalE5Embedder(local_files_only=False).embed_query("ciri ikan")
-    assert captured["kwargs"]["local_files_only"] is False
+    assert captured["kwargs"]["model_kwargs"]["local_files_only"] is False
 
 
 def test_lifespan_wires_lazy_local_e5_embedder_when_missing(monkeypatch):

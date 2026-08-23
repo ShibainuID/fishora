@@ -1,4 +1,4 @@
-"""Local E5 embeddings for Fishora knowledge retrieval and ingestion.
+"""Local E5 embeddings through LangChain's Hugging Face adapter.
 
 Vectors come from the local ``sentence-transformers`` model cache; no remote
 embedding endpoint is ever called. The model is loaded lazily on the first
@@ -13,9 +13,9 @@ from __future__ import annotations
 from typing import Sequence
 
 try:  # production dependency; absent only in minimal test environments
-    from sentence_transformers import SentenceTransformer
+    from langchain_huggingface import HuggingFaceEmbeddings
 except ImportError:  # pragma: no cover - exercised only in minimal environments
-    SentenceTransformer = None  # type: ignore[assignment]
+    HuggingFaceEmbeddings = None  # type: ignore[assignment,misc]
 
 E5_MODEL_NAME = "intfloat/multilingual-e5-base"
 E5_DIMENSION = 768
@@ -53,33 +53,34 @@ class LocalE5Embedder:
         self._model = None  # loaded lazily on first use, once per instance
 
     def _load(self):
-        if SentenceTransformer is None:
+        if HuggingFaceEmbeddings is None:
             raise RuntimeError(
-                "sentence-transformers is not installed; install the fishora production dependencies"
+                "langchain-huggingface is not installed; install the fishora production dependencies"
             )
         if self._model is None:
-            self._model = SentenceTransformer(
-                self.model_name, device=self._device, local_files_only=self._local_files_only
+            self._model = HuggingFaceEmbeddings(
+                model=self.model_name,
+                model_kwargs={
+                    "device": self._device,
+                    "local_files_only": self._local_files_only,
+                },
+                encode_kwargs={"normalize_embeddings": True},
             )
         return self._model
 
     @property
     def tokenizer(self):
         """Real tokenizer (encode/decode) of the loaded model, for chunking."""
-        return self._load().tokenizer
+        model = self._load()
+        client = getattr(model, "client", None) or model._client
+        return client.tokenizer
 
     def embed_passages(self, texts: Sequence[str]) -> list[list[float]]:
-        values = self._load().encode(
-            [self._formatter.passage(text) for text in texts],
-            normalize_embeddings=True,
-            convert_to_numpy=True,
+        values = self._load().embed_documents(
+            [self._formatter.passage(text) for text in texts]
         )
-        return [row.astype("float32").tolist() for row in values]
+        return [[float(value) for value in row] for row in values]
 
     def embed_query(self, text: str) -> list[float]:
-        value = self._load().encode(
-            [self._formatter.query(text)],
-            normalize_embeddings=True,
-            convert_to_numpy=True,
-        )[0]
-        return value.astype("float32").tolist()
+        value = self._load().embed_query(self._formatter.query(text))
+        return [float(item) for item in value]
