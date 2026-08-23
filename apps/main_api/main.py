@@ -43,20 +43,25 @@ async def _lifespan(app: FastAPI):
 def _ensure_production_deps(app: FastAPI) -> None:
     """Fill any un-injected port with the production implementation (idempotent).
 
-    Short-circuits when every port is already injected, so a complete fake
-    bundle never constructs MainSettings or a DB session factory.
+    The four concrete ports are the completeness criterion: when cv_client,
+    species_repo, prediction_repo, and image_store are all injected, nothing
+    is missing. A session factory is only a means to build the SQL repos, not
+    an end port, so a complete fake bundle never constructs MainSettings, a
+    DB session factory, or any network client — even when the lifespan runs.
     """
     deps = app.state.deps
-    missing = (
-        deps.session_factory is None
-        or deps.cv_client is None
-        or deps.species_repo is None
-        or deps.prediction_repo is None
-        or deps.image_store is None
+    complete = (
+        deps.cv_client is not None
+        and deps.species_repo is not None
+        and deps.prediction_repo is not None
+        and deps.image_store is not None
     )
-    if not missing:
+    if complete:
         return
     settings = app.state.settings or MainSettings()
+    # Store the constructed settings so routes read configured values
+    # (e.g. cv_max_image_bytes) instead of the class default.
+    app.state.settings = settings
     if deps.session_factory is None:
         deps.session_factory = session_factory(settings)
     if deps.cv_client is None:

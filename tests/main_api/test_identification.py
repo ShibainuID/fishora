@@ -227,3 +227,48 @@ def test_complete_fake_bundle_needs_no_settings_env_or_db_factory(monkeypatch, c
     verify = client.post("/api/v1/fish/verify", json={"prediction_id": prediction_id, "verified_species_id": "species_tuna"})
     assert verify.status_code == 200
     assert verify.json()["verification_status"] == "confirmed"
+
+
+def test_lifespan_skips_settings_and_db_for_complete_fake_bundle(monkeypatch, cv_result, species_repo, prediction_repo, image_store):
+    from fastapi.testclient import TestClient
+
+    monkeypatch.delenv("FISHORA_DATABASE_URL", raising=False)
+    monkeypatch.delenv("OPENCODE_GO_API_KEY", raising=False)
+
+    def _forbid(*args, **kwargs):
+        raise AssertionError("MainSettings must not be constructed in lifespan with a complete fake bundle")
+
+    def _forbid_session_factory(*args, **kwargs):
+        raise AssertionError("session_factory must not be constructed in lifespan with a complete fake bundle")
+
+    monkeypatch.setattr("apps.main_api.main.MainSettings", _forbid)
+    monkeypatch.setattr("apps.main_api.main.session_factory", _forbid_session_factory)
+
+    app = _app(
+        cv_client=FakeCVClient(cv_result),
+        species_repo=species_repo,
+        prediction_repo=prediction_repo,
+        image_store=image_store,
+    )
+    with TestClient(app) as client:  # entering the context runs the lifespan
+        response = client.post("/api/v1/fish/identify", files={"file": ("fish.jpg", jpeg_bytes(), "image/jpeg")})
+        assert response.status_code == 200
+        assert response.json()["verification_status"] == "pending"
+    assert app.state.settings is None
+    assert app.state.deps.session_factory is None
+
+
+def test_lifespan_constructed_settings_apply_configured_image_limit(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    monkeypatch.setenv("FISHORA_DATABASE_URL", "postgresql+psycopg://fishora:fishora@localhost:55432/fishora")
+    monkeypatch.setenv("FISHORA_CV_MAX_IMAGE_BYTES", "1")
+
+    from apps.main_api.main import create_main_app
+
+    app = create_main_app()  # production path: settings and ports all built in lifespan
+    with TestClient(app) as client:
+        response = client.post("/api/v1/fish/identify", files={"file": ("fish.jpg", jpeg_bytes(), "image/jpeg")})
+        assert response.status_code == 413  # configured 1-byte limit, not the 10MB class default
+    assert app.state.settings is not None
+    assert app.state.settings.cv_max_image_bytes == 1
