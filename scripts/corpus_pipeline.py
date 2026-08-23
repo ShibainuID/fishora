@@ -16,9 +16,17 @@ Usage:
     --reviewer operator \
     --confirmation APPROVE
 
-`approve` requires the `FISHORA_CORPUS_APPROVAL_KEY` environment variable: the
-HMAC-SHA256 signing key for the approval manifest. The key is never stored or
-logged.
+  FISHORA_CORPUS_APPROVAL_KEY=... python3 -m scripts.corpus_pipeline ingest \
+    --approved-dir artifacts/knowledge_sources/approved \
+    --approval-manifest artifacts/knowledge_sources/approval-manifest.json \
+    --database-url "$FISHORA_DATABASE_URL" \
+    --embedding-model intfloat/multilingual-e5-base
+
+`approve` and `ingest` require the `FISHORA_CORPUS_APPROVAL_KEY` environment
+variable: the HMAC-SHA256 signing key for the approval manifest. `ingest`
+prints `ingested N verified chunks` only after the single database
+transaction commits, and never accepts the candidate corpus as approved
+input. The key is never stored or logged.
 """
 
 from __future__ import annotations
@@ -55,6 +63,12 @@ def main(argv: list[str] | None = None) -> int | ApprovalManifest:
     approve_p.add_argument("--confirmation", required=True,
                            help=f"must be exactly {APPROVAL_TOKEN}")
 
+    ingest_p = sub.add_parser("ingest", help="ingest the signed approved corpus into Postgres/pgvector")
+    ingest_p.add_argument("--approved-dir", type=Path, required=True)
+    ingest_p.add_argument("--approval-manifest", type=Path, required=True)
+    ingest_p.add_argument("--database-url", required=True)
+    ingest_p.add_argument("--embedding-model", default="intfloat/multilingual-e5-base")
+
     args = parser.parse_args(argv)
     if args.command == "collect":
         count = collect_candidate_stages(args.stage_dir, args.candidate_dir)
@@ -63,6 +77,30 @@ def main(argv: list[str] | None = None) -> int | ApprovalManifest:
     approval_key = os.environ.get(APPROVAL_KEY_ENV, "")
     if not approval_key:
         parser.error(f"{APPROVAL_KEY_ENV} environment variable is required")
+    if args.command == "ingest":
+        candidates_dir = (Path(__file__).resolve().parents[1]
+                          / "artifacts/knowledge_sources/candidates").resolve()
+        if args.approved_dir.resolve() == candidates_dir:
+            parser.error(f"{args.approved_dir} is the candidate corpus, not an approved input")
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+
+        from apps.main_api.db.repositories import SqlKnowledgeRepository
+        from apps.main_api.db.sql_repositories import SqlSpeciesRepository
+        from apps.main_api.services.embeddings import LocalE5Embedder
+        from apps.main_api.services.ingestion import ingest_approved_corpus
+
+        factory = sessionmaker(bind=create_engine(args.database_url), expire_on_commit=False)
+        count = ingest_approved_corpus(
+            args.approved_dir,
+            args.approval_manifest,
+            SqlSpeciesRepository(factory),
+            SqlKnowledgeRepository(factory),
+            LocalE5Embedder(args.embedding_model),
+            approval_key,
+        )
+        print(f"ingested {count} verified chunks")
+        return count
     manifest = approve_candidates(
         args.candidate_dir,
         args.review_file,

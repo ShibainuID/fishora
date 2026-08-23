@@ -78,6 +78,31 @@ def test_cli_approve_requires_confirmation_argument(tmp_path, valid_offline_dir,
               "--reviewer", "operator"])
 
 
+def test_cli_ingest_requires_approval_key_env(tmp_path, monkeypatch, capsys):
+    from scripts.corpus_pipeline import main
+
+    monkeypatch.delenv("FISHORA_CORPUS_APPROVAL_KEY", raising=False)
+    with pytest.raises(SystemExit):
+        main(["ingest", "--approved-dir", str(tmp_path / "approved"),
+              "--approval-manifest", str(tmp_path / "approval.json"),
+              "--database-url", "postgresql+psycopg://unused", "--embedding-model", "intfloat/multilingual-e5-base"])
+    assert "FISHORA_CORPUS_APPROVAL_KEY" in capsys.readouterr().err
+
+
+def test_cli_ingest_never_accepts_candidate_dir_as_approved(tmp_path, monkeypatch, capsys):
+    """The committed candidate corpus must never be an approved input."""
+    from scripts.corpus_pipeline import main
+
+    repo_root = Path(__file__).resolve().parents[2]
+    candidates = repo_root / "artifacts/knowledge_sources/candidates"
+    monkeypatch.setenv("FISHORA_CORPUS_APPROVAL_KEY", APPROVAL_KEY)
+    with pytest.raises(SystemExit):
+        main(["ingest", "--approved-dir", str(candidates),
+              "--approval-manifest", str(tmp_path / "approval.json"),
+              "--database-url", "postgresql+psycopg://unused", "--embedding-model", "intfloat/multilingual-e5-base"])
+    assert "candidate" in capsys.readouterr().err
+
+
 def test_main_api_never_invokes_corpus_pipeline():
     """No main-API module may import the operator CLI package (`scripts`)."""
     apps_root = Path(__file__).resolve().parents[2] / "apps" / "main_api"
