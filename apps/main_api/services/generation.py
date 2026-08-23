@@ -11,14 +11,17 @@ so empty-evidence requests never touch it.
 
 from __future__ import annotations
 
+import json
+from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
 import openai
 from openai import OpenAI
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 from apps.main_api.contracts import RetrievedChunk, SpeciesRecord
-from apps.main_api.errors import OpenCodeUnavailable
+from apps.main_api.errors import InvalidGeneratedKnowledge, OpenCodeUnavailable
 
 SYSTEM_PROMPT = (
     Path(__file__).resolve().parents[1] / "prompts" / "knowledge_card_system.txt"
@@ -110,3 +113,171 @@ def _user_payload(species: SpeciesRecord, evidence: list[RetrievedChunk]) -> str
         )
         lines.append(chunk.content)
     return "\n".join(lines)
+
+
+class SourceMetadata(BaseModel):
+    """Server-side enrichment of a generated citation. Never trusted from
+    generated text: title/url/publisher/type/review all come from the
+    retrieved verified source row."""
+
+    source_id: str
+    title: str
+    source_type: str
+    url: str
+    publisher: str
+    reviewed_at: datetime | None
+    verification_status: Literal["verified"]
+
+
+class KnowledgeCard(BaseModel):
+    common_name: str
+    scientific_name: str | None
+    taxonomy_status: str
+    physical_characteristics: str | None
+    taste: str | None
+    texture: str | None
+    processing_methods: list[str]
+    commercial_uses: list[str]
+    similar_or_substitute_species: list[str]
+    potential_buyer_segments: list[str]
+    limitations: list[str]
+    sources: list[SourceMetadata]
+
+
+class KnowledgeResponse(BaseModel):
+    prediction_id: str
+    species_id: str
+    card: KnowledgeCard
+
+
+# Relational taxonomy overrides: per species label, the scientific name the
+# card must carry and the limitation appended when the LLM would narrow or
+# rename it. Keyed by normalized label; the values mirror the taxonomy CSV.
+TAXONOMY_GUARDRAILS: dict[str, tuple[str | None, str]] = {
+    "tuna": (
+        "Thunnus spp.",
+        "Nama umum 'tuna' mencakup beberapa spesies (mungkin juga cakalang/bonito, "
+        "Katsuwonus/Euthynnus); taksonomi dikunci pada tingkat genus Thunnus spp. "
+        "sampai verifikasi ahli.",
+    ),
+    "gembolo": (
+        None,
+        "Nama umum 'gembolo' ambigu: merujuk spesies berbeda menurut daerah "
+        "(Rastrelliger spp., Selaroides leptolepis, Caranx spp.); nama ilmiah "
+        "tidak dapat dipastikan tanpa identifikasi ahli.",
+    ),
+    "tenggiri": (
+        "Scomberomorus commerson",
+        "Label 'tenggiri' juga dipakai untuk Scomberomorus guttatus (tenggiri papan); "
+        "kartu ini mengikuti nama vernakular utama Scomberomorus commerson.",
+    ),
+}
+
+
+def _relational_identity(species: SpeciesRecord) -> tuple[str, str | None, str, list[str]]:
+    """Relational taxonomy always wins over the LLM: common name, scientific
+    name, and status come from the species record, with per-label guardrails
+    applied and their limitations appended."""
+    scientific_name = species.scientific_name
+    limitations: list[str] = []
+    if species.normalized_label in TAXONOMY_GUARDRAILS:
+        forced_name, limitation = TAXONOMY_GUARDRAILS[species.normalized_label]
+        scientific_name = forced_name
+        limitations.append(limitation)
+    return species.common_name_id, scientific_name, species.taxonomy_status, limitations
+
+
+class KnowledgeGenerator:
+    """Grounded card builder: relational taxonomy wins, citations are
+    validated against the retrieved evidence, and source metadata is enriched
+    server-side. With no evidence the card is built without ever constructing
+    or calling OpenCode.
+
+    ``generator`` is an OpenCode client-like object, or a zero-arg factory
+    returning one (production laziness: the factory is only invoked when
+    evidence exists, so a blank-key client is never built for empty evidence).
+    """
+
+    def __init__(self, generator):
+        self._generator = generator
+
+    def generate(self, species: SpeciesRecord, evidence: list[RetrievedChunk]) -> KnowledgeCard:
+        if not evidence:
+            return self._empty_card(species)
+        client = self._generator() if callable(self._generator) else self._generator
+        raw = client.generate(SYSTEM_PROMPT, evidence, species)
+        return self._build_card(species, evidence, raw)
+
+    def _empty_card(self, species: SpeciesRecord) -> KnowledgeCard:
+        common_name, scientific_name, taxonomy_status, limitations = _relational_identity(species)
+        return KnowledgeCard(
+            common_name=common_name,
+            scientific_name=scientific_name,
+            taxonomy_status=taxonomy_status,
+            physical_characteristics=None,
+            taste=None,
+            texture=None,
+            processing_methods=[],
+            commercial_uses=[],
+            similar_or_substitute_species=[],
+            potential_buyer_segments=[],
+            limitations=["Informasi belum tersedia"] + limitations,
+            sources=[],
+        )
+
+    def _build_card(
+        self, species: SpeciesRecord, evidence: list[RetrievedChunk], raw: str
+    ) -> KnowledgeCard:
+        chunk_ids = [chunk.chunk_id for chunk in evidence]
+        try:
+            payload = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise InvalidGeneratedKnowledge(
+                f"generated knowledge is not valid JSON: {exc}", chunk_ids
+            ) from exc
+        try:
+            generated = GeneratedKnowledgeCard.model_validate(payload)
+        except ValidationError as exc:
+            raise InvalidGeneratedKnowledge(
+                f"generated knowledge failed schema validation: {exc}", chunk_ids
+            ) from exc
+        if not generated.sources:
+            raise InvalidGeneratedKnowledge(
+                "generated knowledge must cite at least one supplied source "
+                "when evidence exists",
+                chunk_ids,
+            )
+        by_source = {chunk.source_id: chunk for chunk in evidence}
+        for citation in generated.sources:
+            if citation.source_id not in by_source:
+                raise InvalidGeneratedKnowledge(
+                    f"generated knowledge cites unretrieved source {citation.source_id!r}",
+                    chunk_ids,
+                )
+
+        common_name, scientific_name, taxonomy_status, guardrail_limitations = _relational_identity(species)
+        return KnowledgeCard(
+            common_name=common_name,
+            scientific_name=scientific_name,
+            taxonomy_status=taxonomy_status,
+            physical_characteristics=generated.physical_characteristics,
+            taste=generated.taste,
+            texture=generated.texture,
+            processing_methods=generated.processing_methods,
+            commercial_uses=generated.commercial_uses,
+            similar_or_substitute_species=generated.similar_or_substitute_species,
+            potential_buyer_segments=generated.potential_buyer_segments,
+            limitations=generated.limitations + guardrail_limitations,
+            sources=[
+                SourceMetadata(
+                    source_id=citation.source_id,
+                    title=by_source[citation.source_id].source_title,
+                    source_type=by_source[citation.source_id].source_type,
+                    url=by_source[citation.source_id].source_url or "",
+                    publisher=by_source[citation.source_id].source_publisher or "",
+                    reviewed_at=by_source[citation.source_id].source_reviewed_at,
+                    verification_status="verified",
+                )
+                for citation in generated.sources
+            ],
+        )
