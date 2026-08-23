@@ -81,12 +81,26 @@ def test_cli_approve_requires_confirmation_argument(tmp_path, valid_offline_dir,
 def test_cli_ingest_requires_approval_key_env(tmp_path, monkeypatch, capsys):
     from scripts.corpus_pipeline import main
 
+    monkeypatch.setenv("FISHORA_DATABASE_URL", "postgresql+psycopg://unused")
     monkeypatch.delenv("FISHORA_CORPUS_APPROVAL_KEY", raising=False)
     with pytest.raises(SystemExit):
         main(["ingest", "--approved-dir", str(tmp_path / "approved"),
               "--approval-manifest", str(tmp_path / "approval.json"),
-              "--database-url", "postgresql+psycopg://unused", "--embedding-model", "intfloat/multilingual-e5-base"])
+              "--embedding-model", "intfloat/multilingual-e5-base"])
     assert "FISHORA_CORPUS_APPROVAL_KEY" in capsys.readouterr().err
+
+
+def test_cli_ingest_requires_database_url_env(tmp_path, monkeypatch, capsys):
+    """Credentials must come from the environment, never from process args."""
+    from scripts.corpus_pipeline import main
+
+    monkeypatch.setenv("FISHORA_CORPUS_APPROVAL_KEY", APPROVAL_KEY)
+    monkeypatch.delenv("FISHORA_DATABASE_URL", raising=False)
+    with pytest.raises(SystemExit):
+        main(["ingest", "--approved-dir", str(tmp_path / "approved"),
+              "--approval-manifest", str(tmp_path / "approval.json"),
+              "--embedding-model", "intfloat/multilingual-e5-base"])
+    assert "FISHORA_DATABASE_URL" in capsys.readouterr().err
 
 
 def test_cli_ingest_never_accepts_candidate_dir_as_approved(tmp_path, monkeypatch, capsys):
@@ -96,10 +110,11 @@ def test_cli_ingest_never_accepts_candidate_dir_as_approved(tmp_path, monkeypatc
     repo_root = Path(__file__).resolve().parents[2]
     candidates = repo_root / "artifacts/knowledge_sources/candidates"
     monkeypatch.setenv("FISHORA_CORPUS_APPROVAL_KEY", APPROVAL_KEY)
+    monkeypatch.setenv("FISHORA_DATABASE_URL", "postgresql+psycopg://unused")
     with pytest.raises(SystemExit):
         main(["ingest", "--approved-dir", str(candidates),
               "--approval-manifest", str(tmp_path / "approval.json"),
-              "--database-url", "postgresql+psycopg://unused", "--embedding-model", "intfloat/multilingual-e5-base"])
+              "--embedding-model", "intfloat/multilingual-e5-base"])
     assert "candidate" in capsys.readouterr().err
 
 

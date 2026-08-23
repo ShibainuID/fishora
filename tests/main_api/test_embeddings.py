@@ -90,6 +90,82 @@ def test_local_e5_embedder_prefixes_and_float32_output(monkeypatch):
     assert fake.sentences == ["passage: Ciri ikan", "query: ciri ikan"]
 
 
+def test_local_e5_embedder_defaults_to_local_files_only(monkeypatch):
+    """Deployment mode: the embedder never downloads the model implicitly."""
+    import numpy as np
+
+    from apps.main_api.services.embeddings import LocalE5Embedder
+
+    captured = {}
+
+    class FakeSentenceTransformer:
+        def __init__(self, *args, **kwargs):
+            captured["kwargs"] = kwargs
+            self.tokenizer = WhitespaceTokenizer()
+
+        def encode(self, sentences, **kwargs):
+            return [np.full(768, 0.01, dtype="float32") for _ in sentences]
+
+    monkeypatch.setattr("apps.main_api.services.embeddings.SentenceTransformer", FakeSentenceTransformer)
+    LocalE5Embedder().embed_passages(["Ciri ikan"])
+    assert captured["kwargs"]["local_files_only"] is True
+
+
+def test_local_e5_embedder_can_opt_out_of_local_files_only(monkeypatch):
+    import numpy as np
+
+    from apps.main_api.services.embeddings import LocalE5Embedder
+
+    captured = {}
+
+    class FakeSentenceTransformer:
+        def __init__(self, *args, **kwargs):
+            captured["kwargs"] = kwargs
+            self.tokenizer = WhitespaceTokenizer()
+
+        def encode(self, sentences, **kwargs):
+            return [np.full(768, 0.01, dtype="float32") for _ in sentences]
+
+    monkeypatch.setattr("apps.main_api.services.embeddings.SentenceTransformer", FakeSentenceTransformer)
+    LocalE5Embedder(local_files_only=False).embed_query("ciri ikan")
+    assert captured["kwargs"]["local_files_only"] is False
+
+
+def test_lifespan_wires_lazy_local_e5_embedder_when_missing(monkeypatch):
+    """The production lifespan constructs one LocalE5Embedder (no weights
+    loaded until first use); complete fake bundles stay untouched."""
+    from fastapi.testclient import TestClient
+
+    from apps.main_api.main import create_main_app
+    from apps.main_api.ports import AppDependencies
+    from apps.main_api.services.embeddings import LocalE5Embedder
+
+    from tests.main_api.fakes import FakeCVClient, FakeImageStore, FakePredictionRepository, FakeSpeciesRepository
+
+    monkeypatch.setenv("FISHORA_DATABASE_URL", "postgresql+psycopg://fishora:fishora@localhost:55432/fishora")
+    deps = AppDependencies(
+        cv_client=FakeCVClient(),
+        species_repo=FakeSpeciesRepository([]),
+        prediction_repo=FakePredictionRepository(),
+        image_store=FakeImageStore(),
+    )
+    app = create_main_app(deps=deps)
+    with TestClient(app):
+        embedder = app.state.deps.embedder
+        assert isinstance(embedder, LocalE5Embedder)
+        assert embedder._model is None, "weights must stay unloaded until first embed"
+
+
+def test_complete_fake_bundle_is_untouched_by_lifespan(main_app):
+    """A bundle with every port injected (including the embedder) is never
+    mutated by the lifespan: no env, DB, or model construction."""
+    from fastapi.testclient import TestClient
+
+    with TestClient(main_app):
+        assert isinstance(main_app.state.deps.embedder, FakeEmbedder)
+        assert main_app.state.settings is None
+
+
 def test_real_e5_model_dimension_and_normalization_if_cached():
     """Genuine environment skip (not a passing fake) when E5 is not cached locally."""
     pytest.importorskip("sentence_transformers", reason="sentence-transformers is not installed")

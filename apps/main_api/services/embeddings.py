@@ -38,10 +38,18 @@ class LocalE5Embedder:
     dimension = E5_DIMENSION
     _formatter = E5QueryPassageFormatter()
 
-    def __init__(self, model_name: str = E5_MODEL_NAME, device: str | None = None):
+    def __init__(
+        self,
+        model_name: str = E5_MODEL_NAME,
+        device: str | None = None,
+        local_files_only: bool = True,
+    ):
         if model_name != E5_MODEL_NAME:
             raise ValueError("Fishora ingestion and query embeddings require intfloat/multilingual-e5-base")
         self._device = device
+        # Deployment mode: only the locally cached model is used; nothing is
+        # downloaded implicitly. Opt out explicitly to fetch from the hub.
+        self._local_files_only = local_files_only
         self._model = None  # loaded lazily on first use, once per instance
 
     def _load(self):
@@ -50,7 +58,9 @@ class LocalE5Embedder:
                 "sentence-transformers is not installed; install the fishora production dependencies"
             )
         if self._model is None:
-            self._model = SentenceTransformer(self.model_name, device=self._device)
+            self._model = SentenceTransformer(
+                self.model_name, device=self._device, local_files_only=self._local_files_only
+            )
         return self._model
 
     @property

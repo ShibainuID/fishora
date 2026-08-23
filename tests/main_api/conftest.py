@@ -179,5 +179,6 @@ def main_app(seeded_prediction_repo, species_repo, image_store, cv_result):
             species_repo=species_repo,
             prediction_repo=seeded_prediction_repo,
             image_store=image_store,
+            embedder=FakeEmbedder(),
         )
     )

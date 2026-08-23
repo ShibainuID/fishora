@@ -11,6 +11,7 @@ from apps.main_api.db.sql_repositories import SqlPredictionRepository, SqlSpecie
 from apps.main_api.errors import CvUnavailable, PredictionNotFound, UnsupportedCvLabel, UnsupportedSpecies
 from apps.main_api.ports import AppDependencies
 from apps.main_api.services.cv_client import HttpCVClient
+from apps.main_api.services.embeddings import LocalE5Embedder
 from apps.main_api.services.image_store import FilesystemImageStore
 
 
@@ -43,11 +44,13 @@ async def _lifespan(app: FastAPI):
 def _ensure_production_deps(app: FastAPI) -> None:
     """Fill any un-injected port with the production implementation (idempotent).
 
-    The four concrete ports are the completeness criterion: when cv_client,
-    species_repo, prediction_repo, and image_store are all injected, nothing
-    is missing. A session factory is only a means to build the SQL repos, not
-    an end port, so a complete fake bundle never constructs MainSettings, a
-    DB session factory, or any network client — even when the lifespan runs.
+    The five concrete ports are the completeness criterion: when cv_client,
+    species_repo, prediction_repo, image_store, and embedder are all injected,
+    nothing is missing. A session factory is only a means to build the SQL
+    repos, not an end port, so a complete fake bundle never constructs
+    MainSettings, a DB session factory, a network client, or an embedder —
+    even when the lifespan runs. The production embedder is constructed
+    without loading weights: LocalE5Embedder stays lazy until first embed.
     """
     deps = app.state.deps
     complete = (
@@ -55,6 +58,7 @@ def _ensure_production_deps(app: FastAPI) -> None:
         and deps.species_repo is not None
         and deps.prediction_repo is not None
         and deps.image_store is not None
+        and deps.embedder is not None
     )
     if complete:
         return
@@ -72,6 +76,8 @@ def _ensure_production_deps(app: FastAPI) -> None:
         deps.prediction_repo = SqlPredictionRepository(deps.session_factory)
     if deps.image_store is None:
         deps.image_store = FilesystemImageStore(settings.image_storage_dir)
+    if deps.embedder is None:
+        deps.embedder = LocalE5Embedder(settings.embedding_model_name)
 
 
 def _register_error_handlers(app: FastAPI) -> None:

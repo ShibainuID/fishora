@@ -15,13 +15,14 @@ def jpeg_bytes() -> bytes:
     return buffer.getvalue()
 
 
-def _app(*, settings=None, cv_client=None, species_repo=None, prediction_repo=None, image_store=None):
+def _app(*, settings=None, cv_client=None, species_repo=None, prediction_repo=None, image_store=None, embedder=None):
     from apps.main_api.main import create_main_app
 
     return create_main_app(
         settings=settings,
         deps=AppDependencies(
-            cv_client=cv_client, species_repo=species_repo, prediction_repo=prediction_repo, image_store=image_store
+            cv_client=cv_client, species_repo=species_repo, prediction_repo=prediction_repo,
+            image_store=image_store, embedder=embedder,
         ),
     )
 
@@ -232,6 +233,8 @@ def test_complete_fake_bundle_needs_no_settings_env_or_db_factory(monkeypatch, c
 def test_lifespan_skips_settings_and_db_for_complete_fake_bundle(monkeypatch, cv_result, species_repo, prediction_repo, image_store):
     from fastapi.testclient import TestClient
 
+    from tests.main_api.fakes import FakeEmbedder
+
     monkeypatch.delenv("FISHORA_DATABASE_URL", raising=False)
     monkeypatch.delenv("OPENCODE_GO_API_KEY", raising=False)
 
@@ -249,6 +252,7 @@ def test_lifespan_skips_settings_and_db_for_complete_fake_bundle(monkeypatch, cv
         species_repo=species_repo,
         prediction_repo=prediction_repo,
         image_store=image_store,
+        embedder=FakeEmbedder(),
     )
     with TestClient(app) as client:  # entering the context runs the lifespan
         response = client.post("/api/v1/fish/identify", files={"file": ("fish.jpg", jpeg_bytes(), "image/jpeg")})

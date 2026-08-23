@@ -90,3 +90,4 @@ class AppDependencies:
     species_repo: SpeciesRepository | None = None
     prediction_repo: PredictionRepository | None = None
     image_store: ImageStore | None = None
+    embedder: Embedder | None = None
