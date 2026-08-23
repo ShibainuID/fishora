@@ -118,13 +118,13 @@ def _collect(tmp_path, sources, claims_by_stage):
     return collect_candidate_stages(stage_dir, tmp_path / "candidates")
 
 
-def _approve(valid_candidate_dir, review_file, tmp_path, approved_at=None):
+def _approve(valid_candidate_dir, review_file, tmp_path, approved_at=None, approval_key="test-key"):
     from apps.main_api.services.corpus import approve_candidates
 
     return approve_candidates(
         valid_candidate_dir, review_file, tmp_path / "approved",
         tmp_path / "approval.json", "operator", "APPROVE",
-        approved_at or datetime.now(timezone.utc),
+        approved_at or datetime.now(timezone.utc), approval_key=approval_key,
     )
 
 
@@ -296,7 +296,7 @@ def test_approve_rejects_traversal_and_absolute_chunk_ids(tmp_path, valid_candid
         with pytest.raises(ValueError, match="unsafe"):
             approve_candidates(valid_candidate_dir, review, tmp_path / "approved",
                                tmp_path / "approval.json", "operator", "APPROVE",
-                               datetime.now(timezone.utc))
+                               datetime.now(timezone.utc), approval_key="test-key")
 
 
 def test_approve_rejects_symlinked_candidate_file(tmp_path, valid_candidate_dir, review_file):
@@ -310,7 +310,7 @@ def test_approve_rejects_symlinked_candidate_file(tmp_path, valid_candidate_dir,
     with pytest.raises(ValueError, match="symlink"):
         approve_candidates(valid_candidate_dir, review_file, tmp_path / "approved",
                            tmp_path / "approval.json", "operator", "APPROVE",
-                           datetime.now(timezone.utc))
+                           datetime.now(timezone.utc), approval_key="test-key")
 
 
 def test_require_approved_manifest_rejects_symlinked_approved_copy(tmp_path, valid_candidate_dir, review_file):
@@ -321,7 +321,7 @@ def test_require_approved_manifest_rejects_symlinked_approved_copy(tmp_path, val
     approved_path.unlink()
     approved_path.symlink_to(tmp_path / "approval.json")
     with pytest.raises(ValueError, match="symlink"):
-        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json")
+        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json", approval_key="test-key")
 
 
 # --- approve: the mandatory human approval gate ----------------------------
@@ -333,7 +333,7 @@ def test_approval_requires_explicit_human_confirmation(tmp_path, valid_candidate
     try:
         approve_candidates(valid_candidate_dir, review_file, tmp_path / "approved",
                            tmp_path / "approval.json", "operator", "",
-                           datetime.now(timezone.utc))
+                           datetime.now(timezone.utc), approval_key="test-key")
     except PermissionError as error:
         assert "APPROVE" in str(error)
     else:
@@ -347,7 +347,7 @@ def test_approval_rejects_any_confirmation_other_than_exact_token(tmp_path, vali
         with pytest.raises(PermissionError, match="APPROVE"):
             approve_candidates(valid_candidate_dir, review_file, tmp_path / "approved",
                                tmp_path / "approval.json", "operator", token,
-                               datetime.now(timezone.utc))
+                               datetime.now(timezone.utc), approval_key="test-key")
 
 
 def test_approval_requires_non_empty_reviewer(tmp_path, valid_candidate_dir, review_file):
@@ -357,7 +357,7 @@ def test_approval_requires_non_empty_reviewer(tmp_path, valid_candidate_dir, rev
         with pytest.raises(ValueError, match="reviewer"):
             approve_candidates(valid_candidate_dir, review_file, tmp_path / "approved",
                                tmp_path / "approval.json", reviewer, "APPROVE",
-                               datetime.now(timezone.utc))
+                               datetime.now(timezone.utc), approval_key="test-key")
 
 
 def test_approval_requires_explicit_approved_chunk_ids(tmp_path, valid_candidate_dir):
@@ -373,7 +373,7 @@ def test_approval_requires_explicit_approved_chunk_ids(tmp_path, valid_candidate
         with pytest.raises(ValueError, match="approved_chunk_ids"):
             approve_candidates(valid_candidate_dir, review, tmp_path / "approved",
                                tmp_path / "approval.json", "operator", "APPROVE",
-                               datetime.now(timezone.utc))
+                               datetime.now(timezone.utc), approval_key="test-key")
 
 
 def test_approval_requires_explicit_approved_source_ids(tmp_path, valid_candidate_dir):
@@ -388,7 +388,7 @@ def test_approval_requires_explicit_approved_source_ids(tmp_path, valid_candidat
     with pytest.raises(ValueError, match="approved_source_ids"):
         approve_candidates(valid_candidate_dir, review, tmp_path / "approved",
                            tmp_path / "approval.json", "operator", "APPROVE",
-                           datetime.now(timezone.utc))
+                           datetime.now(timezone.utc), approval_key="test-key")
 
 
 def test_approval_requires_source_attestation_for_every_approved_source(tmp_path, valid_candidate_dir):
@@ -403,7 +403,7 @@ def test_approval_requires_source_attestation_for_every_approved_source(tmp_path
     with pytest.raises(ValueError, match="attestation"):
         approve_candidates(valid_candidate_dir, review, tmp_path / "approved",
                            tmp_path / "approval.json", "operator", "APPROVE",
-                           datetime.now(timezone.utc))
+                           datetime.now(timezone.utc), approval_key="test-key")
 
 
 def test_approval_rejects_unknown_chunk_id(tmp_path, valid_candidate_dir):
@@ -418,7 +418,7 @@ def test_approval_rejects_unknown_chunk_id(tmp_path, valid_candidate_dir):
     with pytest.raises(FileNotFoundError, match="chunk_bandeng_taste_001"):
         approve_candidates(valid_candidate_dir, review, tmp_path / "approved",
                            tmp_path / "approval.json", "operator", "APPROVE",
-                           datetime.now(timezone.utc))
+                           datetime.now(timezone.utc), approval_key="test-key")
 
 
 def test_approval_rejects_chunk_whose_source_is_not_approved(tmp_path, valid_candidate_dir):
@@ -433,7 +433,7 @@ def test_approval_rejects_chunk_whose_source_is_not_approved(tmp_path, valid_can
     with pytest.raises(ValueError, match="approved_source_ids"):
         approve_candidates(valid_candidate_dir, review, tmp_path / "approved",
                            tmp_path / "approval.json", "operator", "APPROVE",
-                           datetime.now(timezone.utc))
+                           datetime.now(timezone.utc), approval_key="test-key")
 
 
 def test_approval_copies_only_approved_records_as_verified(tmp_path, valid_candidate_dir, review_file):
@@ -441,7 +441,7 @@ def test_approval_copies_only_approved_records_as_verified(tmp_path, valid_candi
 
     approved_at = datetime(2026, 8, 23, 12, 0, tzinfo=timezone.utc)
     manifest = approve_candidates(valid_candidate_dir, review_file, tmp_path / "approved",
-                                  tmp_path / "approval.json", "operator", "APPROVE", approved_at)
+                                  tmp_path / "approval.json", "operator", "APPROVE", approved_at, approval_key="test-key")
     assert manifest.reviewer == "operator"
     assert manifest.approved_at == approved_at
     assert manifest.approved_chunk_ids == ["chunk_bandeng_identity_001"]
@@ -466,9 +466,9 @@ def test_approved_records_are_the_only_records_accepted_by_ingestion_contract(tm
 
     manifest = approve_candidates(valid_candidate_dir, review_file, tmp_path / "approved",
                                   tmp_path / "approval.json", "operator", "APPROVE",
-                                  datetime.now(timezone.utc))
+                                  datetime.now(timezone.utc), approval_key="test-key")
     assert manifest.reviewer == "operator"
-    assert require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json").approved_chunk_ids == manifest.approved_chunk_ids
+    assert require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json", approval_key="test-key").approved_chunk_ids == manifest.approved_chunk_ids
 
 
 # --- approve: candidate/approved root separation ---------------------------
@@ -480,7 +480,7 @@ def test_approval_rejects_identical_candidate_and_approved_dirs(tmp_path, valid_
     with pytest.raises(ValueError, match="must differ"):
         approve_candidates(valid_candidate_dir, review_file, valid_candidate_dir,
                            tmp_path / "approval.json", "operator", "APPROVE",
-                           datetime.now(timezone.utc))
+                           datetime.now(timezone.utc), approval_key="test-key")
 
 
 def test_approval_rejects_approved_dir_nested_in_candidate_dir(tmp_path, valid_candidate_dir, review_file):
@@ -489,7 +489,7 @@ def test_approval_rejects_approved_dir_nested_in_candidate_dir(tmp_path, valid_c
     with pytest.raises(ValueError, match="nested"):
         approve_candidates(valid_candidate_dir, review_file, valid_candidate_dir / "approved",
                            tmp_path / "approval.json", "operator", "APPROVE",
-                           datetime.now(timezone.utc))
+                           datetime.now(timezone.utc), approval_key="test-key")
 
 
 def test_approval_rejects_candidate_dir_nested_in_approved_dir(tmp_path, valid_candidate_dir, review_file):
@@ -498,7 +498,7 @@ def test_approval_rejects_candidate_dir_nested_in_approved_dir(tmp_path, valid_c
     with pytest.raises(ValueError, match="nested"):
         approve_candidates(valid_candidate_dir, review_file, tmp_path,
                            tmp_path / "approval.json", "operator", "APPROVE",
-                           datetime.now(timezone.utc))
+                           datetime.now(timezone.utc), approval_key="test-key")
 
 
 def test_approval_rejects_symlink_alias_of_candidate_dir(tmp_path, valid_candidate_dir, review_file):
@@ -509,7 +509,127 @@ def test_approval_rejects_symlink_alias_of_candidate_dir(tmp_path, valid_candida
     with pytest.raises(ValueError, match="must differ"):
         approve_candidates(valid_candidate_dir, review_file, alias,
                            tmp_path / "approval.json", "operator", "APPROVE",
-                           datetime.now(timezone.utc))
+                           datetime.now(timezone.utc), approval_key="test-key")
+
+
+# --- signed approval manifest (HMAC-SHA256) -------------------------------
+
+
+def test_approval_requires_approval_key(tmp_path, valid_candidate_dir, review_file):
+    from apps.main_api.services.corpus import approve_candidates
+
+    with pytest.raises(ValueError, match="approval key"):
+        approve_candidates(valid_candidate_dir, review_file, tmp_path / "approved",
+                           tmp_path / "approval.json", "operator", "APPROVE",
+                           datetime.now(timezone.utc), approval_key=None)
+
+
+def test_approval_rejects_blank_approval_key(tmp_path, valid_candidate_dir, review_file):
+    from apps.main_api.services.corpus import approve_candidates
+
+    for key in ("", "   "):
+        with pytest.raises(ValueError, match="approval key"):
+            approve_candidates(valid_candidate_dir, review_file, tmp_path / "approved",
+                               tmp_path / "approval.json", "operator", "APPROVE",
+                               datetime.now(timezone.utc), approval_key=key)
+
+
+def test_approval_never_stores_or_logs_the_key(tmp_path, valid_candidate_dir, review_file):
+    _approve(valid_candidate_dir, review_file, tmp_path, approval_key="super-secret-key")
+    manifest_text = (tmp_path / "approval.json").read_text(encoding="utf-8")
+    approved_text = (tmp_path / "approved" / "chunk_bandeng_identity_001.json").read_text(encoding="utf-8")
+    assert "super-secret-key" not in manifest_text
+    assert "super-secret-key" not in approved_text
+
+
+def test_require_approved_manifest_rejects_missing_key(tmp_path, valid_candidate_dir, review_file):
+    from apps.main_api.services.corpus import require_approved_manifest
+
+    _approve(valid_candidate_dir, review_file, tmp_path)
+    with pytest.raises(ValueError, match="approval key"):
+        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json", approval_key=None)
+
+
+def test_require_approved_manifest_rejects_unsigned_manifest(tmp_path, valid_candidate_dir, review_file):
+    from apps.main_api.services.corpus import require_approved_manifest
+
+    _approve(valid_candidate_dir, review_file, tmp_path)
+    signed = json.loads((tmp_path / "approval.json").read_text(encoding="utf-8"))
+    del signed["signature"]
+    (tmp_path / "approval.json").write_text(json.dumps(signed), encoding="utf-8")
+    with pytest.raises(ValueError, match="unsigned"):
+        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json", approval_key="test-key")
+
+
+def test_require_approved_manifest_rejects_wrong_key(tmp_path, valid_candidate_dir, review_file):
+    from apps.main_api.services.corpus import require_approved_manifest
+
+    _approve(valid_candidate_dir, review_file, tmp_path)
+    with pytest.raises(ValueError, match="signature"):
+        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json", approval_key="wrong-key")
+
+
+def test_require_approved_manifest_rejects_altered_approved_file(tmp_path, valid_candidate_dir, review_file):
+    from apps.main_api.services.corpus import require_approved_manifest
+
+    _approve(valid_candidate_dir, review_file, tmp_path)
+    approved_path = tmp_path / "approved" / "chunk_bandeng_identity_001.json"
+    approved = json.loads(approved_path.read_text(encoding="utf-8"))
+    approved["chunk"]["content"] = "HACKED CONTENT"
+    approved_path.write_text(json.dumps(approved), encoding="utf-8")
+    with pytest.raises(ValueError, match="signature|altered"):
+        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json", approval_key="test-key")
+
+
+def test_require_approved_manifest_rejects_hand_written_verified_records(tmp_path, valid_candidate_dir):
+    from apps.main_api.services.corpus import require_approved_manifest
+
+    (tmp_path / "approved").mkdir()
+    record = json.loads((valid_candidate_dir / "chunk_bandeng_identity_001.json").read_text(encoding="utf-8"))
+    record["chunk"]["verification_status"] = "verified"
+    record["source"]["verification_status"] = "verified"
+    record["source"]["reviewed_at"] = "2026-08-24T08:00:00Z"
+    record["source"]["reviewer"] = "forged"
+    (tmp_path / "approved" / "chunk_bandeng_identity_001.json").write_text(json.dumps(record), encoding="utf-8")
+    (tmp_path / "approval.json").write_text(json.dumps({
+        "manifest": {
+            "reviewer": "operator",
+            "approved_at": "2026-08-23T12:00:00+00:00",
+            "approved_chunk_ids": ["chunk_bandeng_identity_001"],
+            "approved_source_ids": ["fishbase_chanos_chanos"],
+        },
+        "signature": "0" * 64,
+    }), encoding="utf-8")
+    with pytest.raises(ValueError, match="signature|altered"):
+        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json", approval_key="test-key")
+
+
+# --- reviewed_at only written by approval ---------------------------------
+
+
+def test_collect_rejects_source_reviewed_at_in_offline_input(tmp_path):
+    from apps.main_api.services.corpus import collect_candidate_stages
+
+    sources = [dict(FISHBASE_SOURCE, reviewed_at="2026-08-24T08:00:00+00:00")]
+    claims = [claim("claim_bandeng_identity_001", "fishbase_chanos_chanos", "identity",
+                    "content", "quote", "x")]
+    per_stage = {stage: [dict(c, stage=stage) for c in claims] for stage in STAGES}
+    stage_dir = write_offline_dir(tmp_path, sources, per_stage)
+    with pytest.raises(ValueError, match="reviewed_at"):
+        collect_candidate_stages(stage_dir, tmp_path / "candidates")
+
+
+def test_approve_rejects_candidate_source_carrying_reviewed_at(tmp_path, valid_candidate_dir, review_file):
+    from apps.main_api.services.corpus import approve_candidates
+
+    record_path = valid_candidate_dir / "chunk_bandeng_identity_001.json"
+    record = json.loads(record_path.read_text(encoding="utf-8"))
+    record["source"]["reviewed_at"] = "2026-08-24T08:00:00+00:00"
+    record_path.write_text(json.dumps(record), encoding="utf-8")
+    with pytest.raises(ValueError, match="reviewed_at"):
+        approve_candidates(valid_candidate_dir, review_file, tmp_path / "approved",
+                           tmp_path / "approval.json", "operator", "APPROVE",
+                           datetime.now(timezone.utc), approval_key="test-key")
 
 
 # --- committed corpus: evidence integrity ---------------------------------
@@ -551,7 +671,7 @@ def test_require_approved_manifest_rejects_missing_file(tmp_path):
     from apps.main_api.services.corpus import require_approved_manifest
 
     with pytest.raises(FileNotFoundError):
-        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json")
+        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json", approval_key="test-key")
 
 
 def test_require_approved_manifest_rejects_malformed_manifest(tmp_path):
@@ -559,41 +679,31 @@ def test_require_approved_manifest_rejects_malformed_manifest(tmp_path):
 
     (tmp_path / "approval.json").write_text("{not json", encoding="utf-8")
     with pytest.raises(ValueError, match="malformed"):
-        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json")
+        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json", approval_key="test-key")
 
 
 def test_require_approved_manifest_rejects_empty_id_lists(tmp_path, valid_candidate_dir, review_file):
     from apps.main_api.services.corpus import require_approved_manifest
 
     _approve(valid_candidate_dir, review_file, tmp_path)
+    original = json.loads((tmp_path / "approval.json").read_text(encoding="utf-8"))
     for field in ("approved_chunk_ids", "approved_source_ids"):
-        manifest = {
-            "reviewer": "operator",
-            "approved_at": "2026-08-23T12:00:00+00:00",
-            "approved_chunk_ids": ["chunk_bandeng_identity_001"],
-            "approved_source_ids": ["fishbase_chanos_chanos"],
-        }
-        manifest[field] = []
-        (tmp_path / "approval.json").write_text(json.dumps(manifest), encoding="utf-8")
+        signed = json.loads(json.dumps(original))
+        signed["manifest"][field] = []
+        (tmp_path / "approval.json").write_text(json.dumps(signed), encoding="utf-8")
         with pytest.raises(ValueError, match=field):
-            require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json")
+            require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json", approval_key="test-key")
 
 
-def test_require_approved_manifest_rejects_candidate_only_input(tmp_path, valid_candidate_dir):
+def test_require_approved_manifest_rejects_candidate_only_input(tmp_path, valid_candidate_dir, review_file):
     from apps.main_api.services.corpus import require_approved_manifest
 
-    (tmp_path / "approved").mkdir()
+    _approve(valid_candidate_dir, review_file, tmp_path)
     (tmp_path / "approved" / "chunk_bandeng_identity_001.json").write_bytes(
         (valid_candidate_dir / "chunk_bandeng_identity_001.json").read_bytes()
     )
-    (tmp_path / "approval.json").write_text(json.dumps({
-        "reviewer": "operator",
-        "approved_at": "2026-08-23T12:00:00+00:00",
-        "approved_chunk_ids": ["chunk_bandeng_identity_001"],
-        "approved_source_ids": ["fishbase_chanos_chanos"],
-    }), encoding="utf-8")
     with pytest.raises(ValueError, match="candidate-only"):
-        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json")
+        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json", approval_key="test-key")
 
 
 def test_require_approved_manifest_rejects_missing_approved_copy(tmp_path, valid_candidate_dir, review_file):
@@ -602,7 +712,7 @@ def test_require_approved_manifest_rejects_missing_approved_copy(tmp_path, valid
     _approve(valid_candidate_dir, review_file, tmp_path)
     (tmp_path / "approved" / "chunk_bandeng_identity_001.json").unlink()
     with pytest.raises(FileNotFoundError, match="chunk_bandeng_identity_001"):
-        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json")
+        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json", approval_key="test-key")
 
 
 def test_require_approved_manifest_rejects_extra_approved_file(tmp_path, valid_candidate_dir, review_file):
@@ -613,18 +723,18 @@ def test_require_approved_manifest_rejects_extra_approved_file(tmp_path, valid_c
         (tmp_path / "approved" / "chunk_bandeng_identity_001.json").read_bytes()
     )
     with pytest.raises(ValueError, match="do not match"):
-        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json")
+        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json", approval_key="test-key")
 
 
 def test_require_approved_manifest_rejects_unapproved_chunk_source(tmp_path, valid_candidate_dir, review_file):
     from apps.main_api.services.corpus import require_approved_manifest
 
     _approve(valid_candidate_dir, review_file, tmp_path)
-    manifest = json.loads((tmp_path / "approval.json").read_text(encoding="utf-8"))
-    manifest["approved_source_ids"] = ["marinade_4962"]
-    (tmp_path / "approval.json").write_text(json.dumps(manifest), encoding="utf-8")
+    signed = json.loads((tmp_path / "approval.json").read_text(encoding="utf-8"))
+    signed["manifest"]["approved_source_ids"] = ["marinade_4962"]
+    (tmp_path / "approval.json").write_text(json.dumps(signed), encoding="utf-8")
     with pytest.raises(ValueError, match="approved_source_ids do not match"):
-        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json")
+        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json", approval_key="test-key")
 
 
 def test_require_approved_manifest_rejects_missing_source_reviewer(tmp_path, valid_candidate_dir, review_file):
@@ -636,7 +746,7 @@ def test_require_approved_manifest_rejects_missing_source_reviewer(tmp_path, val
     approved["source"]["reviewer"] = ""
     approved_path.write_text(json.dumps(approved), encoding="utf-8")
     with pytest.raises(ValueError, match="reviewer"):
-        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json")
+        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json", approval_key="test-key")
 
 
 def test_require_approved_manifest_rejects_malformed_approved_record(tmp_path, valid_candidate_dir, review_file):
@@ -645,15 +755,15 @@ def test_require_approved_manifest_rejects_malformed_approved_record(tmp_path, v
     _approve(valid_candidate_dir, review_file, tmp_path)
     (tmp_path / "approved" / "chunk_bandeng_identity_001.json").write_text("{not json", encoding="utf-8")
     with pytest.raises(ValueError, match="malformed"):
-        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json")
+        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json", approval_key="test-key")
 
 
 def test_require_approved_manifest_rejects_unsafe_manifest_ids(tmp_path, valid_candidate_dir, review_file):
     from apps.main_api.services.corpus import require_approved_manifest
 
     _approve(valid_candidate_dir, review_file, tmp_path)
-    manifest = json.loads((tmp_path / "approval.json").read_text(encoding="utf-8"))
-    manifest["approved_chunk_ids"] = ["../evil"]
-    (tmp_path / "approval.json").write_text(json.dumps(manifest), encoding="utf-8")
+    signed = json.loads((tmp_path / "approval.json").read_text(encoding="utf-8"))
+    signed["manifest"]["approved_chunk_ids"] = ["../evil"]
+    (tmp_path / "approval.json").write_text(json.dumps(signed), encoding="utf-8")
     with pytest.raises(ValueError, match="unsafe"):
-        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json")
+        require_approved_manifest(tmp_path / "approved", tmp_path / "approval.json", approval_key="test-key")

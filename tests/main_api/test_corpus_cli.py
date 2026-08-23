@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+APPROVAL_KEY = "cli-test-key"
+
 
 @pytest.fixture
 def valid_offline_dir(tmp_path):
@@ -23,40 +25,54 @@ def valid_offline_dir(tmp_path):
     return write_offline_dir(tmp_path, [FISHBASE_SOURCE, MARINADE_SOURCE], per_stage)
 
 
-def test_cli_collect_and_approve_roundtrip(tmp_path, valid_offline_dir):
+def _review_file(tmp_path, chunk_id="chunk_bandeng_identity_001", source_id="fishbase_chanos_chanos"):
+    path = tmp_path / "review.json"
+    path.write_text(json.dumps({
+        "approved_chunk_ids": [chunk_id],
+        "approved_source_ids": [source_id],
+        "source_reviews": {source_id: {"reviewer": "operator", "reviewed_at": "2026-08-24T08:00:00+00:00"}},
+    }), encoding="utf-8")
+    return path
+
+
+def test_cli_collect_and_approve_roundtrip(tmp_path, valid_offline_dir, monkeypatch):
     from scripts.corpus_pipeline import main
 
     candidate_dir = tmp_path / "candidates"
     assert main(["collect", "--stage-dir", str(valid_offline_dir), "--candidate-dir", str(candidate_dir)]) == 2
-    review_file = tmp_path / "review.json"
-    review_file.write_text(json.dumps({
-        "approved_chunk_ids": ["chunk_bandeng_identity_001"],
-        "approved_source_ids": ["fishbase_chanos_chanos"],
-        "source_reviews": {"fishbase_chanos_chanos": {"reviewer": "operator", "reviewed_at": "2026-08-24T08:00:00+00:00"}},
-    }), encoding="utf-8")
-    manifest = main(["approve", "--candidate-dir", str(candidate_dir), "--review-file", str(review_file),
+    monkeypatch.setenv("FISHORA_CORPUS_APPROVAL_KEY", APPROVAL_KEY)
+    manifest = main(["approve", "--candidate-dir", str(candidate_dir), "--review-file", str(_review_file(tmp_path)),
                      "--approved-dir", str(tmp_path / "approved"),
                      "--approval-manifest", str(tmp_path / "approval.json"),
                      "--reviewer", "operator", "--confirmation", "APPROVE"])
     assert manifest.reviewer == "operator"
     assert manifest.approved_chunk_ids == ["chunk_bandeng_identity_001"]
     assert (tmp_path / "approved" / "chunk_bandeng_identity_001.json").is_file()
-    assert (tmp_path / "approval.json").is_file()
+    signed = json.loads((tmp_path / "approval.json").read_text(encoding="utf-8"))
+    assert signed["signature"] and signed["manifest"]["reviewer"] == "operator"
 
 
-def test_cli_approve_requires_confirmation_argument(tmp_path, valid_offline_dir):
+def test_cli_approve_requires_approval_key_env(tmp_path, valid_offline_dir, monkeypatch):
     from scripts.corpus_pipeline import main
 
     candidate_dir = tmp_path / "candidates"
     main(["collect", "--stage-dir", str(valid_offline_dir), "--candidate-dir", str(candidate_dir)])
-    review_file = tmp_path / "review.json"
-    review_file.write_text(json.dumps({
-        "approved_chunk_ids": ["chunk_bandeng_identity_001"],
-        "approved_source_ids": ["fishbase_chanos_chanos"],
-        "source_reviews": {"fishbase_chanos_chanos": {"reviewer": "operator", "reviewed_at": "2026-08-24T08:00:00+00:00"}},
-    }), encoding="utf-8")
+    monkeypatch.delenv("FISHORA_CORPUS_APPROVAL_KEY", raising=False)
     with pytest.raises(SystemExit):
-        main(["approve", "--candidate-dir", str(candidate_dir), "--review-file", str(review_file),
+        main(["approve", "--candidate-dir", str(candidate_dir), "--review-file", str(_review_file(tmp_path)),
+              "--approved-dir", str(tmp_path / "approved"),
+              "--approval-manifest", str(tmp_path / "approval.json"),
+              "--reviewer", "operator", "--confirmation", "APPROVE"])
+
+
+def test_cli_approve_requires_confirmation_argument(tmp_path, valid_offline_dir, monkeypatch):
+    from scripts.corpus_pipeline import main
+
+    candidate_dir = tmp_path / "candidates"
+    main(["collect", "--stage-dir", str(valid_offline_dir), "--candidate-dir", str(candidate_dir)])
+    monkeypatch.setenv("FISHORA_CORPUS_APPROVAL_KEY", APPROVAL_KEY)
+    with pytest.raises(SystemExit):
+        main(["approve", "--candidate-dir", str(candidate_dir), "--review-file", str(_review_file(tmp_path)),
               "--approved-dir", str(tmp_path / "approved"),
               "--approval-manifest", str(tmp_path / "approval.json"),
               "--reviewer", "operator"])

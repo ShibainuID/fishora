@@ -14,7 +14,7 @@ handoff boundary between externally run research agents and the operator CLI;
 | `offline/knowledge_editor.json` | offline input | Editor handoff; its records become candidate chunks |
 | `candidates/*.json` | `candidate` | One record per chunk: `claim_id` + `chunk` + `source` (title, publisher, URL, support quote) |
 | `approved/*.json` | `verified` | Created **only** by the approval action; never auto-approved |
-| `approval-manifest.json` | — | Written by the approval action; consumed by `require_approved_manifest` |
+| `approval-manifest.json` | — | Signed by the approval action (HMAC-SHA256 over the canonical manifest plus approved-file hashes); consumed by `require_approved_manifest` |
 | `review/*.json` | operator input | Human review file (see below) |
 
 The four offline stage files are static handoff artifacts. They were written
@@ -30,8 +30,9 @@ copies, and it requires **all** of:
 
 1. a non-empty `--reviewer`,
 2. the exact confirmation token `APPROVE` (never any other string),
-3. explicit `approved_chunk_ids` **and** `approved_source_ids` in the review file,
-4. a per-source human attestation (`source_reviews` entry with reviewer name
+3. the `FISHORA_CORPUS_APPROVAL_KEY` signing key (missing/blank rejected),
+4. explicit `approved_chunk_ids` **and** `approved_source_ids` in the review file,
+5. a per-source human attestation (`source_reviews` entry with reviewer name
    and `reviewed_at` for every approved source).
 
 ```text
@@ -39,7 +40,7 @@ python3 -m scripts.corpus_pipeline collect \
   --stage-dir artifacts/knowledge_sources/offline \
   --candidate-dir artifacts/knowledge_sources/candidates
 
-python3 -m scripts.corpus_pipeline approve \
+FISHORA_CORPUS_APPROVAL_KEY=... python3 -m scripts.corpus_pipeline approve \
   --candidate-dir artifacts/knowledge_sources/candidates \
   --review-file artifacts/knowledge_sources/review/approval.json \
   --approved-dir artifacts/knowledge_sources/approved \
@@ -47,6 +48,13 @@ python3 -m scripts.corpus_pipeline approve \
   --reviewer operator \
   --confirmation APPROVE
 ```
+
+`approve` requires the `FISHORA_CORPUS_APPROVAL_KEY` environment variable: the
+HMAC-SHA256 key that signs the approval manifest. The signed manifest wraps the
+canonical manifest body together with SHA-256 hashes of the approved record
+files; `require_approved_manifest` recomputes both and compares with
+`hmac.compare_digest`, rejecting unsigned manifests, altered files, hand-written
+verified records and modified IDs. The key is never stored or logged.
 
 Review file shape (attestations are written into the approved source copies
 and cannot be forged afterwards):
@@ -63,7 +71,8 @@ and cannot be forged afterwards):
 
 `collect` requires all four stage files and validates **every** record in
 every stage file (stage matches the filename, non-empty content and source
-quote, safe IDs, declared sources) plus full cross-stage lineage: each
+quote, safe IDs, declared sources, `reviewed_at` exactly `None` on candidate
+sources) plus full cross-stage lineage: each
 `knowledge_editor` record must have matching research, fact-extraction and
 verification records with the same (`claim_id`, `source_id`), and vice versa.
 Unsupported labels/categories and non-candidate statuses are rejected.

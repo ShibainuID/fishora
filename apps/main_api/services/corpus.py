@@ -10,6 +10,8 @@ may create `verified` copies.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import re
 from datetime import datetime
@@ -80,6 +82,16 @@ class CandidateSource(BaseModel):
     @classmethod
     def _safe_id(cls, value: str) -> str:
         return _require_safe_id(value, "source id")
+
+    @field_validator("reviewed_at")
+    @classmethod
+    def _no_reviewed_at(cls, value: datetime | None) -> None:
+        if value is not None:
+            raise ValueError(
+                "candidate sources must not carry reviewed_at; "
+                "only approval writes review metadata"
+            )
+        return None
 
 
 class OfflineStageFile(BaseModel):
@@ -273,6 +285,27 @@ def _assert_distinct_roots(candidate_dir: Path, approved_dir: Path) -> None:
         raise ValueError("candidate_dir must not be nested inside approved_dir")
 
 
+def _canonical_payload(manifest_body: dict, file_hashes: dict) -> bytes:
+    """Deterministic JSON payload: canonical manifest body plus content hashes."""
+    payload = {"manifest": manifest_body, "file_hashes": file_hashes}
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+
+
+def _require_approval_key(approval_key: str | None) -> str:
+    if not approval_key or not approval_key.strip():
+        raise ValueError("approval key must be provided (FISHORA_CORPUS_APPROVAL_KEY)")
+    return approval_key
+
+
+def _manifest_body(manifest: ApprovalManifest) -> dict:
+    return {
+        "reviewer": manifest.reviewer,
+        "approved_at": manifest.approved_at.isoformat(),
+        "approved_chunk_ids": list(manifest.approved_chunk_ids),
+        "approved_source_ids": list(manifest.approved_source_ids),
+    }
+
+
 def _read_stage_file(stage_dir: Path, name: str) -> OfflineStageFile:
     path = stage_dir / name
     if not path.is_file():
@@ -368,19 +401,23 @@ def approve_candidates(
     reviewer: str,
     confirmation: str,
     approved_at: datetime,
+    approval_key: str | None = None,
 ) -> ApprovalManifest:
     """Mandatory human approval gate.
 
     Requires a non-empty reviewer, the exact confirmation token ``APPROVE``,
-    explicit chunk and source IDs from the review file, and a per-source human
-    attestation (reviewer + reviewed_at). Copies only the approved records into
-    ``approved_dir`` as `verified`, writing the attestation metadata; candidate
-    files remain unchanged.
+    an HMAC signing key (``FISHORA_CORPUS_APPROVAL_KEY``), explicit chunk and
+    source IDs from the review file, and a per-source human attestation
+    (reviewer + reviewed_at). Copies only the approved records into
+    ``approved_dir`` as `verified`, writes the attestation metadata, and then
+    writes a signed manifest; candidate files remain unchanged. The key is
+    never stored or logged.
     """
     if not reviewer or not reviewer.strip():
         raise ValueError("reviewer must be a non-empty human identifier")
     if confirmation != APPROVAL_TOKEN:
         raise PermissionError(f"approval requires the exact confirmation token {APPROVAL_TOKEN}")
+    _require_approval_key(approval_key)
     _assert_distinct_roots(candidate_dir, approved_dir)
     if not review_file.is_file():
         raise FileNotFoundError(f"review file not found: {review_file}")
@@ -412,6 +449,7 @@ def approve_candidates(
         records[chunk_id] = record
 
     approved_dir.mkdir(parents=True, exist_ok=True)
+    file_hashes: dict[str, str] = {}
     for chunk_id, record in records.items():
         attestation = review.source_reviews[record.source.id]
         approved = VerifiedRecord(
@@ -428,35 +466,50 @@ def approve_candidates(
                 }
             ),
         )
-        _safe_record_path(approved_dir, chunk_id).write_text(
-            approved.model_dump_json(indent=2), encoding="utf-8"
-        )
+        data = approved.model_dump_json(indent=2)
+        _safe_record_path(approved_dir, chunk_id).write_text(data, encoding="utf-8")
+        file_hashes[chunk_id] = hashlib.sha256(data.encode("utf-8")).hexdigest()
 
     manifest = ApprovalManifest(
         reviewer=reviewer,
         approved_at=approved_at,
-        approved_chunk_ids=list(records),
+        approved_chunk_ids=sorted(records),
         approved_source_ids=sorted({record.source.id for record in records.values()}),
     )
+    body = _manifest_body(manifest)
+    payload = _canonical_payload(body, file_hashes)
+    signature = hmac.new(approval_key.encode("utf-8"), payload, hashlib.sha256).hexdigest()
+    signed = {"manifest": body, "signature": signature}
     approval_manifest.parent.mkdir(parents=True, exist_ok=True)
-    approval_manifest.write_text(manifest.model_dump_json(indent=2), encoding="utf-8")
+    approval_manifest.write_text(
+        json.dumps(signed, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     return manifest
 
 
-def require_approved_manifest(approved_dir: Path, approval_manifest: Path) -> ApprovalManifest:
+def require_approved_manifest(
+    approved_dir: Path, approval_manifest: Path, approval_key: str | None = None
+) -> ApprovalManifest:
     """Return the manifest only when every approved record is genuinely verified.
 
-    Rejects a missing or malformed manifest, empty ID lists, manifest IDs that
-    do not match the actual approved files, candidate-only or malformed
-    records, unapproved chunk sources, and sources without human attestation.
+    Rejects a missing or malformed manifest, a missing/blank signing key, an
+    unsigned manifest, empty ID lists, manifest IDs that do not match the
+    actual approved files, candidate-only or malformed records, unapproved
+    chunk sources, sources without human attestation, and any signed-content
+    or signature mismatch (altered files, hand-written records, wrong key).
     """
     if not approval_manifest.is_file():
         raise FileNotFoundError(f"approval manifest not found: {approval_manifest}")
+    _require_approval_key(approval_key)
     try:
-        manifest = ApprovalManifest.model_validate(
-            json.loads(approval_manifest.read_text(encoding="utf-8"))
-        )
-    except (json.JSONDecodeError, ValidationError) as error:
+        signed = json.loads(approval_manifest.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        raise ValueError(f"approval manifest is malformed: {error}") from error
+    if not isinstance(signed, dict) or not isinstance(signed.get("signature"), str) or not signed["signature"]:
+        raise ValueError("approval manifest is unsigned")
+    try:
+        manifest = ApprovalManifest.model_validate(signed.get("manifest"))
+    except (TypeError, ValidationError) as error:
         raise ValueError(f"approval manifest is malformed: {error}") from error
     if not manifest.approved_chunk_ids:
         raise ValueError("approval manifest must list approved_chunk_ids")
@@ -508,4 +561,13 @@ def require_approved_manifest(approved_dir: Path, approval_manifest: Path) -> Ap
             )
         if not record.source.reviewer.strip():
             raise ValueError(f"source {record.source.id!r} lacks a human reviewer attestation")
+
+    file_hashes = {
+        chunk_id: hashlib.sha256(_safe_record_path(approved_dir, chunk_id).read_bytes()).hexdigest()
+        for chunk_id in sorted(manifest.approved_chunk_ids)
+    }
+    payload = _canonical_payload(_manifest_body(manifest), file_hashes)
+    expected = hmac.new(approval_key.encode("utf-8"), payload, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, signed["signature"]):
+        raise ValueError("approval manifest signature mismatch or approved files were altered")
     return manifest
