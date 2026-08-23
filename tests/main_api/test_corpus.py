@@ -662,6 +662,11 @@ def test_committed_corpus_has_no_synthetic_approval_and_covers_all_labels():
     gembolo = next(r for r in records if r.chunk.species_label == "gembolo")
     assert gembolo.source.url.startswith("https://www.fishbase.se/"), "gembolo needs a traceable URL"
     assert "unresolved" in gembolo.chunk.content.lower()
+    jbau = next(r for r in records if r.source.id == "jbau_86202")
+    assert jbau.source.title == (
+        "Quality evaluation of fish burger from tilapia (Oreochromis mossambicus) "
+        "during frozen storage (-18\u00b0C)"
+    ), "JBAU source must use the canonical title"
 
 
 # --- require_approved_manifest --------------------------------------------
