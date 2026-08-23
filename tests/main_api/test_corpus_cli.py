@@ -29,7 +29,11 @@ def test_cli_collect_and_approve_roundtrip(tmp_path, valid_offline_dir):
     candidate_dir = tmp_path / "candidates"
     assert main(["collect", "--stage-dir", str(valid_offline_dir), "--candidate-dir", str(candidate_dir)]) == 2
     review_file = tmp_path / "review.json"
-    review_file.write_text(json.dumps({"approved_chunk_ids": ["chunk_bandeng_identity_001"]}), encoding="utf-8")
+    review_file.write_text(json.dumps({
+        "approved_chunk_ids": ["chunk_bandeng_identity_001"],
+        "approved_source_ids": ["fishbase_chanos_chanos"],
+        "source_reviews": {"fishbase_chanos_chanos": {"reviewer": "operator", "reviewed_at": "2026-08-24T08:00:00+00:00"}},
+    }), encoding="utf-8")
     manifest = main(["approve", "--candidate-dir", str(candidate_dir), "--review-file", str(review_file),
                      "--approved-dir", str(tmp_path / "approved"),
                      "--approval-manifest", str(tmp_path / "approval.json"),
@@ -46,7 +50,11 @@ def test_cli_approve_requires_confirmation_argument(tmp_path, valid_offline_dir)
     candidate_dir = tmp_path / "candidates"
     main(["collect", "--stage-dir", str(valid_offline_dir), "--candidate-dir", str(candidate_dir)])
     review_file = tmp_path / "review.json"
-    review_file.write_text(json.dumps({"approved_chunk_ids": ["chunk_bandeng_identity_001"]}), encoding="utf-8")
+    review_file.write_text(json.dumps({
+        "approved_chunk_ids": ["chunk_bandeng_identity_001"],
+        "approved_source_ids": ["fishbase_chanos_chanos"],
+        "source_reviews": {"fishbase_chanos_chanos": {"reviewer": "operator", "reviewed_at": "2026-08-24T08:00:00+00:00"}},
+    }), encoding="utf-8")
     with pytest.raises(SystemExit):
         main(["approve", "--candidate-dir", str(candidate_dir), "--review-file", str(review_file),
               "--approved-dir", str(tmp_path / "approved"),
@@ -61,5 +69,6 @@ def test_main_api_never_invokes_corpus_pipeline():
         str(path.relative_to(apps_root))
         for path in apps_root.rglob("*.py")
         if "import scripts" in path.read_text(encoding="utf-8")
+        or "from scripts" in path.read_text(encoding="utf-8")
     ]
     assert offenders == []
