@@ -11,13 +11,14 @@ transaction and rolls everything back on any failure.
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 from apps.main_api.contracts import KnowledgeChunkWrite, KnowledgeSourceWrite
 from apps.main_api.ports import Embedder, KnowledgeRepository, SpeciesRepository
 from apps.main_api.services.chunking import chunk_candidate
 from apps.main_api.services.corpus import VerifiedRecord, require_approved_manifest
-from apps.main_api.services.embeddings import E5_DIMENSION
+from apps.main_api.services.embeddings import E5_DIMENSION, E5_MODEL_NAME
 
 
 def _verified_records(approved_dir: Path, chunk_ids: list[str]) -> list[VerifiedRecord]:
@@ -29,6 +30,26 @@ def _verified_records(approved_dir: Path, chunk_ids: list[str]) -> list[Verified
         )
         for chunk_id in chunk_ids
     ]
+
+
+def _validated_vectors(payload_ids: list[str], vectors: list[list[float]]) -> None:
+    """Reject malformed embedding batches before any database write."""
+    if len(vectors) != len(payload_ids):
+        raise ValueError(
+            f"embedder returned {len(vectors)} vectors for {len(payload_ids)} passages"
+        )
+    for payload_id, vector in zip(payload_ids, vectors):
+        if len(vector) != E5_DIMENSION:
+            raise ValueError(
+                f"embedding for {payload_id} has {len(vector)} dimensions; expected {E5_DIMENSION}"
+            )
+        if not all(math.isfinite(value) for value in vector):
+            raise ValueError(f"embedding for {payload_id} contains non-finite values")
+        norm = math.sqrt(sum(value * value for value in vector))
+        if not math.isclose(norm, 1.0, rel_tol=1e-3):
+            raise ValueError(
+                f"embedding for {payload_id} is not L2-normalized (norm {norm:.4f})"
+            )
 
 
 def ingest_approved_corpus(
@@ -48,6 +69,10 @@ def ingest_approved_corpus(
     length is not 768.
     """
     manifest = require_approved_manifest(approved_dir, approval_manifest, approval_key)
+    if embedder.model_name != E5_MODEL_NAME:
+        raise ValueError(
+            f"ingestion requires the {E5_MODEL_NAME} embedding model, got {embedder.model_name!r}"
+        )
     records = _verified_records(approved_dir, manifest.approved_chunk_ids)
 
     species_ids: dict[str, str] = {}
@@ -85,11 +110,8 @@ def ingest_approved_corpus(
     for record in records:
         payloads = chunk_candidate(record.chunk, embedder.tokenizer)
         vectors = embedder.embed_passages([payload.content for payload in payloads])
+        _validated_vectors([payload.id for payload in payloads], vectors)
         for index, (payload, vector) in enumerate(zip(payloads, vectors)):
-            if len(vector) != E5_DIMENSION:
-                raise ValueError(
-                    f"embedding for {payload.id} has {len(vector)} dimensions; expected {E5_DIMENSION}"
-                )
             chunks.append(
                 KnowledgeChunkWrite(
                     id=payload.id if index == 0 else f"{payload.id}__{index + 1}",

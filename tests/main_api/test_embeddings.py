@@ -166,6 +166,36 @@ def test_ingestion_rejects_wrong_embedding_dimension(approved_corpus, species_re
     assert fake_knowledge_repo.sources == [] and fake_knowledge_repo.chunks == []
 
 
+def test_ingestion_requires_exact_e5_model_name(approved_corpus, species_repo, fake_knowledge_repo):
+    approved_dir, manifest = approved_corpus
+    with pytest.raises(ValueError, match="intfloat/multilingual-e5-base"):
+        _ingest(approved_dir, manifest, species_repo, fake_knowledge_repo,
+                FakeEmbedder(model_name="some/other-model"))
+    assert fake_knowledge_repo.sources == [] and fake_knowledge_repo.chunks == []
+
+
+def test_ingestion_rejects_embedding_batch_length_mismatch(approved_corpus, species_repo, fake_knowledge_repo):
+    """A short embedder batch must fail loudly, never silently zip-truncate."""
+    approved_dir, manifest = approved_corpus
+    with pytest.raises(ValueError, match="vectors"):
+        _ingest(approved_dir, manifest, species_repo, fake_knowledge_repo, FakeEmbedder(short_batch=True))
+    assert fake_knowledge_repo.sources == [] and fake_knowledge_repo.chunks == []
+
+
+def test_ingestion_rejects_unnormalized_vectors(approved_corpus, species_repo, fake_knowledge_repo):
+    approved_dir, manifest = approved_corpus
+    with pytest.raises(ValueError, match="normalized"):
+        _ingest(approved_dir, manifest, species_repo, fake_knowledge_repo, FakeEmbedder(normalized=False))
+    assert fake_knowledge_repo.sources == [] and fake_knowledge_repo.chunks == []
+
+
+def test_ingestion_rejects_non_finite_vectors(approved_corpus, species_repo, fake_knowledge_repo):
+    approved_dir, manifest = approved_corpus
+    with pytest.raises(ValueError, match="finite"):
+        _ingest(approved_dir, manifest, species_repo, fake_knowledge_repo, FakeEmbedder(non_finite=True))
+    assert fake_knowledge_repo.sources == [] and fake_knowledge_repo.chunks == []
+
+
 def test_ingestion_persists_verified_chunks_with_e5_embeddings(approved_corpus, species_repo, fake_knowledge_repo, fake_embedder):
     approved_dir, manifest = approved_corpus
     count = _ingest(approved_dir, manifest, species_repo, fake_knowledge_repo, fake_embedder)

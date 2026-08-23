@@ -135,24 +135,49 @@ class SpecialTokenTokenizer:
 
 
 class FakeEmbedder:
-    """Deterministic 768-dimensional embedder with a whitespace tokenizer."""
+    """Deterministic 768-dimensional L2-normalized embedder with a whitespace
+    tokenizer. Knobs let tests simulate contract violations: wrong dimension,
+    unnormalized/non-finite vectors, short batches, or a different model."""
 
     model_name = "intfloat/multilingual-e5-base"
     dimension = 768
 
-    def __init__(self, dimension: int = 768, tokenizer: WhitespaceTokenizer | None = None):
+    def __init__(
+        self,
+        *,
+        dimension: int = 768,
+        normalized: bool = True,
+        non_finite: bool = False,
+        short_batch: bool = False,
+        model_name: str = "intfloat/multilingual-e5-base",
+        tokenizer: WhitespaceTokenizer | None = None,
+    ):
         self.dimension = dimension
+        self.normalized = normalized
+        self.non_finite = non_finite
+        self.short_batch = short_batch
+        self.model_name = model_name
         self.tokenizer = tokenizer or WhitespaceTokenizer()
         self.passage_calls: list[list[str]] = []
         self.query_calls: list[str] = []
 
+    def _vector(self, index: int) -> list[float]:
+        if not self.normalized:
+            return [0.001 * (index + 1)] * self.dimension
+        unit = 1.0 / (self.dimension ** 0.5)
+        vector = [unit] * self.dimension
+        if self.non_finite:
+            vector[0] = float("nan")
+        return vector
+
     def embed_passages(self, texts):
         self.passage_calls.append(list(texts))
-        return [[(index + 1) * 0.001] * self.dimension for index in range(len(texts))]
+        count = len(texts) - 1 if self.short_batch and texts else len(texts)
+        return [self._vector(index) for index in range(count)]
 
     def embed_query(self, text):
         self.query_calls.append(text)
-        return [0.5] * self.dimension
+        return self._vector(0)
 
 
 class FakeKnowledgeRepository:
