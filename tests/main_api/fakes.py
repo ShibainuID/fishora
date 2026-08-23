@@ -1,5 +1,14 @@
-from apps.main_api.contracts import PredictionRecord, SpeciesRecord
+import math
+
+from apps.main_api.contracts import PredictionRecord, RetrievedChunk, SpeciesRecord
 from apps.main_api.services.embeddings import E5_MODEL_NAME
+
+
+def _cosine_distance(left: list[float], right: list[float]) -> float:
+    dot = sum(a * b for a, b in zip(left, right))
+    left_norm = math.sqrt(sum(value * value for value in left))
+    right_norm = math.sqrt(sum(value * value for value in right))
+    return 1.0 - dot / (left_norm * right_norm)
 
 
 class FakeCVClient:
@@ -192,6 +201,7 @@ class FakeKnowledgeRepository:
         self._chunks_by_id: dict = {}
         self.sources: list = []
         self.chunks: list = []
+        self.search_calls: list[tuple] = []
 
     def embedding_models_in_store(self):
         return set(self._embedding_models)
@@ -222,3 +232,34 @@ class FakeKnowledgeRepository:
             self._chunks_by_id[chunk.id] = chunk
         self._embedding_models.add(E5_MODEL_NAME)
         return len(chunks)
+
+    def search_verified(self, species_id, query_vector, embedding_model, limit):
+        """Nearest verified chunks of one species, mirroring the SQL filters:
+        exact species, verified chunk, verified joined source, exact embedding
+        model. Sorted by (cosine distance, chunk id) for determinism."""
+        self.search_calls.append((species_id, query_vector, embedding_model, limit))
+        rows = []
+        for chunk in self.chunks:
+            if (chunk.species_id != species_id
+                    or chunk.verification_status != "verified"
+                    or chunk.embedding_model != embedding_model):
+                continue
+            source = next((s for s in self.sources if s.id == chunk.source_id), None)
+            if source is None or source.verification_status != "verified":
+                continue
+            rows.append(RetrievedChunk(
+                chunk_id=chunk.id,
+                species_id=chunk.species_id,
+                source_id=chunk.source_id,
+                category=chunk.category,
+                content=chunk.content,
+                distance=_cosine_distance(chunk.embedding, query_vector),
+                chunk_verification_status=chunk.verification_status,
+                source_verification_status=source.verification_status,
+                source_title=source.title,
+                source_publisher=source.publisher,
+                source_url=source.url,
+                source_reviewed_at=source.reviewed_at,
+            ))
+        rows.sort(key=lambda row: (row.distance, row.chunk_id))
+        return rows[:limit]

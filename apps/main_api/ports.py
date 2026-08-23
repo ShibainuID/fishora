@@ -8,6 +8,7 @@ from apps.main_api.contracts import (
     KnowledgeChunkWrite,
     KnowledgeSourceWrite,
     PredictionRecord,
+    RetrievedChunk,
     SpeciesRecord,
 )
 
@@ -54,6 +55,14 @@ class KnowledgeRepository(Protocol):
         sources: Sequence[KnowledgeSourceWrite],
         chunks: Sequence[KnowledgeChunkWrite],
     ) -> int: ...
+
+    def search_verified(
+        self,
+        species_id: str,
+        query_vector: list[float],
+        embedding_model: str,
+        limit: int,
+    ) -> list[RetrievedChunk]: ...
 
 
 class PredictionRepository(Protocol):

@@ -41,6 +41,29 @@ class KnowledgeChunkWrite:
     verification_status: str
 
 
+@dataclass(frozen=True)
+class RetrievedChunk:
+    """Verified retrieval hit with citation metadata for generation (Task 7).
+
+    ``source_id`` plus the source fields let generation validate citations
+    against the store instead of trusting generated text; both verification
+    statuses are carried so downstream citation checks never re-trust rows.
+    """
+
+    chunk_id: str
+    species_id: str
+    source_id: str
+    category: str
+    content: str
+    distance: float
+    chunk_verification_status: str
+    source_verification_status: str
+    source_title: str
+    source_publisher: str | None
+    source_url: str | None
+    source_reviewed_at: datetime | None
+
+
 @dataclass
 class PredictionRecord:
     id: str
