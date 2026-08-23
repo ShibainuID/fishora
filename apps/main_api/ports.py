@@ -91,7 +91,10 @@ class AppDependencies:
     """Small concrete bundle of ports for the main API.
 
     Production wiring happens lazily in the app lifespan; tests inject fakes
-    through the bundle instead of a nine-argument factory signature.
+    through the bundle instead of a nine-argument factory signature. The five
+    original concrete ports stay the completeness criterion; knowledge_repo,
+    retriever, and generator are additionally built in the production path
+    and injected by tests that exercise the knowledge endpoint.
     """
 
     session_factory: Callable[[], Session] | None = None
@@ -100,3 +103,6 @@ class AppDependencies:
     prediction_repo: PredictionRepository | None = None
     image_store: ImageStore | None = None
     embedder: Embedder | None = None
+    knowledge_repo: KnowledgeRepository | None = None
+    retriever: object | None = None  # VerifiedRetriever
+    generator: object | None = None  # KnowledgeGenerator

@@ -4,15 +4,26 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from apps.contracts import ImageValidationError
-from apps.main_api.api.fish import router as fish_router
+from apps.main_api.api.fish import knowledge_router, router as fish_router
 from apps.main_api.config import MainSettings
+from apps.main_api.db.repositories import SqlKnowledgeRepository
 from apps.main_api.db.session import session_factory
 from apps.main_api.db.sql_repositories import SqlPredictionRepository, SqlSpeciesRepository
-from apps.main_api.errors import CvUnavailable, PredictionNotFound, UnsupportedCvLabel, UnsupportedSpecies
+from apps.main_api.errors import (
+    CvUnavailable,
+    InvalidGeneratedKnowledge,
+    OpenCodeUnavailable,
+    PredictionNotFound,
+    PredictionNotVerified,
+    UnsupportedCvLabel,
+    UnsupportedSpecies,
+)
 from apps.main_api.ports import AppDependencies
 from apps.main_api.services.cv_client import HttpCVClient
 from apps.main_api.services.embeddings import LocalE5Embedder
+from apps.main_api.services.generation import KnowledgeGenerator, OpenCodeGoClient
 from apps.main_api.services.image_store import FilesystemImageStore
+from apps.main_api.services.retrieval import VerifiedRetriever
 
 
 def create_main_app(settings: MainSettings | None = None, deps: AppDependencies | None = None) -> FastAPI:
@@ -32,6 +43,7 @@ def create_main_app(settings: MainSettings | None = None, deps: AppDependencies 
     app.state.deps = deps
     _register_error_handlers(app)
     app.include_router(fish_router)
+    app.include_router(knowledge_router)
     return app
 
 
@@ -78,6 +90,15 @@ def _ensure_production_deps(app: FastAPI) -> None:
         deps.image_store = FilesystemImageStore(settings.image_storage_dir)
     if deps.embedder is None:
         deps.embedder = LocalE5Embedder(settings.embedding_model_name)
+    if deps.knowledge_repo is None:
+        deps.knowledge_repo = SqlKnowledgeRepository(deps.session_factory)
+    if deps.retriever is None:
+        deps.retriever = VerifiedRetriever(deps.knowledge_repo, deps.embedder)
+    if deps.generator is None:
+        # Lazy OpenCode client: constructed only when a card request actually
+        # has evidence, so a blank OPENCODE_GO_API_KEY never breaks startup
+        # or empty-evidence requests.
+        deps.generator = KnowledgeGenerator(lambda: OpenCodeGoClient(settings))
 
 
 def _register_error_handlers(app: FastAPI) -> None:
@@ -101,6 +122,26 @@ def _register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(UnsupportedCvLabel)
     async def _unsupported_cv_label(request: Request, exc: UnsupportedCvLabel):
         return JSONResponse(status_code=502, content={"detail": "cv returned an unsupported species label"})
+
+    @app.exception_handler(PredictionNotVerified)
+    async def _prediction_not_verified(request: Request, exc: PredictionNotVerified):
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+    @app.exception_handler(OpenCodeUnavailable)
+    async def _opencode_unavailable(request: Request, exc: OpenCodeUnavailable):
+        # Fixed generic detail plus retrieved chunk ids for diagnosis; never
+        # credentials, internal URLs, headers, or the raw upstream error.
+        return JSONResponse(status_code=502, content={
+            "detail": "knowledge generation is temporarily unavailable",
+            "retrieved_chunk_ids": exc.retrieved_chunk_ids,
+        })
+
+    @app.exception_handler(InvalidGeneratedKnowledge)
+    async def _invalid_generated_knowledge(request: Request, exc: InvalidGeneratedKnowledge):
+        return JSONResponse(status_code=502, content={
+            "detail": "generated knowledge failed validation",
+            "retrieved_chunk_ids": exc.retrieved_chunk_ids,
+        })
 
 
 _app: FastAPI | None = None

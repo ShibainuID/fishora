@@ -5,10 +5,13 @@ from fastapi import APIRouter, File, Request, UploadFile
 from pydantic import BaseModel, Field
 
 from apps.main_api.config import MainSettings
+from apps.main_api.services.generation import KnowledgeResponse
 from apps.main_api.services.identification import IdentificationService
+from apps.main_api.services.knowledge import KnowledgeService
 from apps.main_api.services.verification import VerificationService
 
 router = APIRouter(prefix="/api/v1/fish")
+knowledge_router = APIRouter(prefix="/api/v1")
 
 # ponytail: fallback limit when a complete fake bundle supplies no settings object;
 # reads the configured default without constructing MainSettings (no env required).
@@ -83,3 +86,16 @@ async def verify(payload: VerifyRequest, request: Request):
         verified_species_id=result.verified_species_id,
         verification_status=result.verification_status,
     )
+
+
+@knowledge_router.get("/predictions/{prediction_id}/knowledge", response_model=KnowledgeResponse)
+async def knowledge_card(prediction_id: str, request: Request):
+    # No species query/body parameter: identity resolves exclusively from the
+    # stored verified_species_id inside the service.
+    deps = request.app.state.deps
+    return KnowledgeService(
+        prediction_repo=deps.prediction_repo,
+        species_repo=deps.species_repo,
+        retriever=deps.retriever,
+        generator=deps.generator,
+    ).get_for_prediction(prediction_id)

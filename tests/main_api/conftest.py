@@ -24,6 +24,23 @@ SUPPORTED_LABELS = [
 ]
 
 
+# Mirrors db.repositories.TAXONOMY_STATUS_BY_LABEL so fixtures carry the
+# same relational statuses the production seed assigns per label.
+TAXONOMY_STATUS_BY_LABEL = {
+    "bandeng": "VERIFIED_TAXONOMY",
+    "gelama_bunga": "VERIFIED_TAXONOMY",
+    "gembolo": "TAXONOMY_REVIEW_REQUIRED",
+    "gulamah": "VERIFIED_TAXONOMY",
+    "kembung": "VERIFIED_TAXONOMY",
+    "kuniran": "VERIFIED_TAXONOMY",
+    "mujair": "VERIFIED_TAXONOMY",
+    "nila": "VERIFIED_TAXONOMY",
+    "senangin": "VERIFIED_TAXONOMY",
+    "tenggiri": "MEDIUM_CONFIDENCE_LABEL_AMBIGUITY",
+    "tuna": "MIXED_TAXONOMY",
+}
+
+
 def _species(label: str) -> SpeciesRecord:
     return SpeciesRecord(
         id=f"species_{label}",
@@ -31,7 +48,7 @@ def _species(label: str) -> SpeciesRecord:
         common_name_id=f"common_{label}",
         scientific_name=None,
         taxonomic_rank="species",
-        taxonomy_status="VERIFIED_TAXONOMY",
+        taxonomy_status=TAXONOMY_STATUS_BY_LABEL[label],
         notes=None,
     )
 
@@ -173,8 +190,9 @@ def cv_unsupported_label():
 
 
 @pytest.fixture
-def main_app(seeded_prediction_repo, species_repo, image_store, cv_result):
+def main_app(seeded_prediction_repo, species_repo, image_store, cv_result, fake_knowledge_repo, fake_retriever, fake_generator):
     from apps.main_api.main import create_main_app
+    from apps.main_api.services.generation import KnowledgeGenerator
 
     return create_main_app(
         deps=AppDependencies(
@@ -183,6 +201,9 @@ def main_app(seeded_prediction_repo, species_repo, image_store, cv_result):
             prediction_repo=seeded_prediction_repo,
             image_store=image_store,
             embedder=FakeEmbedder(),
+            knowledge_repo=fake_knowledge_repo,
+            retriever=fake_retriever,
+            generator=KnowledgeGenerator(fake_generator),
         )
     )
 
