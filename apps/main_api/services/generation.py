@@ -1,8 +1,7 @@
-"""One-call grounded generation via the OpenCode Go Responses API.
+"""LangChain-grounded generation via the OpenCode Go Responses API.
 
-The OpenCodeGoClient talks to the Responses API (``client.responses.create``,
-never chat.completions) with a strict JSON-schema output format and returns
-``response.output_text``. Timeout/connection failures become
+The OpenCodeGoClient uses LangChain's ``ChatOpenAI`` Responses API adapter
+with strict structured output. Timeout/connection failures become
 ``OpenCodeUnavailable`` carrying only the retrieved chunk ids; credentials,
 internal URLs, and headers never appear in messages. The production client
 rejects a blank API key, and is constructed lazily (see KnowledgeGenerator)
@@ -17,7 +16,8 @@ from pathlib import Path
 from typing import Literal
 
 import openai
-from openai import OpenAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from apps.main_api.contracts import RetrievedChunk, SpeciesRecord
@@ -55,7 +55,7 @@ class GeneratedKnowledgeCard(BaseModel):
 
 
 class OpenCodeGoClient:
-    """Responses-API client: one ``responses.create`` call per generation."""
+    """LangChain client making one Responses API call per generation."""
 
     def __init__(self, settings):
         # SecretStr stays secret: only get_secret_value() ever leaves the object.
@@ -64,34 +64,45 @@ class OpenCodeGoClient:
             raise ValueError(
                 "OPENCODE_GO_API_KEY must be set to construct the production OpenCode client"
             )
-        self._client = OpenAI(
+        llm = ChatOpenAI(
+            model=settings.opencode_go_model,
             base_url=settings.opencode_go_base_url,
             api_key=api_key,
             timeout=settings.opencode_go_timeout_seconds,
+            use_responses_api=True,
         )
-        self._model = settings.opencode_go_model
+        self._structured_llm = llm.with_structured_output(
+            GeneratedKnowledgeCard,
+            method="json_schema",
+            strict=True,
+        )
+        self._prompt = ChatPromptTemplate.from_messages(
+            [("system", "{system_prompt}"), ("human", "{payload}")]
+        )
 
-    def generate(self, system_prompt: str, evidence: list[RetrievedChunk], species: SpeciesRecord) -> str:
+    def generate(
+        self,
+        system_prompt: str,
+        evidence: list[RetrievedChunk],
+        species: SpeciesRecord,
+    ) -> GeneratedKnowledgeCard:
+        messages = self._prompt.invoke(
+            {"system_prompt": system_prompt, "payload": _user_payload(species, evidence)}
+        ).to_messages()
         try:
-            response = self._client.responses.create(
-                model=self._model,
-                instructions=system_prompt,
-                input=_user_payload(species, evidence),
-                text={
-                    "format": {
-                        "type": "json_schema",
-                        "name": "generated_knowledge_card",
-                        "schema": GeneratedKnowledgeCard.model_json_schema(),
-                        "strict": True,
-                    }
-                },
-            )
+            result = self._structured_llm.invoke(messages)
         except (openai.APIConnectionError, openai.APITimeoutError) as exc:
             raise OpenCodeUnavailable(
                 "opencode go generation unavailable",
                 [chunk.chunk_id for chunk in evidence],
             ) from exc
-        return response.output_text
+        try:
+            return GeneratedKnowledgeCard.model_validate(result)
+        except ValidationError as exc:
+            raise InvalidGeneratedKnowledge(
+                "generated knowledge failed schema validation",
+                [chunk.chunk_id for chunk in evidence],
+            ) from exc
 
 
 def _user_payload(species: SpeciesRecord, evidence: list[RetrievedChunk]) -> str:
@@ -205,8 +216,8 @@ class KnowledgeGenerator:
         if not evidence:
             return self._empty_card(species)
         client = self._generator() if callable(self._generator) else self._generator
-        raw = client.generate(SYSTEM_PROMPT, evidence, species)
-        return self._build_card(species, evidence, raw)
+        generated = client.generate(SYSTEM_PROMPT, evidence, species)
+        return self._build_card(species, evidence, generated)
 
     def _empty_card(self, species: SpeciesRecord) -> KnowledgeCard:
         common_name, scientific_name, taxonomy_status, limitations = _relational_identity(species)
@@ -226,21 +237,27 @@ class KnowledgeGenerator:
         )
 
     def _build_card(
-        self, species: SpeciesRecord, evidence: list[RetrievedChunk], raw: str
+        self,
+        species: SpeciesRecord,
+        evidence: list[RetrievedChunk],
+        raw: str | GeneratedKnowledgeCard,
     ) -> KnowledgeCard:
         chunk_ids = [chunk.chunk_id for chunk in evidence]
-        try:
-            payload = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            raise InvalidGeneratedKnowledge(
-                f"generated knowledge is not valid JSON: {exc}", chunk_ids
-            ) from exc
-        try:
-            generated = GeneratedKnowledgeCard.model_validate(payload)
-        except ValidationError as exc:
-            raise InvalidGeneratedKnowledge(
-                f"generated knowledge failed schema validation: {exc}", chunk_ids
-            ) from exc
+        if isinstance(raw, GeneratedKnowledgeCard):
+            generated = raw
+        else:
+            try:
+                payload = json.loads(raw)
+            except json.JSONDecodeError as exc:
+                raise InvalidGeneratedKnowledge(
+                    f"generated knowledge is not valid JSON: {exc}", chunk_ids
+                ) from exc
+            try:
+                generated = GeneratedKnowledgeCard.model_validate(payload)
+            except ValidationError as exc:
+                raise InvalidGeneratedKnowledge(
+                    f"generated knowledge failed schema validation: {exc}", chunk_ids
+                ) from exc
         if not generated.sources:
             raise InvalidGeneratedKnowledge(
                 "generated knowledge must cite at least one supplied source "

@@ -18,6 +18,8 @@ dependencies = [
     "alembic",
     "pgvector",
     "openai",
+    "langchain-core",
+    "langchain-openai>=0.3.9",
     "sentence-transformers",
 ]
 
