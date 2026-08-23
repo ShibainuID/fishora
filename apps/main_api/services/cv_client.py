@@ -24,6 +24,7 @@ class HttpCVClient:
                 response = client.post("/predict", files={"file": (filename, image_bytes, content_type)})
                 response.raise_for_status()
                 return CVPredictionEnvelope(**response.json())
-        except (httpx.HTTPError, ValueError) as exc:
+        except (httpx.HTTPError, TypeError, ValueError) as exc:
+            # TypeError: JSON null/array/string bodies fail **-unpacking into the envelope.
             # ValueError covers JSON decode and pydantic envelope validation failures.
             raise CvUnavailable("cv service unavailable") from exc

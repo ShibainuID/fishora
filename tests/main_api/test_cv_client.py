@@ -72,3 +72,20 @@ def test_cv_unavailable_message_never_leaks_internal_url():
         _client(handler).predict(b"jpeg-bytes", filename="fish.jpg", content_type="image/jpeg")
     assert "cv-internal" not in str(excinfo.value)
     assert "secret-key" not in str(excinfo.value)
+
+
+@pytest.mark.parametrize("body", [b"null", b"[1, 2, 3]", b'"a string"'])
+def test_non_mapping_json_body_maps_to_cv_unavailable(body):
+    from apps.main_api.errors import CvUnavailable
+
+    client = _client(lambda request: httpx.Response(200, content=body))
+    with pytest.raises(CvUnavailable):
+        client.predict(b"jpeg-bytes", filename="fish.jpg", content_type="image/jpeg")
+
+
+def test_malformed_json_body_maps_to_cv_unavailable():
+    from apps.main_api.errors import CvUnavailable
+
+    client = _client(lambda request: httpx.Response(200, content=b"{not json"))
+    with pytest.raises(CvUnavailable):
+        client.predict(b"jpeg-bytes", filename="fish.jpg", content_type="image/jpeg")
