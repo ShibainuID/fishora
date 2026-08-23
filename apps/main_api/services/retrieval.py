@@ -37,6 +37,12 @@ class VerifiedRetriever:
             raise ValueError(f"max_chunks must be >= 0, got {max_chunks}")
         if max_chunks == 0:
             return []
+        # The query vector must come from exactly the E5 model the store was
+        # indexed with; anything else would rank against incomparable vectors.
+        if self._embedder.model_name != E5_MODEL_NAME:
+            raise ValueError(
+                f"embedder model must be {E5_MODEL_NAME!r}, got {self._embedder.model_name!r}"
+            )
         # The embedder applies the E5 ``query: `` prefix; retrieval only ever
         # embeds through embed_query, never as passages.
         query_vector = self._embedder.embed_query(query)

@@ -244,6 +244,7 @@ class SqlKnowledgeRepository:
                     chunk_id=chunk.id,
                     species_id=chunk.species_id,
                     source_id=chunk.source_id,
+                    source_type=source.source_type,
                     category=chunk.category,
                     content=chunk.content,
                     distance=float(row_distance),

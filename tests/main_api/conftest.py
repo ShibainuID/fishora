@@ -1,9 +1,10 @@
 import json
+from datetime import datetime, timezone
 
 import pytest
 
 from apps.contracts import CVCandidate, CVPredictionEnvelope
-from apps.main_api.contracts import PredictionRecord, SpeciesRecord
+from apps.main_api.contracts import PredictionRecord, RetrievedChunk, SpeciesRecord
 from apps.main_api.ports import AppDependencies
 
 from tests.main_api.fakes import (
@@ -11,7 +12,9 @@ from tests.main_api.fakes import (
     FakeEmbedder,
     FakeImageStore,
     FakeKnowledgeRepository,
+    FakeOpenCodeClient,
     FakePredictionRepository,
+    FakeRetriever,
     FakeSpeciesRepository,
 )
 
@@ -182,3 +185,67 @@ def main_app(seeded_prediction_repo, species_repo, image_store, cv_result):
             embedder=FakeEmbedder(),
         )
     )
+
+
+@pytest.fixture
+def fake_retriever():
+    return FakeRetriever()
+
+
+@pytest.fixture
+def fake_generator():
+    return FakeOpenCodeClient()
+
+
+@pytest.fixture
+def species():
+    return _species("bandeng")
+
+
+SPECIES_RECORDS = {
+    "tuna": SpeciesRecord(
+        id="species_tuna", normalized_label="tuna", common_name_id="common_tuna",
+        scientific_name="Thunnus spp.", taxonomic_rank="GENUS",
+        taxonomy_status="MIXED_TAXONOMY", notes=None,
+    ),
+    "gembolo": SpeciesRecord(
+        id="species_gembolo", normalized_label="gembolo", common_name_id="common_gembolo",
+        scientific_name=None, taxonomic_rank="VERNACULAR_AMBIGUOUS",
+        taxonomy_status="TAXONOMY_REVIEW_REQUIRED", notes=None,
+    ),
+    "tenggiri": SpeciesRecord(
+        id="species_tenggiri", normalized_label="tenggiri", common_name_id="common_tenggiri",
+        scientific_name="Scomberomorus commerson", taxonomic_rank="SPECIES",
+        taxonomy_status="MEDIUM_CONFIDENCE_LABEL_AMBIGUITY", notes=None,
+    ),
+}
+
+
+@pytest.fixture
+def species_records():
+    return dict(SPECIES_RECORDS)
+
+
+@pytest.fixture
+def evidence():
+    """Two verified chunks of the bandeng species under distinct sources."""
+    return [
+        RetrievedChunk(
+            chunk_id="chunk-1", species_id="species_bandeng", source_id="source-1",
+            category="identity", content="Bandeng adalah ikan susu (Chanos chanos).",
+            distance=0.1, chunk_verification_status="verified",
+            source_verification_status="verified", source_title="FishBase: Chanos chanos",
+            source_publisher="FishBase", source_url="https://fishbase.example/chanos",
+            source_type="fishbase",
+            source_reviewed_at=datetime(2026, 8, 24, 8, 0, tzinfo=timezone.utc),
+        ),
+        RetrievedChunk(
+            chunk_id="chunk-2", species_id="species_bandeng", source_id="source-2",
+            category="processing_methods", content="Bandeng presto dimasak bertekanan.",
+            distance=0.2, chunk_verification_status="verified",
+            source_verification_status="verified", source_title="Marinade bandeng",
+            source_publisher="Kemdikbud", source_url="https://example.test/marinade",
+            source_type="fishbase",
+            source_reviewed_at=datetime(2026, 8, 24, 9, 0, tzinfo=timezone.utc),
+        ),
+    ]

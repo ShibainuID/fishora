@@ -140,6 +140,7 @@ def test_pgvector_search_orders_by_cosine_distance_then_chunk_id(session_factory
 
     assert [row.chunk_id for row in result] == ["it_c_near", "it_c_mid", "it_c_far"]
     assert result[0].distance < result[1].distance < result[2].distance
+    assert all(row.source_type == "test" for row in result)  # Task 7 enrichment plumbing
     with session_factory_() as session:
         _clean_all_knowledge(session)
 

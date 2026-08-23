@@ -220,6 +220,7 @@ def test_retrieved_chunk_carries_source_metadata_and_both_statuses(
     assert chunk.source_title == "Bandeng Encyclopedia"
     assert chunk.source_publisher == "FishBase"
     assert chunk.source_url == "https://fishbase.example/chanos"
+    assert chunk.source_type == "fishbase"
     assert chunk.source_reviewed_at == reviewed_at
 
 
@@ -283,6 +284,20 @@ class _BrokenEmbedder:
 
     def embed_query(self, text):
         return list(self._vector)
+
+
+def test_retrieval_rejects_embedder_with_wrong_model_name(fake_knowledge_repo):
+    # Task 6 deferred item: the query vector must come from exactly the
+    # intfloat/multilingual-e5-base embedder, checked before embedding.
+    from apps.main_api.services.retrieval import VerifiedRetriever
+
+    from tests.main_api.fakes import FakeEmbedder
+
+    wrong = FakeEmbedder(model_name="some/other-model")
+    with pytest.raises(ValueError, match="embedder model"):
+        VerifiedRetriever(fake_knowledge_repo, wrong).retrieve("species_bandeng", "q")
+    assert wrong.query_calls == []
+    assert fake_knowledge_repo.search_calls == []
 
 
 def test_retrieval_rejects_malformed_query_vectors(fake_knowledge_repo):

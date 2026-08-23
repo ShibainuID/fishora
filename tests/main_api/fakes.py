@@ -82,6 +82,39 @@ class FakeImageStore:
             self.saved.remove(image_reference)
 
 
+class FakeRetriever:
+    """Records every retrieval key; the knowledge endpoint may only ever pass
+    the stored verified species id."""
+
+    def __init__(self, results=None):
+        self.results = list(results or [])
+        self.species_ids: list[str] = []
+        self.queries: list[str] = []
+
+    def retrieve(self, species_id, query):
+        self.species_ids.append(species_id)
+        self.queries.append(query)
+        return list(self.results)
+
+
+class FakeOpenCodeClient:
+    """Stands in for OpenCodeGoClient: returns canned JSON or raises a canned
+    error, and counts calls so the no-LLM empty-evidence path is provable."""
+
+    def __init__(self, response="{}", error=None):
+        self.response = response
+        self.error = error
+        self.calls = 0
+        self.seen: list[tuple] = []
+
+    def generate(self, system_prompt, evidence, species):
+        self.calls += 1
+        self.seen.append((system_prompt, evidence, species))
+        if self.error is not None:
+            raise self.error
+        return self.response
+
+
 class WhitespaceTokenizer:
     """Deterministic tokenizer: one token per whitespace-separated word.
 
@@ -259,6 +292,7 @@ class FakeKnowledgeRepository:
                 source_title=source.title,
                 source_publisher=source.publisher,
                 source_url=source.url,
+                source_type=source.source_type,
                 source_reviewed_at=source.reviewed_at,
             ))
         rows.sort(key=lambda row: (row.distance, row.chunk_id))

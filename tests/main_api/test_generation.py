@@ -7,16 +7,144 @@ FakeOpenCodeClient end to end.
 """
 
 import httpx
+import json
 import openai
 import pytest
 
 from apps.main_api.contracts import RetrievedChunk, SpeciesRecord
-from apps.main_api.errors import OpenCodeUnavailable
+from apps.main_api.errors import InvalidGeneratedKnowledge, OpenCodeUnavailable
 from apps.main_api.services.generation import (
     GeneratedKnowledgeCard,
     OpenCodeGoClient,
     SYSTEM_PROMPT,
+    KnowledgeGenerator,
 )
+
+
+def valid_json_for(label, forbidden_name):
+    return json.dumps({
+        "common_name": label,
+        "scientific_name": forbidden_name,
+        "taxonomy_status": "MODEL_ATTEMPT",
+        "physical_characteristics": None,
+        "taste": None,
+        "texture": None,
+        "processing_methods": [],
+        "commercial_uses": [],
+        "similar_or_substitute_species": [],
+        "potential_buyer_segments": [],
+        "limitations": [],
+        "sources": [{"source_id": "source-1"}],
+    })
+
+
+# ---------------------------------------------------------------- generator
+
+
+def test_no_verified_evidence_returns_empty_state_without_calling_opencode(species, fake_retriever, fake_generator):
+    card = KnowledgeGenerator(fake_generator).generate(species, [])
+    assert card.processing_methods == []
+    assert card.sources == []
+    assert "Informasi belum tersedia" in card.limitations
+    assert fake_generator.calls == 0
+
+
+def test_citation_must_reference_a_retrieved_source(species, evidence, fake_generator):
+    fake_generator.response = '{"common_name":"bandeng","scientific_name":"Chanos chanos","taxonomy_status":"VERIFIED_TAXONOMY","physical_characteristics":null,"taste":null,"texture":null,"processing_methods":[],"commercial_uses":[],"similar_or_substitute_species":[],"potential_buyer_segments":[],"limitations":[],"sources":[{"source_id":"source-not-retrieved"}]}'
+    try:
+        KnowledgeGenerator(fake_generator).generate(species, evidence)
+    except InvalidGeneratedKnowledge as error:
+        assert "source-not-retrieved" in str(error)
+    else:
+        raise AssertionError("unretrieved citations must be rejected")
+
+
+def test_invalid_json_and_opencode_timeout_become_retriable_generation_failures(species, evidence, fake_generator):
+    fake_generator.response = "{"
+    try:
+        KnowledgeGenerator(fake_generator).generate(species, evidence)
+    except InvalidGeneratedKnowledge:
+        pass
+    else:
+        raise AssertionError("invalid JSON must be rejected")
+
+    fake_generator.error = OpenCodeUnavailable("timeout", [chunk.chunk_id for chunk in evidence])
+    try:
+        KnowledgeGenerator(fake_generator).generate(species, evidence)
+    except OpenCodeUnavailable:
+        pass
+    else:
+        raise AssertionError("OpenCode failure must be propagated for HTTP 502 mapping")
+
+
+def test_taxonomy_guardrails_override_model_attempts_to_narrow_tuna_or_name_gembolo(species_records, evidence, fake_generator):
+    for label, forbidden_name, required_name in [
+        ("tuna", "Thunnus albacares", "Thunnus spp."),
+        ("gembolo", "Rastrelliger faughni", None),
+        ("tenggiri", "Scomberomorus guttatus", "Scomberomorus commerson"),
+    ]:
+        fake_generator.response = valid_json_for(label, forbidden_name)
+        card = KnowledgeGenerator(fake_generator).generate(species_records[label], evidence)
+        assert card.scientific_name == required_name
+        assert card.taxonomy_status == species_records[label].taxonomy_status
+        assert card.common_name == species_records[label].common_name_id
+        assert card.limitations
+
+
+def test_relational_identity_overrides_generated_names_for_any_species(species, evidence, fake_generator):
+    fake_generator.response = valid_json_for("bandeng", "Chanos chanos")
+    card = KnowledgeGenerator(fake_generator).generate(species, evidence)
+    assert card.common_name == species.common_name_id
+    assert card.scientific_name is None  # relational value, not the generated one
+    assert card.taxonomy_status == species.taxonomy_status
+
+
+def test_generated_json_with_extra_fields_is_rejected(species, evidence, fake_generator):
+    payload = json.loads(valid_json_for("bandeng", "Chanos chanos"))
+    payload["invented_field"] = "x"
+    fake_generator.response = json.dumps(payload)
+    with pytest.raises(InvalidGeneratedKnowledge, match="schema"):
+        KnowledgeGenerator(fake_generator).generate(species, evidence)
+
+
+def test_generated_json_missing_required_field_is_rejected(species, evidence, fake_generator):
+    payload = json.loads(valid_json_for("bandeng", "Chanos chanos"))
+    del payload["processing_methods"]
+    fake_generator.response = json.dumps(payload)
+    with pytest.raises(InvalidGeneratedKnowledge, match="schema"):
+        KnowledgeGenerator(fake_generator).generate(species, evidence)
+
+
+def test_generated_json_with_non_list_field_is_rejected(species, evidence, fake_generator):
+    payload = json.loads(valid_json_for("bandeng", "Chanos chanos"))
+    payload["commercial_uses"] = "bukan daftar"
+    fake_generator.response = json.dumps(payload)
+    with pytest.raises(InvalidGeneratedKnowledge, match="schema"):
+        KnowledgeGenerator(fake_generator).generate(species, evidence)
+
+
+def test_empty_citations_with_evidence_are_rejected(species, evidence, fake_generator):
+    payload = json.loads(valid_json_for("bandeng", "Chanos chanos"))
+    payload["sources"] = []
+    fake_generator.response = json.dumps(payload)
+    with pytest.raises(InvalidGeneratedKnowledge, match="source"):
+        KnowledgeGenerator(fake_generator).generate(species, evidence)
+
+
+def test_sources_are_enriched_from_retrieved_evidence_never_from_generated_text(species, evidence, fake_generator):
+    fake_generator.response = valid_json_for("bandeng", "Chanos chanos")
+    card = KnowledgeGenerator(fake_generator).generate(species, evidence)
+    (source,) = card.sources
+    assert source.source_id == "source-1"
+    assert source.title == "FishBase: Chanos chanos"
+    assert source.url == "https://fishbase.example/chanos"
+    assert source.publisher == "FishBase"
+    assert source.source_type == "fishbase"
+    assert source.reviewed_at == evidence[0].source_reviewed_at
+    assert source.verification_status == "verified"
+
+
+# ----------------------------------------------------------- opencode client
 
 
 def _opencode_settings(api_key="test-key"):
