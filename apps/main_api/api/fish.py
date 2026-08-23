@@ -5,6 +5,7 @@ from fastapi import APIRouter, File, Request, UploadFile
 from pydantic import BaseModel, Field
 
 from apps.main_api.services.identification import IdentificationService
+from apps.main_api.services.verification import VerificationService
 
 router = APIRouter(prefix="/api/v1/fish")
 
@@ -60,5 +61,20 @@ async def identify(request: Request, file: UploadFile = File(...)):
         prediction=SpeciesCandidate(**asdict(result.prediction)),
         top_candidates=[SpeciesCandidate(**asdict(candidate)) for candidate in result.top_candidates],
         threshold=result.threshold,
+        verification_status=result.verification_status,
+    )
+
+
+@router.post("/verify", response_model=VerificationResponse)
+async def verify(payload: VerifyRequest, request: Request):
+    deps = request.app.state.deps
+    result = VerificationService(
+        species_repo=deps.species_repo,
+        prediction_repo=deps.prediction_repo,
+    ).verify(payload.prediction_id, payload.verified_species_id)
+    return VerificationResponse(
+        prediction_id=result.prediction_id,
+        predicted_species_id=result.predicted_species_id,
+        verified_species_id=result.verified_species_id,
         verification_status=result.verification_status,
     )
