@@ -48,17 +48,23 @@ class IdentificationService:
 
         prediction_id = uuid.uuid4().hex
         image_reference = self._image_store.save(prediction_id, image_bytes, content_type)
-        record = self._prediction_repo.create(
-            prediction_id=prediction_id,
-            image_reference=image_reference,
-            predicted_species_id=prediction.species_id,
-            confidence=prediction.confidence,
-            top_candidates=[
-                {"species_id": c.species_id, "normalized_label": c.normalized_label, "confidence": c.confidence}
-                for c in top_candidates
-            ],
-            model_version=envelope.model_version,
-        )
+        try:
+            record = self._prediction_repo.create(
+                prediction_id=prediction_id,
+                image_reference=image_reference,
+                predicted_species_id=prediction.species_id,
+                confidence=prediction.confidence,
+                top_candidates=[
+                    {"species_id": c.species_id, "normalized_label": c.normalized_label, "confidence": c.confidence}
+                    for c in top_candidates
+                ],
+                model_version=envelope.model_version,
+            )
+        except Exception:
+            # Compensation: remove only the image saved for this attempt; the
+            # prediction row was never committed. Successful persistence never deletes.
+            self._image_store.delete(image_reference)
+            raise
         return IdentificationResult(
             prediction_id=record.id,
             model_version=envelope.model_version,

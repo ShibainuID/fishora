@@ -13,6 +13,7 @@ class CVClient(Protocol):
 
 class ImageStore(Protocol):
     def save(self, prediction_id: str, image_bytes: bytes, content_type: str) -> str: ...
+    def delete(self, image_reference: str) -> None: ...
 
 
 class SpeciesRepository(Protocol):

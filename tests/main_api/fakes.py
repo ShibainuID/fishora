@@ -58,8 +58,15 @@ class FakePredictionRepository:
 
 class FakeImageStore:
     def __init__(self):
-        self.saved = []
+        self.saved: list[str] = []
+        self.deleted: list[str] = []
 
     def save(self, prediction_id, image_bytes, content_type):
-        self.saved.append((prediction_id, image_bytes, content_type))
-        return f"images/{prediction_id}.jpg"
+        reference = f"images/{prediction_id}.jpg"
+        self.saved.append(reference)
+        return reference
+
+    def delete(self, image_reference):
+        self.deleted.append(image_reference)
+        if image_reference in self.saved:
+            self.saved.remove(image_reference)

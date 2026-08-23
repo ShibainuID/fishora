@@ -6,7 +6,7 @@ from PIL import Image
 from apps.main_api.errors import CvUnavailable
 from apps.main_api.ports import AppDependencies
 
-from tests.main_api.fakes import FakeCVClient
+from tests.main_api.fakes import FakeCVClient, FakePredictionRepository
 
 
 def jpeg_bytes() -> bytes:
@@ -51,6 +51,7 @@ def test_identify_persists_pending_prediction_and_maps_all_top_three_species(cv_
     assert record.image_reference == f"images/{record.id}.jpg"
     assert record.model_version == "test-model-1"
     assert len(image_store.saved) == 1
+    assert image_store.deleted == []  # no compensation on success
     assert cv.calls == 1
 
 
@@ -162,3 +163,37 @@ def test_filesystem_image_store_saves_opaque_reference(tmp_path):
     reference = store.save("pred_abc123", jpeg_bytes(), "image/jpeg")
     assert reference == "images/pred_abc123.jpg"
     assert (tmp_path / "pred_abc123.jpg").read_bytes() == jpeg_bytes()
+
+
+def test_filesystem_image_store_delete_removes_only_that_file(tmp_path):
+    from apps.main_api.services.image_store import FilesystemImageStore
+
+    store = FilesystemImageStore(tmp_path)
+    store.save("pred_one", jpeg_bytes(), "image/jpeg")
+    store.save("pred_two", jpeg_bytes(), "image/jpeg")
+    store.delete("images/pred_one.jpg")
+    assert not (tmp_path / "pred_one.jpg").exists()
+    assert (tmp_path / "pred_two.jpg").exists()  # sibling untouched
+
+
+class FailingPredictionRepository(FakePredictionRepository):
+    def create(self, *args, **kwargs):
+        raise RuntimeError("db commit failed")
+
+
+def test_prediction_persistence_failure_deletes_saved_image(cv_result, species_repo, image_store):
+    from fastapi.testclient import TestClient
+
+    app = _app(
+        cv_client=FakeCVClient(cv_result),
+        species_repo=species_repo,
+        prediction_repo=FailingPredictionRepository(),
+        image_store=image_store,
+    )
+    response = TestClient(app, raise_server_exceptions=False).post(
+        "/api/v1/fish/identify",
+        files={"file": ("fish.jpg", jpeg_bytes(), "image/jpeg")},
+    )
+    assert response.status_code == 500
+    assert image_store.saved == []  # the newly saved image was compensated away
+    assert len(image_store.deleted) == 1  # exactly one delete: the newly saved image
