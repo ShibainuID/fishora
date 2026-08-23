@@ -1,0 +1,90 @@
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+
+from apps.contracts import ImageValidationError
+from apps.main_api.api.fish import router as fish_router
+from apps.main_api.config import MainSettings
+from apps.main_api.db.session import session_factory
+from apps.main_api.db.sql_repositories import SqlPredictionRepository, SqlSpeciesRepository
+from apps.main_api.errors import CvUnavailable, PredictionNotFound, UnsupportedCvLabel, UnsupportedSpecies
+from apps.main_api.ports import AppDependencies
+from apps.main_api.services.cv_client import HttpCVClient
+from apps.main_api.services.image_store import FilesystemImageStore
+
+
+def create_main_app(settings: MainSettings | None = None, deps: AppDependencies | None = None) -> FastAPI:
+    """Main API factory.
+
+    Tests inject every external port through `deps`; the production factory
+    leaves them None and wires the SQLAlchemy repositories, HTTP CV client,
+    and filesystem image store lazily in the lifespan, so importing this
+    module never connects to Postgres or any network service.
+    """
+    settings = settings or MainSettings()
+    deps = deps or AppDependencies()
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        _ensure_production_deps(app)
+        yield
+
+    app = FastAPI(lifespan=lifespan)
+    app.state.settings = settings
+    app.state.deps = deps
+    _register_error_handlers(app)
+    app.include_router(fish_router)
+    return app
+
+
+def _ensure_production_deps(app: FastAPI) -> None:
+    """Fill any un-injected port with the production implementation (idempotent)."""
+    deps = app.state.deps
+    settings = app.state.settings
+    if deps.session_factory is None:
+        deps.session_factory = session_factory(settings)
+    if deps.cv_client is None:
+        deps.cv_client = HttpCVClient(settings.cv_service_url, settings.cv_timeout_seconds)
+    if deps.species_repo is None:
+        deps.species_repo = SqlSpeciesRepository(deps.session_factory)
+    if deps.prediction_repo is None:
+        deps.prediction_repo = SqlPredictionRepository(deps.session_factory)
+    if deps.image_store is None:
+        deps.image_store = FilesystemImageStore(settings.image_storage_dir)
+
+
+def _register_error_handlers(app: FastAPI) -> None:
+    # Fixed generic details only: never echo an internal CV URL, credentials, or headers.
+    @app.exception_handler(ImageValidationError)
+    async def _image_validation(request: Request, exc: ImageValidationError):
+        return JSONResponse(status_code=exc.status_code, content={"detail": exc.message})
+
+    @app.exception_handler(CvUnavailable)
+    async def _cv_unavailable(request: Request, exc: CvUnavailable):
+        return JSONResponse(status_code=503, content={"detail": "fish identification service is temporarily unavailable"})
+
+    @app.exception_handler(PredictionNotFound)
+    async def _prediction_not_found(request: Request, exc: PredictionNotFound):
+        return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+    @app.exception_handler(UnsupportedSpecies)
+    async def _unsupported_species(request: Request, exc: UnsupportedSpecies):
+        return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+    @app.exception_handler(UnsupportedCvLabel)
+    async def _unsupported_cv_label(request: Request, exc: UnsupportedCvLabel):
+        return JSONResponse(status_code=502, content={"detail": "cv returned an unsupported species label"})
+
+
+_app: FastAPI | None = None
+
+
+def __getattr__(name: str):
+    # ponytail: lazy module-level app; importing this module never needs env vars or a database
+    if name == "app":
+        global _app
+        if _app is None:
+            _app = create_main_app()
+        return _app
+    raise AttributeError(name)
