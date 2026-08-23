@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_bandeng_physical_001",
+  "chunk": {
+    "id": "chunk_bandeng_physical_001",
+    "species_label": "bandeng",
+    "source_id": "fishbase_chanos_chanos",
+    "category": "physical_characteristics",
+    "content": "Milkfish have an elongate, somewhat compressed body with a small toothless mouth, falcate pectoral fins and a large deeply forked caudal fin; olive green dorsally with silvery flanks; adults reach 180 cm SL and 14 kg.",
+    "source_quote": "body elongate and somewhat compressed; mouth small and toothless ... pectoral fins falcate; caudal fin large and deeply forked ... Colour of the body olive green dorsally; flanks silvery; unpaired fins with dark margins ... Max length: 180 cm SL ... max. published weight: 14.0 kg",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "fishbase_chanos_chanos",
+    "title": "Chanos chanos, Milkfish: fisheries, aquaculture, gamefish, bait",
+    "source_type": "species_summary",
+    "url": "https://www.fishbase.se/summary/Chanos-chanos.html",
+    "publisher": "FishBase",
+    "reviewed_at": null,
+    "verification_status": "candidate"
+  }
+}

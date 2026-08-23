@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_bandeng_identity_001",
+  "chunk": {
+    "id": "chunk_bandeng_identity_001",
+    "species_label": "bandeng",
+    "source_id": "fishbase_chanos_chanos",
+    "category": "identity",
+    "content": "Bandeng is the milkfish Chanos chanos (Fabricius, 1775), the only species in family Chanidae (order Gonorynchiformes); a marine, freshwater and brackish benthopelagic, amphidromous species of the Indo-West Pacific.",
+    "source_quote": "Teleostei (teleosts) > Gonorynchiformes (Milkfishes) > Chanidae (Milkfish) ... Marine; freshwater; brackish; benthopelagic; amphidromous",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "fishbase_chanos_chanos",
+    "title": "Chanos chanos, Milkfish: fisheries, aquaculture, gamefish, bait",
+    "source_type": "species_summary",
+    "url": "https://www.fishbase.se/summary/Chanos-chanos.html",
+    "publisher": "FishBase",
+    "reviewed_at": null,
+    "verification_status": "candidate"
+  }
+}

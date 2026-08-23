@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_senangin_physical_001",
+  "chunk": {
+    "id": "chunk_senangin_physical_001",
+    "species_label": "senangin",
+    "source_id": "fishbase_eleutheronema_tetradactylum",
+    "category": "physical_characteristics",
+    "content": "Fourfinger threadfin grow to 200 cm TL and 145 kg (common length 50 cm TL); pectoral fin membranes are vivid yellow in life (dusky yellow in large specimens) and pectoral filaments are white; the species is a protandrous hermaphrodite.",
+    "source_quote": "Max length: 200 cm TL ... common length: 50.0 cm TL ... max. published weight: 145.0 kg ... pectoral fin membranes vivid yellow in life, except in large specimens > ca 35 cm SL which is dusky yellow; pectoral filaments white ... Protandrous hermaphrodites.",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "fishbase_eleutheronema_tetradactylum",
+    "title": "Eleutheronema tetradactylum, Fourfinger threadfin: fisheries, aquaculture",
+    "source_type": "species_summary",
+    "url": "https://www.fishbase.se/summary/Eleutheronema-tetradactylum.html",
+    "publisher": "FishBase",
+    "reviewed_at": null,
+    "verification_status": "candidate"
+  }
+}

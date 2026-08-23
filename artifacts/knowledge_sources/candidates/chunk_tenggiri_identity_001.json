@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_tenggiri_identity_001",
+  "chunk": {
+    "id": "chunk_tenggiri_identity_001",
+    "species_label": "tenggiri",
+    "source_id": "fishbase_tenggiri_common_name",
+    "category": "identity",
+    "content": "'Tenggiri' (Bahasa Indonesia and Malay, Indonesia and Malaysia) is a vernacular name shared by five species: Sarda orientalis, Scomberomorus commerson, Scomberomorus guttatus, Scomberomorus koreanus and Scomberomorus lineolatus; the label is therefore ambiguous without a species assignment.",
+    "source_quote": "List of Common Names for 'Tenggiri' [n=7] ... Species: Sarda orientalis, Scomberomorus commerson, Scomberomorus guttatus, Scomberomorus koreanus, Scomberomorus lineolatus",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "fishbase_tenggiri_common_name",
+    "title": "FishBase Common Names search: 'Tenggiri'",
+    "source_type": "common_name_page",
+    "url": "https://www.fishbase.se/ComNames/CommonNameSearchList.cfm?CommonName=tenggiri",
+    "publisher": "FishBase",
+    "reviewed_at": null,
+    "verification_status": "candidate"
+  }
+}

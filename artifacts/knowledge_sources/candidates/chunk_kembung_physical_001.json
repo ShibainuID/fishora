@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_kembung_physical_001",
+  "chunk": {
+    "id": "chunk_kembung_physical_001",
+    "species_label": "kembung",
+    "source_id": "fishbase_rastrelliger_faughni",
+    "category": "physical_characteristics",
+    "content": "Island mackerel reach 24 cm FL and 750 g, with the head longer than the body depth, 2 to 6 large spots at the base of the first dorsal fin, and a swim bladder present; they form schools of equally sized individuals in waters where surface temperature does not fall below 17C.",
+    "source_quote": "Head longer than body depth. ... Swim bladder present. ... 2 to 6 large spots are at the base of the first dorsal fin ... Max length: 24.0 cm FL ... max. published weight: 750.00 g ... Forms schools of equally sized individuals.",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "fishbase_rastrelliger_faughni",
+    "title": "Rastrelliger faughni, Island mackerel: fisheries, gamefish",
+    "source_type": "species_summary",
+    "url": "https://www.fishbase.se/summary/Rastrelliger-faughni.html",
+    "publisher": "FishBase",
+    "reviewed_at": null,
+    "verification_status": "candidate"
+  }
+}

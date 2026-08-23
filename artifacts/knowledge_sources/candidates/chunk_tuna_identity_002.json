@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_tuna_identity_002",
+  "chunk": {
+    "id": "chunk_tuna_identity_002",
+    "species_label": "tuna",
+    "source_id": "fao_ac478e11",
+    "category": "identity",
+    "content": "The Thunnus chapter of the FAO Scombrids catalogue (AC478E11.pdf) carries the illustrated key to genera and species of Scombridae and the per-species accounts of all seven Thunnus species.",
+    "source_quote": "2.1 Illustrated Key to Genera and Species of Scombridae ... Thunnus ... Thunnus alalunga, Thunnus albacares, Thunnus atlanticus, Thunnus maccoyii, Thunnus obesus, Thunnus thynnus, Thunnus tonggol",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "fao_ac478e11",
+    "title": "FAO Species Catalogue Vol. 2, chapter 11: Thunnus (genus account and keys)",
+    "source_type": "species_catalogue_pdf",
+    "url": "https://www.fao.org/docrep/pdf/009/ac478e/ac478e11.pdf",
+    "publisher": "Food and Agriculture Organization of the United Nations",
+    "reviewed_at": null,
+    "verification_status": "candidate"
+  }
+}

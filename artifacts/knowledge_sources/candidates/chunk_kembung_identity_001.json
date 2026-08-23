@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_kembung_identity_001",
+  "chunk": {
+    "id": "chunk_kembung_identity_001",
+    "species_label": "kembung",
+    "source_id": "fishbase_rastrelliger_faughni",
+    "category": "identity",
+    "content": "Kembung corresponds to the island mackerel Rastrelliger faughni Matsui, 1967, family Scombridae (mackerels, tunas, bonitos), an epipelagic neritic species of the Indo-West Pacific; recognised by a black blotch behind the pectoral fin base and a yellowish silver belly.",
+    "source_quote": "Teleostei (teleosts) > Scombriformes (Mackerels) > Scombridae (Mackerels, tunas, bonitos) > Scombrinae ... A black blotch behind pectoral fin base. The belly is yellowish silver",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "fishbase_rastrelliger_faughni",
+    "title": "Rastrelliger faughni, Island mackerel: fisheries, gamefish",
+    "source_type": "species_summary",
+    "url": "https://www.fishbase.se/summary/Rastrelliger-faughni.html",
+    "publisher": "FishBase",
+    "reviewed_at": null,
+    "verification_status": "candidate"
+  }
+}

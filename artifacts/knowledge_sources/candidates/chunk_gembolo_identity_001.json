@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_gembolo_identity_001",
+  "chunk": {
+    "id": "chunk_gembolo_identity_001",
+    "species_label": "gembolo",
+    "source_id": "fishbase_gembolo_search",
+    "category": "identity",
+    "content": "LIMITATION: the label 'gembolo' is unresolved; the FishBase common-name search for 'Gembolo' returns no matching entry, so no scientific identity can be assigned and identity or culinary claims require expert confirmation.",
+    "source_quote": "List of Common Names for 'Gembolo' using Taxamatch[n=0] ... No results found.",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "fishbase_gembolo_search",
+    "title": "FishBase Common Names search: 'Gembolo' (no results)",
+    "source_type": "common_name_search",
+    "url": "https://www.fishbase.se/ComNames/CommonNameSearchList.cfm?CommonName=gembolo",
+    "publisher": "FishBase",
+    "reviewed_at": null,
+    "verification_status": "candidate"
+  }
+}

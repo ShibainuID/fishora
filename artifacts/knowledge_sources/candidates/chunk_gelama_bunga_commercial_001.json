@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_gelama_bunga_commercial_001",
+  "chunk": {
+    "id": "chunk_gelama_bunga_commercial_001",
+    "species_label": "gelama_bunga",
+    "source_id": "fishbase_nibea_albiflora",
+    "category": "commercial_uses",
+    "content": "Yellow drum is a commercially fished species found near shore on mud to sandy-mud bottoms in semi-enclosed sea areas, and is also used in Chinese medicine.",
+    "source_quote": "Found near shore, including semi-enclosed sea areas, in mud to sandy mud bottom ... Used in Chinese medicine ... Fisheries: commercial",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "fishbase_nibea_albiflora",
+    "title": "Nibea albiflora, Yellow drum: fisheries",
+    "source_type": "species_summary",
+    "url": "https://www.fishbase.se/summary/Nibea-albiflora.html",
+    "publisher": "FishBase",
+    "reviewed_at": null,
+    "verification_status": "candidate"
+  }
+}

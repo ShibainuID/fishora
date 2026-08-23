@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_tenggiri_identity_002",
+  "chunk": {
+    "id": "chunk_tenggiri_identity_002",
+    "species_label": "tenggiri",
+    "source_id": "fishbase_scomberomorus_commerson",
+    "category": "identity",
+    "content": "Scomberomorus commerson (Lacepede, 1800), the narrow-barred Spanish mackerel, is one candidate species for 'tenggiri': a large pelagic scombrid of the Indo-West Pacific reaching 240 cm FL, with iridescent blue-grey back and numerous thin wavy vertical bands.",
+    "source_quote": "Scomberomorus commerson (Lacepede, 1800) ... Narrow-barred Spanish mackerel ... Max length: 240 cm FL ... Colour of back iridescent blue-grey, sides silver with bluish reflections, marked with numerous thin, wavy vertical bands",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "fishbase_scomberomorus_commerson",
+    "title": "Scomberomorus commerson, Narrow-barred Spanish mackerel: fisheries, gamefish",
+    "source_type": "species_summary",
+    "url": "https://www.fishbase.se/summary/Scomberomorus-commerson.html",
+    "publisher": "FishBase",
+    "reviewed_at": null,
+    "verification_status": "candidate"
+  }
+}
