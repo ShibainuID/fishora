@@ -53,6 +53,7 @@ class RetrievedChunk:
     chunk_id: str
     species_id: str
     source_id: str
+    source_type: str
     category: str
     content: str
     distance: float

@@ -31,3 +31,38 @@ class UnsupportedCvLabel(Exception):
     def __init__(self, label: str):
         super().__init__(f"cv returned unsupported label {label!r}")
         self.label = label
+
+
+class PredictionNotVerified(Exception):
+    """The prediction exists but has no verified identity yet. Maps to HTTP 409.
+
+    Only a stored verified_species_id (confirmed or corrected) may drive
+    retrieval; pending predictions must never reach the retriever.
+    """
+
+    def __init__(self, prediction_id: str):
+        super().__init__(f"prediction {prediction_id!r} is not verified")
+        self.prediction_id = prediction_id
+
+
+class OpenCodeUnavailable(Exception):
+    """OpenCode Go timeout/connection failure during generation.
+
+    Maps to HTTP 502. Carries the retrieved chunk ids so the 502 body can
+    surface evidence ids for diagnosis, but never credentials, internal
+    URLs, headers, or the raw upstream error.
+    """
+
+    def __init__(self, message: str, retrieved_chunk_ids: list[str]):
+        super().__init__(message)
+        self.retrieved_chunk_ids = list(retrieved_chunk_ids)
+
+
+class InvalidGeneratedKnowledge(Exception):
+    """Generated JSON failed decoding, strict schema validation, or citation
+    checks against the retrieved evidence. Maps to HTTP 502 and is safe to
+    retry: nothing was persisted."""
+
+    def __init__(self, message: str, retrieved_chunk_ids: list[str]):
+        super().__init__(message)
+        self.retrieved_chunk_ids = list(retrieved_chunk_ids)
