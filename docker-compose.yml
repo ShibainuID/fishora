@@ -1,0 +1,19 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: fishora
+      POSTGRES_PASSWORD: fishora
+      POSTGRES_DB: fishora
+    ports:
+      - "55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fishora -d fishora"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - fishora_pgdata:/var/lib/postgresql/data
+
+volumes:
+  fishora_pgdata:
