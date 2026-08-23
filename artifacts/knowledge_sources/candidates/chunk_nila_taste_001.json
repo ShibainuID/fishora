@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_nila_taste_001",
+  "chunk": {
+    "id": "chunk_nila_taste_001",
+    "species_label": "nila",
+    "source_id": "fao_en_niletilapia",
+    "category": "taste_texture",
+    "content": "Nile tilapia fillets are described as an ideal menu addition due to their reasonable price, year-round supply, mild, delicious flavour and flexibility in preparation; virtually all casual dining restaurant chains in the USA feature tilapia.",
+    "source_quote": "which are an ideal menu addition due to their reasonable price, year-round supply, mild, delicious flavour and flexibility in preparation. Virtually all casual dining restaurant chains in the USA feature tilapia",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "fao_en_niletilapia",
+    "title": "FAO Cultured Aquatic Species Fact Sheet: Oreochromis niloticus (Nile tilapia)",
+    "source_type": "species_fact_sheet",
+    "url": "https://www.fao.org/fishery/docs/CDrom/aquaculture/I1129m/file/en/en_niletilapia.htm",
+    "publisher": "Food and Agriculture Organization of the United Nations",
+    "reviewed_at": "2026-08-23T00:00:00Z",
+    "verification_status": "candidate"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_mujair_identity_001",
+  "chunk": {
+    "id": "chunk_mujair_identity_001",
+    "species_label": "mujair",
+    "source_id": "fishbase_oreochromis_mossambicus",
+    "category": "identity",
+    "content": "Mujair is the Mozambique tilapia Oreochromis mossambicus (Peters, 1852), family Cichlidae (subfamily Pseudocrenilabrinae); a highly euryhaline freshwater/brackish benthopelagic maternal mouthbrooder, widely introduced for aquaculture and often outcompeting local species where it escapes to the wild.",
+    "source_quote": "Teleostei (teleosts) > Cichliformes (Cichlids, convict blennies) > Cichlidae (Cichlids) > Pseudocrenilabrinae ... Highly euryhaline ... maternal mouthbrooder ... Widely introduced for aquaculture, but escaped and established itself in the wild in many countries, often outcompeting local species",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "fishbase_oreochromis_mossambicus",
+    "title": "Oreochromis mossambicus, Mozambique tilapia: fisheries, aquaculture, gamefish, aquarium",
+    "source_type": "species_summary",
+    "url": "https://www.fishbase.se/summary/Oreochromis-mossambicus.html",
+    "publisher": "FishBase",
+    "reviewed_at": "2026-08-23T00:00:00Z",
+    "verification_status": "candidate"
+  }
+}

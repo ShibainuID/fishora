@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_gelama_bunga_identity_001",
+  "chunk": {
+    "id": "chunk_gelama_bunga_identity_001",
+    "species_label": "gelama_bunga",
+    "source_id": "fishbase_nibea_albiflora",
+    "category": "identity",
+    "content": "Gelama bunga is the yellow drum Nibea albiflora (Richardson, 1846), family Sciaenidae (drums or croakers), a temperate benthopelagic species of the Northwest Pacific (southern Japan and East China Sea) reaching 43.5 cm SL and 1.5 kg.",
+    "source_quote": "Teleostei (teleosts) > Eupercaria/misc (Various families in series Eupercaria) > Sciaenidae (Drums or croakers) ... Max length: 43.5 cm SL ... max. published weight: 1.5 kg ... Northwest Pacific: southern Japan and East China Sea.",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "fishbase_nibea_albiflora",
+    "title": "Nibea albiflora, Yellow drum: fisheries",
+    "source_type": "species_summary",
+    "url": "https://www.fishbase.se/summary/Nibea-albiflora.html",
+    "publisher": "FishBase",
+    "reviewed_at": "2026-08-23T00:00:00Z",
+    "verification_status": "candidate"
+  }
+}

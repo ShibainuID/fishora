@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_tenggiri_processing_001",
+  "chunk": {
+    "id": "chunk_tenggiri_processing_001",
+    "species_label": "tenggiri",
+    "source_id": "fishbase_scomberomorus_commerson",
+    "category": "processing_methods",
+    "content": "S. commerson is marketed mainly fresh, also dried-salted, commonly made into fish balls, and frozen, smoked or canned; a lipid-soluble ciguatoxin-like toxin has been found in the flesh of specimens from the east coast of Queensland, Australia.",
+    "source_quote": "Marketed mainly fresh; also dried-salted; commonly made into fish balls (Ref. 9684), frozen, smoked, and canned (Ref. 9987). ... A lipid-soluble toxin, similar to ciguatoxin has been found in the flesh of specimens caught on the east coast of Queensland, Australia.",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "fishbase_scomberomorus_commerson",
+    "title": "Scomberomorus commerson, Narrow-barred Spanish mackerel: fisheries, gamefish",
+    "source_type": "species_summary",
+    "url": "https://www.fishbase.se/summary/Scomberomorus-commerson.html",
+    "publisher": "FishBase",
+    "reviewed_at": "2026-08-23T00:00:00Z",
+    "verification_status": "candidate"
+  }
+}

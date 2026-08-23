@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_kembung_commercial_001",
+  "chunk": {
+    "id": "chunk_kembung_commercial_001",
+    "species_label": "kembung",
+    "source_id": "jma_22_2_210",
+    "category": "commercial_uses",
+    "content": "Island mackerel (Rastrelliger faughni) supports a commercial fishery and an analysed value chain in coastal municipalities, e.g. in Lagonoy Gulf, Philippines; FishBase lists it as commercial and gamefish.",
+    "source_quote": "Jamer, M. M. N., & Manzano, M. T. J. (2025). Value Chain Analysis of Island Mackerel (Rastrelliger faughni) in Selected Coastal Municipalities in Lagonoy Gulf, Philippines. Jurnal Manajemen Dan Agribisnis, 22(2), 210.",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "jma_22_2_210",
+    "title": "Value Chain Analysis of Island Mackerel (Rastrelliger faughni) in Selected Coastal Municipalities in Lagonoy Gulf, Philippines",
+    "source_type": "journal_article",
+    "url": "https://doi.org/10.17358/jma.22.2.210",
+    "publisher": "Jurnal Manajemen dan Agribisnis",
+    "reviewed_at": "2026-08-23T00:00:00Z",
+    "verification_status": "candidate"
+  }
+}

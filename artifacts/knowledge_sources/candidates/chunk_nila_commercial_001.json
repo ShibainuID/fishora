@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_nila_commercial_001",
+  "chunk": {
+    "id": "chunk_nila_commercial_001",
+    "species_label": "nila",
+    "source_id": "fao_en_niletilapia",
+    "category": "commercial_uses",
+    "content": "Tilapia is the second most important group of farmed fish after carps and the most widely grown of any farmed fish; global tilapia production was projected to increase from 1.5 million tonnes in 2003 to 2.5 million tonnes by 2010, with a sales value above USD 5 billion, most of it attributed to Nile tilapia.",
+    "source_quote": "Tilapia (including all species) is the second most important group of farmed fish after carps, and the most widely grown of any farmed fish ... global production of all species of tilapia is projected to increase from 1.5 million tonnes in 2003 to 2.5 million tonnes by 2010, with a sales value of more than USD 5 billion. Most of this enhanced production is expected to be attributed to Nile tilapia.",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "fao_en_niletilapia",
+    "title": "FAO Cultured Aquatic Species Fact Sheet: Oreochromis niloticus (Nile tilapia)",
+    "source_type": "species_fact_sheet",
+    "url": "https://www.fao.org/fishery/docs/CDrom/aquaculture/I1129m/file/en/en_niletilapia.htm",
+    "publisher": "Food and Agriculture Organization of the United Nations",
+    "reviewed_at": "2026-08-23T00:00:00Z",
+    "verification_status": "candidate"
+  }
+}

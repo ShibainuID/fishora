@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_tenggiri_identity_003",
+  "chunk": {
+    "id": "chunk_tenggiri_identity_003",
+    "species_label": "tenggiri",
+    "source_id": "fishbase_scomberomorus_guttatus",
+    "category": "identity",
+    "content": "Scomberomorus guttatus (Bloch & Schneider, 1801), the Indo-Pacific king mackerel, is another candidate species for 'tenggiri', reaching 81.5 cm FL and 4 kg; sides silvery white with several rows of round dark brownish spots along the lateral line.",
+    "source_quote": "Scomberomorus guttatus (Bloch & Schneider, 1801) ... Indo-Pacific king mackerel ... Sides silvery white with several rows of round dark brownish spots scattered in about three irregular rows along the lateral line ... Max length: 81.5 cm FL ... max. published weight: 4.0 kg",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "fishbase_scomberomorus_guttatus",
+    "title": "Scomberomorus guttatus, Indo-Pacific king mackerel: fisheries, gamefish",
+    "source_type": "species_summary",
+    "url": "https://www.fishbase.se/summary/Scomberomorus-guttatus.html",
+    "publisher": "FishBase",
+    "reviewed_at": "2026-08-23T00:00:00Z",
+    "verification_status": "candidate"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_senangin_identity_001",
+  "chunk": {
+    "id": "chunk_senangin_identity_001",
+    "species_label": "senangin",
+    "source_id": "fishbase_eleutheronema_tetradactylum",
+    "category": "identity",
+    "content": "Senangin is the fourfinger threadfin Eleutheronema tetradactylum (Shaw, 1804), family Polynemidae (Threadfins), distinguished by four free pectoral filaments; an Indo-Pacific marine, freshwater and brackish pelagic-neritic species.",
+    "source_quote": "Teleostei (teleosts) > Carangaria/misc (Various families in series Carangaria) > Polynemidae (Threadfins) ... pectoral filaments 4 ... Marine; freshwater; brackish; pelagic-neritic; amphidromous",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "fishbase_eleutheronema_tetradactylum",
+    "title": "Eleutheronema tetradactylum, Fourfinger threadfin: fisheries, aquaculture",
+    "source_type": "species_summary",
+    "url": "https://www.fishbase.se/summary/Eleutheronema-tetradactylum.html",
+    "publisher": "FishBase",
+    "reviewed_at": "2026-08-23T00:00:00Z",
+    "verification_status": "candidate"
+  }
+}

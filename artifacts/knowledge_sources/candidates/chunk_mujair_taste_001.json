@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_mujair_taste_001",
+  "chunk": {
+    "id": "chunk_mujair_taste_001",
+    "species_label": "mujair",
+    "source_id": "fishbase_oreochromis_mossambicus",
+    "category": "taste_texture",
+    "content": "Mozambique tilapia has excellent palatability with a small head, large dress-out weight and fillets without small bones.",
+    "source_quote": "Excellent palatability (Ref. 6465), with small head and large dress-out weight (Ref. 61), and filets without small bones (Ref. 57960).",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "fishbase_oreochromis_mossambicus",
+    "title": "Oreochromis mossambicus, Mozambique tilapia: fisheries, aquaculture, gamefish, aquarium",
+    "source_type": "species_summary",
+    "url": "https://www.fishbase.se/summary/Oreochromis-mossambicus.html",
+    "publisher": "FishBase",
+    "reviewed_at": "2026-08-23T00:00:00Z",
+    "verification_status": "candidate"
+  }
+}

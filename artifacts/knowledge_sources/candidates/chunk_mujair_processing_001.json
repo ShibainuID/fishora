@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_mujair_processing_001",
+  "chunk": {
+    "id": "chunk_mujair_processing_001",
+    "species_label": "mujair",
+    "source_id": "jbau_86202",
+    "category": "processing_methods",
+    "content": "Mozambique tilapia is used to make fish burgers; the quality of the tilapia fish burger was evaluated during frozen storage at -18C.",
+    "source_quote": "Lithi, U., Faridullah, M., Uddin, M., Mehbub, M., & Zafar, M. (2020). Quality evaluation of fish burger from tilapia (Oreochromis mossambicus) during frozen storage (-18c). Journal of Bangladesh Agricultural University.",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "jbau_86202",
+    "title": "Quality evaluation of fish burger from tilapia (Oreochromis mossambicus) during frozen storage (-18C)",
+    "source_type": "journal_article",
+    "url": "https://doi.org/10.5455/JBAU.86202",
+    "publisher": "Journal of Bangladesh Agricultural University",
+    "reviewed_at": "2026-08-23T00:00:00Z",
+    "verification_status": "candidate"
+  }
+}

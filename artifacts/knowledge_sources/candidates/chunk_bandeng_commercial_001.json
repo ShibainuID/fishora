@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_bandeng_commercial_001",
+  "chunk": {
+    "id": "chunk_bandeng_commercial_001",
+    "species_label": "bandeng",
+    "source_id": "fishbase_chanos_chanos",
+    "category": "commercial_uses",
+    "content": "Milkfish is highly commercial in both capture fisheries and aquaculture; larvae are collected from rivers and grown in culture ponds into juveniles marketed fresh, smoked, canned or frozen, and brood stock can be raised and spawned in captivity.",
+    "source_quote": "Fisheries: highly commercial; aquaculture: commercial ... Larvae are collected from rivers and are grown in culture ponds into juveniles which are marketed fresh, smoked, canned or frozen. Brood stocks can be raised and spawned in captivity to produce larvae in the hatchery",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "fishbase_chanos_chanos",
+    "title": "Chanos chanos, Milkfish: fisheries, aquaculture, gamefish, bait",
+    "source_type": "species_summary",
+    "url": "https://www.fishbase.se/summary/Chanos-chanos.html",
+    "publisher": "FishBase",
+    "reviewed_at": "2026-08-23T00:00:00Z",
+    "verification_status": "candidate"
+  }
+}
