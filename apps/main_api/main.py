@@ -20,28 +20,43 @@ def create_main_app(settings: MainSettings | None = None, deps: AppDependencies 
     Tests inject every external port through `deps`; the production factory
     leaves them None and wires the SQLAlchemy repositories, HTTP CV client,
     and filesystem image store lazily in the lifespan, so importing this
-    module never connects to Postgres or any network service.
+    module never connects to Postgres or any network service. Settings and
+    production ports are instantiated only when actually missing: a complete
+    fake bundle (all five ports injected) never constructs MainSettings, never
+    reads environment variables, and never creates a DB session factory.
     """
-    settings = settings or MainSettings()
     deps = deps or AppDependencies()
-
-    @asynccontextmanager
-    async def lifespan(app: FastAPI):
-        _ensure_production_deps(app)
-        yield
-
-    app = FastAPI(lifespan=lifespan)
-    app.state.settings = settings
+    app = FastAPI(lifespan=_lifespan)
+    app.state.settings = settings  # may be None when all ports are injected
     app.state.deps = deps
     _register_error_handlers(app)
     app.include_router(fish_router)
     return app
 
 
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    _ensure_production_deps(app)
+    yield
+
+
 def _ensure_production_deps(app: FastAPI) -> None:
-    """Fill any un-injected port with the production implementation (idempotent)."""
+    """Fill any un-injected port with the production implementation (idempotent).
+
+    Short-circuits when every port is already injected, so a complete fake
+    bundle never constructs MainSettings or a DB session factory.
+    """
     deps = app.state.deps
-    settings = app.state.settings
+    missing = (
+        deps.session_factory is None
+        or deps.cv_client is None
+        or deps.species_repo is None
+        or deps.prediction_repo is None
+        or deps.image_store is None
+    )
+    if not missing:
+        return
+    settings = app.state.settings or MainSettings()
     if deps.session_factory is None:
         deps.session_factory = session_factory(settings)
     if deps.cv_client is None:

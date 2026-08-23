@@ -24,12 +24,6 @@ def _species(label: str) -> SpeciesRecord:
     )
 
 
-@pytest.fixture(autouse=True)
-def _fishora_env(monkeypatch):
-    # MainSettings requires database_url; settings construction never connects.
-    monkeypatch.setenv("FISHORA_DATABASE_URL", "postgresql+psycopg://fishora:fishora@localhost:55432/fishora")
-
-
 @pytest.fixture
 def species_repo():
     return FakeSpeciesRepository([_species(label) for label in SUPPORTED_LABELS])

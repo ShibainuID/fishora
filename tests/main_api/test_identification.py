@@ -197,3 +197,33 @@ def test_prediction_persistence_failure_deletes_saved_image(cv_result, species_r
     assert response.status_code == 500
     assert image_store.saved == []  # the newly saved image was compensated away
     assert len(image_store.deleted) == 1  # exactly one delete: the newly saved image
+
+def test_complete_fake_bundle_needs_no_settings_env_or_db_factory(monkeypatch, cv_result, species_repo, prediction_repo, image_store):
+    from fastapi.testclient import TestClient
+
+    monkeypatch.delenv("FISHORA_DATABASE_URL", raising=False)
+    monkeypatch.delenv("OPENCODE_GO_API_KEY", raising=False)
+
+    def _forbid_settings(*args, **kwargs):
+        raise AssertionError("MainSettings must not be constructed with a complete fake bundle")
+
+    monkeypatch.setattr("apps.main_api.main.MainSettings", _forbid_settings)
+
+    app = _app(
+        cv_client=FakeCVClient(cv_result),
+        species_repo=species_repo,
+        prediction_repo=prediction_repo,
+        image_store=image_store,
+    )
+    assert app.state.settings is None  # no settings object constructed
+    assert app.state.deps.session_factory is None  # no DB factory constructed
+
+    client = TestClient(app)
+    response = client.post("/api/v1/fish/identify", files={"file": ("fish.jpg", jpeg_bytes(), "image/jpeg")})
+    assert response.status_code == 200
+    assert response.json()["verification_status"] == "pending"
+
+    prediction_id = response.json()["prediction_id"]
+    verify = client.post("/api/v1/fish/verify", json={"prediction_id": prediction_id, "verified_species_id": "species_tuna"})
+    assert verify.status_code == 200
+    assert verify.json()["verification_status"] == "confirmed"

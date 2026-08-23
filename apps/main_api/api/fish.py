@@ -4,10 +4,15 @@ from typing import Literal
 from fastapi import APIRouter, File, Request, UploadFile
 from pydantic import BaseModel, Field
 
+from apps.main_api.config import MainSettings
 from apps.main_api.services.identification import IdentificationService
 from apps.main_api.services.verification import VerificationService
 
 router = APIRouter(prefix="/api/v1/fish")
+
+# ponytail: fallback limit when a complete fake bundle supplies no settings object;
+# reads the configured default without constructing MainSettings (no env required).
+DEFAULT_MAX_IMAGE_BYTES = MainSettings.model_fields["cv_max_image_bytes"].default
 
 
 class VerifyRequest(BaseModel):
@@ -41,13 +46,13 @@ class VerificationResponse(BaseModel):
 @router.post("/identify", response_model=IdentificationResponse)
 async def identify(request: Request, file: UploadFile = File(...)):
     deps = request.app.state.deps
-    settings = request.app.state.settings
+    settings = request.app.state.settings  # None when a complete fake bundle is injected
     service = IdentificationService(
         cv_client=deps.cv_client,
         species_repo=deps.species_repo,
         prediction_repo=deps.prediction_repo,
         image_store=deps.image_store,
-        max_image_bytes=settings.cv_max_image_bytes,
+        max_image_bytes=settings.cv_max_image_bytes if settings is not None else DEFAULT_MAX_IMAGE_BYTES,
     )
     result = service.identify(
         await file.read(),
