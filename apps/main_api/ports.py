@@ -1,10 +1,15 @@
 from dataclasses import dataclass
-from typing import Callable, Literal, Protocol
+from typing import Callable, Literal, Protocol, Sequence
 
 from sqlalchemy.orm import Session
 
 from apps.contracts import CVPredictionEnvelope
-from apps.main_api.contracts import PredictionRecord, SpeciesRecord
+from apps.main_api.contracts import (
+    KnowledgeChunkWrite,
+    KnowledgeSourceWrite,
+    PredictionRecord,
+    SpeciesRecord,
+)
 
 
 class CVClient(Protocol):
@@ -19,6 +24,32 @@ class ImageStore(Protocol):
 class SpeciesRepository(Protocol):
     def get_by_normalized_label(self, label: str) -> SpeciesRecord | None: ...
     def get_by_id(self, species_id: str) -> SpeciesRecord | None: ...
+
+
+class Tokenizer(Protocol):
+    """A real tokenizer (encode/decode), not a bare token counter."""
+
+    def encode(self, text: str) -> list[int]: ...
+    def decode(self, ids: list[int]) -> str: ...
+
+
+class Embedder(Protocol):
+    model_name: str
+    tokenizer: Tokenizer
+
+    def embed_passages(self, texts: Sequence[str]) -> list[list[float]]: ...
+    def embed_query(self, text: str) -> list[float]: ...
+
+
+class KnowledgeRepository(Protocol):
+    """Transactional store for approved sources/chunks (one commit, all or nothing)."""
+
+    def embedding_models_in_store(self) -> set[str]: ...
+    def insert_verified(
+        self,
+        sources: Sequence[KnowledgeSourceWrite],
+        chunks: Sequence[KnowledgeChunkWrite],
+    ) -> int: ...
 
 
 class PredictionRepository(Protocol):

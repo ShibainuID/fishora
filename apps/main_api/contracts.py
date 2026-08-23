@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Literal
 
 
@@ -11,6 +12,33 @@ class SpeciesRecord:
     taxonomic_rank: str
     taxonomy_status: str
     notes: str | None
+
+
+@dataclass(frozen=True)
+class KnowledgeSourceWrite:
+    """Verified source row handed to the knowledge repository for insertion."""
+
+    id: str
+    title: str
+    source_type: str
+    url: str | None
+    publisher: str | None
+    reviewed_at: datetime | None
+    verification_status: str
+
+
+@dataclass(frozen=True)
+class KnowledgeChunkWrite:
+    """Verified chunk row with its local embedding, for transactional insert."""
+
+    id: str
+    species_id: str
+    source_id: str
+    category: str
+    content: str
+    embedding: list[float]
+    embedding_model: str
+    verification_status: str
 
 
 @dataclass
