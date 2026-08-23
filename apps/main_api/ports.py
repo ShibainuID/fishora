@@ -27,10 +27,14 @@ class SpeciesRepository(Protocol):
 
 
 class Tokenizer(Protocol):
-    """A real tokenizer (encode/decode), not a bare token counter."""
+    """A real tokenizer (encode/decode), not a bare token counter.
 
-    def encode(self, text: str) -> list[int]: ...
-    def decode(self, ids: list[int]) -> str: ...
+    Defaults mirror HF tokenizers (encode wraps in special tokens, decode
+    renders them); chunking always opts out so chunk text is clean.
+    """
+
+    def encode(self, text: str, *, add_special_tokens: bool = True) -> list[int]: ...
+    def decode(self, ids: list[int], *, skip_special_tokens: bool = True) -> str: ...
 
 
 class Embedder(Protocol):

@@ -75,15 +75,16 @@ class FakeImageStore:
 class WhitespaceTokenizer:
     """Deterministic tokenizer: one token per whitespace-separated word.
 
-    Supports encode/decode like a real tokenizer, so chunking and ingestion
-    can be tested without downloading the E5 model.
+    Supports encode/decode like a real tokenizer, including the
+    add_special_tokens/skip_special_tokens switches, so chunking and
+    ingestion can be tested without downloading the E5 model.
     """
 
     def __init__(self):
         self._index: dict[str, int] = {}
         self._words: list[str] = []
 
-    def encode(self, text: str) -> list[int]:
+    def encode(self, text: str, *, add_special_tokens: bool = False) -> list[int]:
         ids = []
         for word in text.split():
             if word not in self._index:
@@ -92,8 +93,45 @@ class WhitespaceTokenizer:
             ids.append(self._index[word])
         return ids
 
-    def decode(self, ids: list[int]) -> str:
+    def decode(self, ids: list[int], *, skip_special_tokens: bool = True) -> str:
         return " ".join(self._words[token_id] for token_id in ids)
+
+
+class SpecialTokenTokenizer:
+    """A BERT-style fake whose DEFAULT encode wraps text in [CLS]/[SEP] ids
+    and whose DEFAULT decode renders them as text, exactly like a real HF
+    tokenizer. Chunking must pass add_special_tokens=False on encode and
+    skip_special_tokens=True on decode; otherwise special-token text leaks
+    into emitted chunks.
+    """
+
+    CLS_ID = 0
+    SEP_ID = 1
+    CLS = "[CLS]"
+    SEP = "[SEP]"
+
+    def __init__(self):
+        self._index: dict[str, int] = {self.CLS: self.CLS_ID, self.SEP: self.SEP_ID}
+        self._words: list[str] = [self.CLS, self.SEP]
+
+    def encode(self, text: str, *, add_special_tokens: bool = True) -> list[int]:
+        ids = []
+        for word in text.split():
+            if word not in self._index:
+                self._index[word] = len(self._words)
+                self._words.append(word)
+            ids.append(self._index[word])
+        if add_special_tokens:
+            return [self.CLS_ID] + ids + [self.SEP_ID]
+        return ids
+
+    def decode(self, ids: list[int], *, skip_special_tokens: bool = False) -> str:
+        words = [
+            self._words[token_id]
+            for token_id in ids
+            if not (skip_special_tokens and token_id in (self.CLS_ID, self.SEP_ID))
+        ]
+        return " ".join(words)
 
 
 class FakeEmbedder:
