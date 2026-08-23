@@ -82,11 +82,6 @@ class SqlPredictionRepository:
             session.commit()
         return self._to_record(row)
 
-    def all(self) -> list[PredictionRecord]:
-        with self._session_factory() as session:
-            rows = session.scalars(select(Prediction).order_by(Prediction.id)).all()
-        return [self._to_record(row) for row in rows]
-
     @staticmethod
     def _to_record(row: Prediction | None) -> PredictionRecord | None:
         if row is None:

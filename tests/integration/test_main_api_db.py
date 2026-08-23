@@ -68,7 +68,7 @@ def test_sql_prediction_repository_create_get_verify_roundtrip(session_factory_)
     assert corrected.verified_species_id == "species_gembolo"
     assert corrected.predicted_species_id == "species_tuna"
 
-    assert prediction_id in {record.id for record in repo.all()}
+    assert repo.get(prediction_id).verification_status == "corrected"  # persisted state via get()
     assert repo.get("it_pred_missing") is None
 
     with session_factory_() as session:

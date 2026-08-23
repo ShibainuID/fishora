@@ -41,8 +41,6 @@ class PredictionRepository(Protocol):
         verification_status: Literal["confirmed", "corrected"],
     ) -> PredictionRecord: ...
 
-    def all(self) -> list[PredictionRecord]: ...
-
 
 @dataclass
 class AppDependencies:
