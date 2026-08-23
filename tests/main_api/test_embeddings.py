@@ -163,6 +163,7 @@ def test_lifespan_wires_lazy_local_e5_embedder_when_missing(monkeypatch):
         embedder = app.state.deps.embedder
         assert isinstance(embedder, LocalE5Embedder)
         assert embedder._model is None, "weights must stay unloaded until first embed"
+        assert embedder._device == "cpu", "E5 must not consume CV inference VRAM"
 
 
 def test_complete_fake_bundle_is_untouched_by_lifespan(main_app):

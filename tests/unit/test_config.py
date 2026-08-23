@@ -8,6 +8,7 @@ def test_embedding_contract_and_secret_fields_are_environment_driven(monkeypatch
     assert settings.database_url == "postgresql+psycopg://fishora:fishora@localhost:55432/fishora"
     assert settings.embedding_model_name == "intfloat/multilingual-e5-base"
     assert settings.embedding_dimension == 768
+    assert settings.embedding_device == "cpu"
     assert settings.opencode_go_base_url == "https://opencode.ai/zen/go/v1"
     assert settings.opencode_go_model == "gpt-5.6-luna"
     assert settings.opencode_go_api_key.get_secret_value() == "test-key"

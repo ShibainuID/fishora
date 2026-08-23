@@ -22,6 +22,7 @@ class MainSettings(BaseSettings):
     image_storage_dir: Path = Field(default=Path("data/images"), validation_alias=AliasChoices("FISHORA_IMAGE_STORAGE_DIR", "image_storage_dir"))
     embedding_model_name: str = Field(default="intfloat/multilingual-e5-base", validation_alias=AliasChoices("FISHORA_EMBEDDING_MODEL_NAME", "embedding_model_name"))
     embedding_dimension: int = Field(default=768, validation_alias=AliasChoices("FISHORA_EMBEDDING_DIMENSION", "embedding_dimension"))
+    embedding_device: str = Field(default="cpu", validation_alias=AliasChoices("FISHORA_EMBEDDING_DEVICE", "embedding_device"))
     opencode_go_base_url: str = Field(default="https://opencode.ai/zen/go/v1", validation_alias=AliasChoices("FISHORA_OPENCODE_GO_BASE_URL", "opencode_go_base_url"))
     # ponytail: blank key allowed here; the production OpenCode client constructor enforces it.
     opencode_go_api_key: SecretStr = Field(default=SecretStr(""), validation_alias=AliasChoices("OPENCODE_GO_API_KEY", "opencode_go_api_key"))

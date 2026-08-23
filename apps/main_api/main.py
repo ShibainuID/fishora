@@ -89,7 +89,10 @@ def _ensure_production_deps(app: FastAPI) -> None:
     if deps.image_store is None:
         deps.image_store = FilesystemImageStore(settings.image_storage_dir)
     if deps.embedder is None:
-        deps.embedder = LocalE5Embedder(settings.embedding_model_name)
+        deps.embedder = LocalE5Embedder(
+            settings.embedding_model_name,
+            device=settings.embedding_device,
+        )
     if deps.knowledge_repo is None:
         deps.knowledge_repo = SqlKnowledgeRepository(deps.session_factory)
     if deps.retriever is None:
