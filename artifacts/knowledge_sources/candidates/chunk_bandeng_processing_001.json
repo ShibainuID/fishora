@@ -5,8 +5,8 @@
     "species_label": "bandeng",
     "source_id": "marinade_4962",
     "category": "processing_methods",
-    "content": "In Indonesia, bandeng is processed as 'bandeng presto' (pressure-cooked milkfish with softened bones); the presto processing chain at small and medium enterprise scale is documented for Juwana District, Pati Regency, Central Java.",
-    "source_quote": "Handoko, Y. P., Apriani, D. A. K., & Amrizal, S. N. (2022). KARAKTERISTIK PROSES PENGOLAHAN BANDENG (Chanos chanos) PRESTO SKALA UMKM DI KECAMATAN JUWANA, KABUPATEN PATI. Marinade, 5(02), 157-165.",
+    "content": "Bandeng presto (pressurized milkfish) is a well-known product of Pati Regency, one of the largest milkfish producers in Central Java Province; the article characterises the bandeng presto processing chain at small-and-medium-enterprise scale.",
+    "source_quote": "Pati Regency is one of the largest milkfish producers in Central Java Province with one well known product is pressurized milkfish.",
     "stage": "knowledge_editor",
     "verification_status": "candidate"
   },
@@ -16,7 +16,7 @@
     "source_type": "journal_article",
     "url": "https://doi.org/10.31629/marinade.v5i02.4962",
     "publisher": "Marinade (jurnal pengolahan produk perikanan)",
-    "reviewed_at": "2026-08-23T00:00:00Z",
+    "reviewed_at": null,
     "verification_status": "candidate"
   }
 }

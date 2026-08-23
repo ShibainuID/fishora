@@ -512,6 +512,38 @@ def test_approval_rejects_symlink_alias_of_candidate_dir(tmp_path, valid_candida
                            datetime.now(timezone.utc))
 
 
+# --- committed corpus: evidence integrity ---------------------------------
+
+
+def test_committed_corpus_has_no_synthetic_approval_and_covers_all_labels():
+    """The committed candidate corpus carries no human approval metadata:
+    sources have no reviewed_at, every claim has a support quote, and all 11
+    labels are covered (gembolo only as the unresolved-identity limitation)."""
+    from apps.main_api.services.corpus import SAFE_ID, CandidateRecord
+
+    candidates_dir = Path(__file__).resolve().parents[2] / "artifacts/knowledge_sources/candidates"
+    records = [
+        CandidateRecord.model_validate(json.loads(path.read_text(encoding="utf-8")))
+        for path in sorted(candidates_dir.glob("*.json"))
+    ]
+    assert records, "committed candidate corpus must exist"
+    assert {r.chunk.species_label for r in records} == {
+        "bandeng", "gelama_bunga", "gembolo", "gulamah", "kembung", "kuniran",
+        "mujair", "nila", "senangin", "tenggiri", "tuna",
+    }
+    for record in records:
+        assert SAFE_ID.fullmatch(record.claim_id), record.claim_id
+        assert SAFE_ID.fullmatch(record.source.id), record.source.id
+        assert record.source.reviewed_at is None, (
+            f"no synthetic human approval on candidates: {record.chunk.id}"
+        )
+        assert record.source.url and record.source.title and record.source.publisher
+        assert record.chunk.source_quote.strip(), record.chunk.id
+    gembolo = next(r for r in records if r.chunk.species_label == "gembolo")
+    assert gembolo.source.url.startswith("https://www.fishbase.se/"), "gembolo needs a traceable URL"
+    assert "unresolved" in gembolo.chunk.content.lower()
+
+
 # --- require_approved_manifest --------------------------------------------
 
 

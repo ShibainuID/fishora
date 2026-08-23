@@ -7,7 +7,7 @@
       "source_type": "species_summary",
       "url": "https://www.fishbase.se/summary/Chanos-chanos.html",
       "publisher": "FishBase",
-      "reviewed_at": "2026-08-23T00:00:00Z",
+      "reviewed_at": null,
       "verification_status": "candidate"
     },
     {
@@ -16,7 +16,7 @@
       "source_type": "journal_article",
       "url": "https://doi.org/10.31629/marinade.v5i02.4962",
       "publisher": "Marinade (jurnal pengolahan produk perikanan)",
-      "reviewed_at": "2026-08-23T00:00:00Z",
+      "reviewed_at": null,
       "verification_status": "candidate"
     },
     {
@@ -25,7 +25,7 @@
       "source_type": "species_summary",
       "url": "https://www.fishbase.se/summary/Eleutheronema-tetradactylum.html",
       "publisher": "FishBase",
-      "reviewed_at": "2026-08-23T00:00:00Z",
+      "reviewed_at": null,
       "verification_status": "candidate"
     },
     {
@@ -34,7 +34,7 @@
       "source_type": "species_summary",
       "url": "https://www.fishbase.se/summary/Johnius-trachycephalus.html",
       "publisher": "FishBase",
-      "reviewed_at": "2026-08-23T00:00:00Z",
+      "reviewed_at": null,
       "verification_status": "candidate"
     },
     {
@@ -43,16 +43,7 @@
       "source_type": "journal_article",
       "url": "https://doi.org/10.29244/coj.5.1.1-8",
       "publisher": "Coastal and Ocean Journal (COJ)",
-      "reviewed_at": "2026-08-23T00:00:00Z",
-      "verification_status": "candidate"
-    },
-    {
-      "id": "manfish_v2i3_489",
-      "title": "Studi Potensi Ikan Gulamah (Johnius trachycephalus) Sebagai Bahan Baku Surimi dan Produk Olahan Berbasis Daging Ikan",
-      "source_type": "journal_article",
-      "url": "https://doi.org/10.31573/manfish.v2i3.489",
-      "publisher": "Manfish Journal",
-      "reviewed_at": "2026-08-23T00:00:00Z",
+      "reviewed_at": null,
       "verification_status": "candidate"
     },
     {
@@ -61,7 +52,7 @@
       "source_type": "species_summary",
       "url": "https://www.fishbase.se/summary/Nibea-albiflora.html",
       "publisher": "FishBase",
-      "reviewed_at": "2026-08-23T00:00:00Z",
+      "reviewed_at": null,
       "verification_status": "candidate"
     },
     {
@@ -70,16 +61,16 @@
       "source_type": "species_summary",
       "url": "https://www.fishbase.se/summary/Oreochromis-mossambicus.html",
       "publisher": "FishBase",
-      "reviewed_at": "2026-08-23T00:00:00Z",
+      "reviewed_at": null,
       "verification_status": "candidate"
     },
     {
       "id": "jbau_86202",
-      "title": "Quality evaluation of fish burger from tilapia (Oreochromis mossambicus) during frozen storage (-18C)",
+      "title": "Quality evaluation of mince-based fish burger from tilapia (Oreochromis mossambicus) during frozen storage",
       "source_type": "journal_article",
       "url": "https://doi.org/10.5455/JBAU.86202",
       "publisher": "Journal of Bangladesh Agricultural University",
-      "reviewed_at": "2026-08-23T00:00:00Z",
+      "reviewed_at": null,
       "verification_status": "candidate"
     },
     {
@@ -88,7 +79,7 @@
       "source_type": "species_fact_sheet",
       "url": "https://www.fao.org/fishery/docs/CDrom/aquaculture/I1129m/file/en/en_niletilapia.htm",
       "publisher": "Food and Agriculture Organization of the United Nations",
-      "reviewed_at": "2026-08-23T00:00:00Z",
+      "reviewed_at": null,
       "verification_status": "candidate"
     },
     {
@@ -97,7 +88,7 @@
       "source_type": "species_summary",
       "url": "https://www.fishbase.se/summary/Oreochromis-niloticus.html",
       "publisher": "FishBase",
-      "reviewed_at": "2026-08-23T00:00:00Z",
+      "reviewed_at": null,
       "verification_status": "candidate"
     },
     {
@@ -106,7 +97,7 @@
       "source_type": "species_summary",
       "url": "https://www.fishbase.se/summary/Rastrelliger-faughni.html",
       "publisher": "FishBase",
-      "reviewed_at": "2026-08-23T00:00:00Z",
+      "reviewed_at": null,
       "verification_status": "candidate"
     },
     {
@@ -115,7 +106,7 @@
       "source_type": "journal_article",
       "url": "https://doi.org/10.17358/jma.22.2.210",
       "publisher": "Jurnal Manajemen dan Agribisnis",
-      "reviewed_at": "2026-08-23T00:00:00Z",
+      "reviewed_at": null,
       "verification_status": "candidate"
     },
     {
@@ -124,7 +115,7 @@
       "source_type": "species_summary",
       "url": "https://www.fishbase.se/summary/Upeneus-moluccensis.html",
       "publisher": "FishBase",
-      "reviewed_at": "2026-08-23T00:00:00Z",
+      "reviewed_at": null,
       "verification_status": "candidate"
     },
     {
@@ -133,7 +124,7 @@
       "source_type": "journal_article",
       "url": "https://doi.org/10.1016/j.foodchem.2008.09.078",
       "publisher": "Food Chemistry (Elsevier)",
-      "reviewed_at": "2026-08-23T00:00:00Z",
+      "reviewed_at": null,
       "verification_status": "candidate"
     },
     {
@@ -142,7 +133,7 @@
       "source_type": "species_catalogue",
       "url": "https://www.fao.org/4/ac478e/ac478e00.htm",
       "publisher": "Food and Agriculture Organization of the United Nations",
-      "reviewed_at": "2026-08-23T00:00:00Z",
+      "reviewed_at": null,
       "verification_status": "candidate"
     },
     {
@@ -151,7 +142,7 @@
       "source_type": "species_catalogue_pdf",
       "url": "https://www.fao.org/docrep/pdf/009/ac478e/ac478e11.pdf",
       "publisher": "Food and Agriculture Organization of the United Nations",
-      "reviewed_at": "2026-08-23T00:00:00Z",
+      "reviewed_at": null,
       "verification_status": "candidate"
     },
     {
@@ -160,7 +151,7 @@
       "source_type": "species_summary",
       "url": "https://www.fishbase.se/summary/Scomberomorus-commerson.html",
       "publisher": "FishBase",
-      "reviewed_at": "2026-08-23T00:00:00Z",
+      "reviewed_at": null,
       "verification_status": "candidate"
     },
     {
@@ -169,7 +160,7 @@
       "source_type": "common_name_page",
       "url": "https://www.fishbase.se/ComNames/CommonNameSearchList.cfm?CommonName=tenggiri",
       "publisher": "FishBase",
-      "reviewed_at": "2026-08-23T00:00:00Z",
+      "reviewed_at": null,
       "verification_status": "candidate"
     },
     {
@@ -178,16 +169,16 @@
       "source_type": "species_summary",
       "url": "https://www.fishbase.se/summary/Scomberomorus-guttatus.html",
       "publisher": "FishBase",
-      "reviewed_at": "2026-08-23T00:00:00Z",
+      "reviewed_at": null,
       "verification_status": "candidate"
     },
     {
-      "id": "fishora_corpus_governance",
-      "title": "Fishora corpus governance rule for unresolved labels",
-      "source_type": "internal_policy",
-      "url": "artifacts/knowledge_sources/README.md",
-      "publisher": "Fishora corpus team",
-      "reviewed_at": "2026-08-23T00:00:00Z",
+      "id": "fishbase_gembolo_search",
+      "title": "FishBase Common Names search: 'Gembolo' (no results)",
+      "source_type": "common_name_search",
+      "url": "https://www.fishbase.se/ComNames/CommonNameSearchList.cfm?CommonName=gembolo",
+      "publisher": "FishBase",
+      "reviewed_at": null,
       "verification_status": "candidate"
     }
   ],
@@ -217,8 +208,8 @@
       "source_id": "marinade_4962",
       "species_label": "bandeng",
       "category": "processing_methods",
-      "content": "In Indonesia, bandeng is processed as 'bandeng presto' (pressure-cooked milkfish with softened bones); the presto processing chain at small and medium enterprise scale is documented for Juwana District, Pati Regency, Central Java.",
-      "source_quote": "Handoko, Y. P., Apriani, D. A. K., & Amrizal, S. N. (2022). KARAKTERISTIK PROSES PENGOLAHAN BANDENG (Chanos chanos) PRESTO SKALA UMKM DI KECAMATAN JUWANA, KABUPATEN PATI. Marinade, 5(02), 157-165.",
+      "content": "Bandeng presto (pressurized milkfish) is a well-known product of Pati Regency, one of the largest milkfish producers in Central Java Province; the article characterises the bandeng presto processing chain at small-and-medium-enterprise scale.",
+      "source_quote": "Pati Regency is one of the largest milkfish producers in Central Java Province with one well known product is pressurized milkfish.",
       "stage": "verification",
       "verification_status": "candidate"
     },
@@ -277,18 +268,8 @@
       "source_id": "coj_5_1_1",
       "species_label": "gulamah",
       "category": "processing_methods",
-      "content": "Gulamah is processed into salted fish (ikan asin) by small and medium enterprises; the salted-fish gulamah business is documented in Perlis, Berandan Barat, Langkat, North Sumatra.",
-      "source_quote": "Shalichaty, S. F., Ratrinia, P. W., & Damanik, S. (2021). BUSINESS ANALYSIS OF GULAMAH (Johnius trachycephalus) SALTED FISH SMALL AND MEDIUM ENTERPRISES (SMEs) IN PERLIS, BERANDAN BARAT, LANGKAT, NORTH SUMATERA. Coastal and Ocean Journal (COJ), 5(1), 1-8.",
-      "stage": "verification",
-      "verification_status": "candidate"
-    },
-    {
-      "claim_id": "claim_gulamah_processing_002",
-      "source_id": "manfish_v2i3_489",
-      "species_label": "gulamah",
-      "category": "processing_methods",
-      "content": "Gulamah is studied as raw material for surimi and fish-meat-based processed products, expanding its use beyond salted fish.",
-      "source_quote": "Laksono, U. T., Lasmi, L., Sasongko, L. W., & Nofreeana, A. (2022). Studi Potensi Ikan Gulamah (Johnius trachycephalus) Sebagai Bahan Baku Surimi dan Produk Olahan Berbasis Daging Ikan. Manfish Journal, 3(2), 119-127.",
+      "content": "Gulamah (Johnius trachycephalus) is processed into salted fish; the feasibility of salted gulamah fish processing in Perlis Village, Langkat Regency (medium- and micro-scale businesses) was analysed.",
+      "source_quote": "This study aimed to determine the feasibility of processing salted gulamah fish in Perlis Village, Langkat Regency.",
       "stage": "verification",
       "verification_status": "candidate"
     },
@@ -337,8 +318,8 @@
       "source_id": "jbau_86202",
       "species_label": "mujair",
       "category": "processing_methods",
-      "content": "Mozambique tilapia is used to make fish burgers; the quality of the tilapia fish burger was evaluated during frozen storage at -18C.",
-      "source_quote": "Lithi, U., Faridullah, M., Uddin, M., Mehbub, M., & Zafar, M. (2020). Quality evaluation of fish burger from tilapia (Oreochromis mossambicus) during frozen storage (-18c). Journal of Bangladesh Agricultural University.",
+      "content": "Mozambique tilapia (Oreochromis mossambicus) is processed into fish mince and burger; their quality was evaluated during frozen storage at -18C up to 75 days.",
+      "source_quote": "Quality of Tilapia fish mince and burger were determined during frozen storage condition (-18C) up to 75th days.",
       "stage": "verification",
       "verification_status": "candidate"
     },
@@ -407,8 +388,8 @@
       "source_id": "jma_22_2_210",
       "species_label": "kembung",
       "category": "commercial_uses",
-      "content": "Island mackerel (Rastrelliger faughni) supports a commercial fishery and an analysed value chain in coastal municipalities, e.g. in Lagonoy Gulf, Philippines; FishBase lists it as commercial and gamefish.",
-      "source_quote": "Jamer, M. M. N., & Manzano, M. T. J. (2025). Value Chain Analysis of Island Mackerel (Rastrelliger faughni) in Selected Coastal Municipalities in Lagonoy Gulf, Philippines. Jurnal Manajemen Dan Agribisnis, 22(2), 210.",
+      "content": "The value chain of island mackerel (Rastrelliger faughni) in selected coastal municipalities around the Lagonoy Gulf, Philippines was analysed to identify bottlenecks and areas for improvement.",
+      "source_quote": "Analyzing the value chain of island mackerel (Rastrelliger faughni) in the Lagonoy Gulf helps to identify bottlenecks and areas for improvement.",
       "stage": "verification",
       "verification_status": "candidate"
     },
@@ -447,8 +428,8 @@
       "source_id": "foodchem_2008",
       "species_label": "kuniran",
       "category": "processing_methods",
-      "content": "Freshness of goldband goatfish (Upeneus moluccensis) is assessed by sensory, microbiological and chemical methods during storage in ice.",
-      "source_quote": "OZYURT, G., KULEY, E., OZKUTUK, S., & OZOGUL, F. (2009). Sensory, microbiological and chemical assessment of the freshness of red mullet (Mullus barbatus) and goldband goatfish (Upeneus moluccensis) during storage in ice. Food Chemistry, 114(2), 505-510.",
+      "content": "The sensory acceptability limit of goldband goatfish (Upeneus moluccensis) stored in ice is 8 days (11 days for red mullet), determined through sensory, microbiological and chemical freshness assessment.",
+      "source_quote": "The sensory acceptability limit was 8 days for goldband goatfish (Upeneus moluccensis) and 11 days for red mullet (Mullus barbatus) stored in ice.",
       "stage": "verification",
       "verification_status": "candidate"
     },
@@ -524,11 +505,11 @@
     },
     {
       "claim_id": "claim_gembolo_identity_001",
-      "source_id": "fishora_corpus_governance",
+      "source_id": "fishbase_gembolo_search",
       "species_label": "gembolo",
       "category": "identity",
-      "content": "LIMITATION: no scientific identity, physical description, taste/texture, processing or commercial claim may be assigned to the label 'gembolo' without expert confirmation; the label is unresolved in this corpus and only this limitation record exists for it.",
-      "source_quote": "No scientific identity or factual culinary claims may be assigned to the label 'gembolo' without expert confirmation.",
+      "content": "LIMITATION: the label 'gembolo' is unresolved; the FishBase common-name search for 'Gembolo' returns no matching entry, so no scientific identity can be assigned and identity or culinary claims require expert confirmation.",
+      "source_quote": "List of Common Names for 'Gembolo' using Taxamatch[n=0] ... No results found.",
       "stage": "verification",
       "verification_status": "candidate"
     }
