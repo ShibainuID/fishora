@@ -38,10 +38,9 @@ class KnowledgeSource(Base):
 class KnowledgeChunk(Base):
     __tablename__ = "knowledge_chunks"
     __table_args__ = (
-        # ponytail: six categories chosen as defaults; adjust here and in the
-        # 0001 migration if later tasks define different chunk categories.
         CheckConstraint(
-            "category IN ('habitat', 'diet', 'behavior', 'morphology', 'distribution', 'fishing')",
+            "category IN ('identity', 'physical_characteristics', 'taste_texture', "
+            "'processing_methods', 'commercial_uses', 'substitutes')",
             name="ck_knowledge_chunks_category",
         ),
         CheckConstraint("verification_status IN ('candidate', 'verified')", name="ck_knowledge_chunks_verification_status"),

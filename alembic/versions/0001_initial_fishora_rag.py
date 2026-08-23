@@ -64,7 +64,8 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["source_id"], ["knowledge_sources.id"], name="fk_knowledge_chunks_source_id"),
         sa.ForeignKeyConstraint(["species_id"], ["fish_species.id"], name="fk_knowledge_chunks_species_id"),
         sa.CheckConstraint(
-            "category IN ('habitat', 'diet', 'behavior', 'morphology', 'distribution', 'fishing')",
+            "category IN ('identity', 'physical_characteristics', 'taste_texture', "
+            "'processing_methods', 'commercial_uses', 'substitutes')",
             name="ck_knowledge_chunks_category",
         ),
         sa.CheckConstraint(

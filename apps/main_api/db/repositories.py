@@ -20,14 +20,12 @@ TAXONOMY_STATUS_BY_LABEL = {
     "tuna": "MIXED_TAXONOMY",
 }
 
-_EXPECTED_ROW_COUNT = 11
-
-
 def load_taxonomy_csv(path: Path) -> list[TaxonomySeed]:
-    """Read the taxonomy CSV; empty scientific_name/notes cells become None.
+    """Read the taxonomy CSV; only empty scientific_name/notes cells become None.
 
-    Rejects unknown normalized labels and any file whose row count is not
-    exactly eleven.
+    Non-empty cells are preserved verbatim (no stripping). Rejects unknown
+    normalized labels and any file whose normalized label set is not exactly
+    the eleven supported labels.
     """
     with path.open(newline="", encoding="utf-8") as fh:
         reader = csv.DictReader(fh)
@@ -46,12 +44,16 @@ def load_taxonomy_csv(path: Path) -> list[TaxonomySeed]:
                     taxonomic_rank=row["taxonomic_rank"],
                     confidence=row["confidence"],
                     source=row["source"],
-                    notes=row["notes"].strip() or None,
+                    notes=row["notes"] or None,
                     taxonomy_status=TAXONOMY_STATUS_BY_LABEL[normalized_label],
                 )
             )
-    if len(rows) != _EXPECTED_ROW_COUNT:
-        raise ValueError(f"taxonomy CSV must contain exactly {_EXPECTED_ROW_COUNT} rows, got {len(rows)}")
+    labels = {row.normalized_label for row in rows}
+    if labels != set(TAXONOMY_STATUS_BY_LABEL):
+        raise ValueError(
+            f"taxonomy CSV normalized labels must be exactly the {len(TAXONOMY_STATUS_BY_LABEL)} "
+            f"supported labels, got {sorted(labels)}"
+        )
     return rows
 
 
