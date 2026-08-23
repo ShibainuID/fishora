@@ -5,7 +5,12 @@ from typing import Callable, Sequence
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
-from apps.main_api.contracts import KnowledgeChunkWrite, KnowledgeSourceWrite, TaxonomySeed
+from apps.main_api.contracts import (
+    KnowledgeChunkWrite,
+    KnowledgeSourceWrite,
+    RetrievedChunk,
+    TaxonomySeed,
+)
 from apps.main_api.db.models import FishSpecies, KnowledgeChunk, KnowledgeSource
 from apps.main_api.services.embeddings import E5_MODEL_NAME
 
@@ -202,3 +207,52 @@ class SqlKnowledgeRepository:
                     row.verification_status = chunk.verification_status
             session.commit()
         return len(chunks)
+
+    def search_verified(
+        self,
+        species_id: str,
+        query_vector: list[float],
+        embedding_model: str,
+        limit: int,
+    ) -> list[RetrievedChunk]:
+        """Nearest verified chunks of one species, by cosine distance then
+        chunk id (stable order).
+
+        The SQL filters all four invariants at once: exact species id, chunk
+        verification status, joined source verification status, and exact
+        embedding model -- so wrong-species, unverified, source-unverified or
+        model-mismatched rows are never returned even when their vectors are
+        closest. Sources are joined so every hit carries citation metadata
+        (title/publisher/url/review timestamp) and both verification statuses.
+        """
+        with self._session_factory() as session:
+            distance = KnowledgeChunk.embedding.cosine_distance(query_vector).label("distance")
+            rows = session.execute(
+                select(KnowledgeChunk, KnowledgeSource, distance)
+                .join(KnowledgeSource, KnowledgeSource.id == KnowledgeChunk.source_id)
+                .where(
+                    KnowledgeChunk.species_id == species_id,
+                    KnowledgeChunk.verification_status == "verified",
+                    KnowledgeSource.verification_status == "verified",
+                    KnowledgeChunk.embedding_model == embedding_model,
+                )
+                .order_by(distance, KnowledgeChunk.id)
+                .limit(limit)
+            ).all()
+            return [
+                RetrievedChunk(
+                    chunk_id=chunk.id,
+                    species_id=chunk.species_id,
+                    source_id=chunk.source_id,
+                    category=chunk.category,
+                    content=chunk.content,
+                    distance=float(row_distance),
+                    chunk_verification_status=chunk.verification_status,
+                    source_verification_status=source.verification_status,
+                    source_title=source.title,
+                    source_publisher=source.publisher,
+                    source_url=source.url,
+                    source_reviewed_at=source.reviewed_at,
+                )
+                for chunk, source, row_distance in rows
+            ]
