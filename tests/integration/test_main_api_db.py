@@ -158,6 +158,25 @@ def test_sql_knowledge_repository_rolls_back_all_rows_on_write_failure(session_f
 
 
 @pytest.mark.integration
+def test_sql_knowledge_repository_rejects_mixed_incoming_batch(session_factory_):
+    """A single batch mixing two embedding models must be refused even into an
+    empty store: checking only the first chunk would commit model A and B."""
+    repo = SqlKnowledgeRepository(session_factory_)
+    with session_factory_() as session:
+        _clean_all_knowledge(session)
+    with pytest.raises(ValueError, match="embedding model"):
+        repo.insert_verified(
+            [_source("it_source_mixed_batch_1")],
+            [_chunk("it_chunk_mixed_1", "it_source_mixed_batch_1", "a"),
+             _chunk("it_chunk_mixed_2", "it_source_mixed_batch_1", "b", model="some/other-model")],
+        )
+    with session_factory_() as session:
+        assert session.get(KnowledgeSource, "it_source_mixed_batch_1") is None
+        assert session.scalars(select(KnowledgeChunk).where(
+            KnowledgeChunk.source_id == "it_source_mixed_batch_1")).all() == []
+
+
+@pytest.mark.integration
 def test_sql_knowledge_repository_rejects_mixed_embedding_models(session_factory_):
     repo = SqlKnowledgeRepository(session_factory_)
     with session_factory_() as session:
@@ -218,8 +237,10 @@ def test_sql_knowledge_repository_rejects_stale_partial_manifest(session_factory
 
 @pytest.mark.integration
 def test_sql_knowledge_repository_serializes_concurrent_mixed_model_ingests(session_factory_):
-    """Two ingests racing with different models: the advisory xact lock
-    serializes them, so exactly one succeeds and the other is refused."""
+    """Concurrent ingests with different models: the non-E5 batch is refused
+    at input validation (mixed batches can never reach the store), and the
+    advisory xact lock still serializes the store-level model/subset checks,
+    so exactly one ingest succeeds."""
     import threading
 
     with session_factory_() as session:

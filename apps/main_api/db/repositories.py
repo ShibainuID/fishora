@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from apps.main_api.contracts import KnowledgeChunkWrite, KnowledgeSourceWrite, TaxonomySeed
 from apps.main_api.db.models import FishSpecies, KnowledgeChunk, KnowledgeSource
+from apps.main_api.services.embeddings import E5_MODEL_NAME
 
 # Fixed bigint key ('Fish') for the transaction advisory lock: all Fishora
 # ingests serialize on it, so concurrent mixed-model ingests cannot both pass.
@@ -123,17 +124,25 @@ class SqlKnowledgeRepository:
         """
         if not chunks:
             return 0
+        # The whole incoming batch must use exactly the E5 model: a single
+        # batch mixing two models would otherwise commit mixed vectors into
+        # an empty store by passing a first-chunk-only check.
+        incoming_models = {chunk.embedding_model for chunk in chunks}
+        if incoming_models != {E5_MODEL_NAME}:
+            raise ValueError(
+                "incoming chunk batch must use exactly one embedding model "
+                f"({E5_MODEL_NAME}), got {sorted(incoming_models)}"
+            )
         with self._session_factory() as session:
             session.execute(
                 text("SELECT pg_advisory_xact_lock(:key)"),
                 {"key": FISHORA_INGEST_ADVISORY_LOCK},
             )
-            model = chunks[0].embedding_model
             existing_models = set(session.scalars(select(KnowledgeChunk.embedding_model).distinct()))
-            if existing_models and existing_models != {model}:
+            if existing_models and existing_models != {E5_MODEL_NAME}:
                 raise ValueError(
                     "knowledge store already contains another embedding model "
-                    f"({sorted(existing_models)}); refusing to mix with {model}"
+                    f"({sorted(existing_models)}); refusing to mix with {E5_MODEL_NAME}"
                 )
             existing_ids = set(
                 session.scalars(

@@ -1,4 +1,5 @@
 from apps.main_api.contracts import PredictionRecord, SpeciesRecord
+from apps.main_api.services.embeddings import E5_MODEL_NAME
 
 
 class FakeCVClient:
@@ -196,11 +197,16 @@ class FakeKnowledgeRepository:
         return set(self._embedding_models)
 
     def insert_verified(self, sources, chunks):
-        model = chunks[0].embedding_model
-        if self._embedding_models and self._embedding_models != {model}:
+        incoming_models = {chunk.embedding_model for chunk in chunks}
+        if incoming_models != {E5_MODEL_NAME}:
+            raise ValueError(
+                "incoming chunk batch must use exactly one embedding model "
+                f"({E5_MODEL_NAME}), got {sorted(incoming_models)}"
+            )
+        if self._embedding_models and self._embedding_models != {E5_MODEL_NAME}:
             raise ValueError(
                 "knowledge store already contains another embedding model "
-                f"({sorted(self._embedding_models)}); refusing to mix with {model}"
+                f"({sorted(self._embedding_models)}); refusing to mix with {E5_MODEL_NAME}"
             )
         existing = set(self._chunks_by_id)
         incoming = {chunk.id for chunk in chunks}
@@ -214,5 +220,5 @@ class FakeKnowledgeRepository:
         for chunk in chunks:
             self.chunks = [row for row in self.chunks if row.id != chunk.id] + [chunk]
             self._chunks_by_id[chunk.id] = chunk
-        self._embedding_models.add(model)
+        self._embedding_models.add(E5_MODEL_NAME)
         return len(chunks)

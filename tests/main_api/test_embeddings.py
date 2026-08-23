@@ -322,6 +322,26 @@ def test_ingestion_rejects_stale_partial_manifest(tmp_path, species_repo, fake_k
     assert len(fake_knowledge_repo.chunks) == 2, "rejected manifest must not change the store"
 
 
+def test_fake_knowledge_repo_rejects_mixed_incoming_batch(fake_knowledge_repo):
+    """Contract parity with the SQL repository: a batch mixing two embedding
+    models is refused even into an empty store."""
+    from apps.main_api.contracts import KnowledgeChunkWrite, KnowledgeSourceWrite
+
+    source = KnowledgeSourceWrite(id="s_mixed", title="t", source_type="test", url=None,
+                                  publisher=None, reviewed_at=None, verification_status="verified")
+    chunks = [
+        KnowledgeChunkWrite(id="c_mixed_1", species_id="species_bandeng", source_id="s_mixed",
+                            category="identity", content="a", embedding=[0.1] * 768,
+                            embedding_model="intfloat/multilingual-e5-base", verification_status="verified"),
+        KnowledgeChunkWrite(id="c_mixed_2", species_id="species_bandeng", source_id="s_mixed",
+                            category="identity", content="b", embedding=[0.1] * 768,
+                            embedding_model="some/other-model", verification_status="verified"),
+    ]
+    with pytest.raises(ValueError, match="embedding model"):
+        fake_knowledge_repo.insert_verified([source], chunks)
+    assert fake_knowledge_repo.chunks == [] and fake_knowledge_repo.sources == []
+
+
 def test_ingestion_splits_long_approved_sections(approved_corpus_long, species_repo, fake_knowledge_repo, fake_embedder):
     approved_dir, manifest = approved_corpus_long
     count = _ingest(approved_dir, manifest, species_repo, fake_knowledge_repo, fake_embedder)
