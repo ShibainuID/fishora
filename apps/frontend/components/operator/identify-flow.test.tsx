@@ -310,4 +310,20 @@ describe('IdentifyFlow', () => {
     // A duration control that never reaches the API is a lie in the UI.
     expect(publishLot.mock.calls[0][0].auction_hours).toBe(8)
   })
+
+  it('surfaces an undecodable capture instead of doing nothing', async () => {
+    const { downscaleImage } = await import('@/lib/image')
+    vi.mocked(downscaleImage).mockRejectedValueOnce(new Error('decode failed'))
+    const user = userEvent.setup()
+    render(flow())
+
+    await capture(user)
+    await user.click(screen.getByRole('button', { name: /identifikasi/i }))
+
+    // Without a catch the operator taps Identify and nothing happens at all:
+    // no advance, no error, no way to know what went wrong.
+    await waitFor(() =>
+      expect(screen.getByText(/format gambar tidak didukung/i)).toBeInTheDocument()
+    )
+  })
 })

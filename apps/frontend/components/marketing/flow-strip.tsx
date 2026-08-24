@@ -13,6 +13,9 @@ export function FlowStrip() {
   return (
     <div
       id="flow"
+      tabIndex={0}
+      role="group"
+      aria-label="Alur Fishora"
       className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4"
       style={{ scrollPaddingInlineStart: '1rem' }}
     >

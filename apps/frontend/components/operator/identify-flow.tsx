@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/common/button'
 import { Field } from '@/components/common/field'
@@ -47,6 +47,17 @@ const DURATIONS = [
 ] as const
 const SIZES = ['S', 'M', 'L'] as const
 
+function subscribeToConnectivity(onChange: () => void) {
+  window.addEventListener('online', onChange)
+  window.addEventListener('offline', onChange)
+  return () => {
+    window.removeEventListener('online', onChange)
+    window.removeEventListener('offline', onChange)
+  }
+}
+const isOnline = () => navigator.onLine
+const assumeOnline = () => true
+
 type Size = (typeof SIZES)[number]
 type Step = 1 | 2 | 3 | 4
 
@@ -85,9 +96,10 @@ export function IdentifyFlow({
   const previewRef = useRef<string | null>(null)
 
   const [step, setStep] = useState<Step>(1)
-  const [online, setOnline] = useState(
-    typeof navigator === 'undefined' ? true : navigator.onLine
-  )
+  // Connectivity is external state. Branching on `typeof navigator` in the
+  // initialiser is the server/client branch React's hydration warning names,
+  // and it made the offline banner differ between the two renders.
+  const online = useSyncExternalStore(subscribeToConnectivity, isOnline, assumeOnline)
   const [image, setImage] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -103,17 +115,6 @@ export function IdentifyFlow({
   const [landingPoint, setLandingPoint] = useState<string>(LANDING_POINTS[0])
   const [duration, setDuration] = useState<(typeof DURATIONS)[number]['id']>('4h')
   const [publishError, setPublishError] = useState('')
-
-  useEffect(() => {
-    const on = () => setOnline(true)
-    const off = () => setOnline(false)
-    window.addEventListener('online', on)
-    window.addEventListener('offline', off)
-    return () => {
-      window.removeEventListener('online', on)
-      window.removeEventListener('offline', off)
-    }
-  }, [])
 
   useEffect(() => {
     sessionStorage.setItem(
@@ -163,6 +164,17 @@ export function IdentifyFlow({
       setPrediction(result.data)
       setLabel(result.data.prediction.normalized_label)
       setStep(2)
+    } catch {
+      // A capture the browser cannot decode, or a transport failure the action
+      // could not classify. Without this the operator taps Identify and nothing
+      // happens at all: no advance, no error, no way to know why.
+      setIdentifyError({
+        ok: false,
+        kind: 'image_invalid',
+        userMessage: 'Format gambar tidak didukung. Gunakan JPG atau PNG.',
+        retryable: true,
+        status: 0,
+      })
     } finally {
       setBusy(false)
     }

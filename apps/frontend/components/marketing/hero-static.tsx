@@ -1,8 +1,10 @@
 export function HeroStatic() {
   return (
+    // The sticky nav sits in flow above this, so a full-viewport hero pushes
+    // its own CTAs below the fold by exactly the nav height (60px, 68px at lg).
     <section
       data-block="hero"
-      className="flex min-h-dvh flex-col justify-end gap-4 px-4 pt-16 pb-8"
+      className="flex min-h-[calc(100dvh-60px)] flex-col justify-end gap-4 px-4 pt-16 pb-8 lg:min-h-[calc(100dvh-68px)]"
     >
       <h1 className="text-display-2 max-w-[12ch]">Discover the value beneath the ocean</h1>
       <p className="text-body max-w-[36ch]">

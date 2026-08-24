@@ -13,7 +13,7 @@ from apps.main_api.api.lots import router as lots_router
 from apps.main_api.config import DEFAULT_CORS_ALLOW_ORIGINS, MainSettings, parse_origins
 from apps.main_api.db.lot_repository import SqlLandingPointRepository, SqlLotRepository
 from apps.main_api.db.preference_repository import SqlPreferenceRepository
-from apps.main_api.db.repositories import SqlKnowledgeRepository
+from apps.main_api.db.repositories import TAXONOMY_STATUS_BY_LABEL, SqlKnowledgeRepository
 from apps.main_api.db.session import session_factory
 from apps.main_api.db.sql_repositories import SqlPredictionRepository, SqlSpeciesRepository
 from apps.main_api.errors import (
@@ -60,6 +60,7 @@ def create_main_app(settings: MainSettings | None = None, deps: AppDependencies 
     app.state.settings = settings  # may be None when all ports are injected
     app.state.deps = deps
     _register_cors(app, settings)
+    _register_health(app)
     _register_error_handlers(app)
     app.include_router(fish_router)
     app.include_router(knowledge_router)
@@ -131,6 +132,26 @@ def _ensure_production_deps(app: FastAPI) -> None:
     if deps.generator is None:
         # Lazy: a blank OPENCODE_GO_API_KEY must not break startup.
         deps.generator = KnowledgeGenerator(lambda: OpenCodeGoClient(settings))
+
+
+def _register_health(app: FastAPI) -> None:
+    """Liveness plus whether the taxonomy is seeded.
+
+    An unseeded database is a distinct failure mode: the API answers, but every
+    identification and manual declaration fails on species resolution. Callers
+    that need to tell "down" from "not ready" cannot do it from a bare 200.
+    """
+
+    @app.get("/health")
+    async def health(request: Request):
+        repo = request.app.state.deps.species_repo
+        seeded = False
+        if repo is not None:
+            seeded = any(
+                repo.get_by_normalized_label(label) is not None
+                for label in TAXONOMY_STATUS_BY_LABEL
+            )
+        return {"status": "ok", "taxonomy_seeded": seeded}
 
 
 def _register_cors(app: FastAPI, settings: MainSettings | None) -> None:

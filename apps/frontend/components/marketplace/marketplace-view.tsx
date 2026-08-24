@@ -88,7 +88,12 @@ export function MarketplaceView({
         </div>
 
         {count > 0 && (
-          <div className="flex gap-2 overflow-x-auto px-4 py-3 whitespace-nowrap lg:px-0">
+          <div
+            tabIndex={0}
+            role="group"
+            aria-label="Filter aktif"
+            className="flex gap-2 overflow-x-auto px-4 py-3 whitespace-nowrap lg:px-0"
+          >
             {filters.species.map((label) => (
               <button
                 key={label}
