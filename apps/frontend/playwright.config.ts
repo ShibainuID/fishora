@@ -15,6 +15,15 @@ export default defineConfig({
   projects: [
     // Phone first, and named so a failure says which viewport broke.
     { name: 'phone', use: { ...devices['Pixel 7'] } },
+    // 390px is the narrowest width DESIGN.md commits to, and Pixel 7 is 412.
+    // Without this the narrowest layout is only ever eyeballed.
+    {
+      name: 'phone-390',
+      use: {
+        ...devices['iPhone 13 mini'],
+        viewport: { width: 390, height: 844 },
+      },
+    },
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
   ],
 })

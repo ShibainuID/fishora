@@ -32,7 +32,7 @@ for (const route of ROUTES) {
   })
 
   test(`${route} keeps interactive targets at 44px`, async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'phone', 'target size is a touch constraint')
+    test.skip(!testInfo.project.name.startsWith('phone'), 'target size is a touch constraint')
     await page.goto(route)
     // Scoped to the document rather than a Playwright locator, which pierces
     // shadow DOM and would flag the Next dev-tools badge as our UI.

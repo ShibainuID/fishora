@@ -32,7 +32,7 @@ test('landing keeps the eyebrow budget and one label per CTA intent', async ({ p
 })
 
 test('landing hero fits the first viewport with both CTAs reachable', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'phone', 'the hero budget is a phone constraint')
+  test.skip(!testInfo.project.name.startsWith('phone'), 'the hero budget is a phone constraint')
   await page.goto('/')
   const viewport = page.viewportSize()!
 
@@ -71,7 +71,7 @@ test('the landing page is theme-locked and does not follow an override', async (
 })
 
 test('no fixed element ignores the safe area on phones', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'phone', 'safe-area padding is a phone constraint')
+  test.skip(!testInfo.project.name.startsWith('phone'), 'safe-area padding is a phone constraint')
   for (const route of ['/operator', '/preferences']) {
     await page.goto(route)
     const offenders = await page.evaluate(() =>
@@ -90,7 +90,7 @@ test('no fixed element ignores the safe area on phones', async ({ page }, testIn
 })
 
 test('a sheet is hidden when closed and actually paints when open', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'phone', 'the filter sheet is the phone affordance')
+  test.skip(!testInfo.project.name.startsWith('phone'), 'the filter sheet is the phone affordance')
   await page.goto('/marketplace')
 
   const sheet = page.getByRole('dialog', { name: /filter/i })
@@ -105,4 +105,56 @@ test('a sheet is hidden when closed and actually paints when open', async ({ pag
   await expect(sheet).toBeVisible()
   const box = await sheet.boundingBox()
   expect(box?.height ?? 0).toBeGreaterThan(0)
+})
+
+test('the descent moves on the compositor and never on layout', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto('/')
+
+  const plane = page.locator('.will-change-transform').first()
+  await expect(plane).toBeVisible()
+
+  const before = await plane.evaluate((el) => {
+    const s = getComputedStyle(el)
+    return { transform: s.transform, top: s.top, marginTop: s.marginTop }
+  })
+  await page.mouse.wheel(0, 1200)
+  // One frame is not enough for a scroll-linked value to settle.
+  await page.waitForTimeout(400)
+  const after = await plane.evaluate((el) => {
+    const s = getComputedStyle(el)
+    return { transform: s.transform, top: s.top, marginTop: s.marginTop }
+  })
+
+  expect(after.transform).not.toBe(before.transform)
+  // Animating top or margin would relayout the page on every scroll frame.
+  expect(after.top).toBe(before.top)
+  expect(after.marginTop).toBe(before.marginTop)
+})
+
+test('reduced motion gets a still hero, not a slowed one', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/')
+
+  await page.waitForTimeout(600)
+  const before = await page.evaluate(() => ({
+    planes: document.querySelectorAll('.will-change-transform').length,
+    matches: matchMedia('(prefers-reduced-motion: reduce)').matches,
+  }))
+  expect(before.matches).toBe(true)
+  // The still hero drops the scroll-linked planes entirely rather than keeping
+  // them and shortening the distance.
+  expect(before.planes).toBe(0)
+})
+
+test('the landing ships no scroll-animation library', async ({ page }) => {
+  await page.goto('/')
+  // The descent is CSS sticky plus Motion transforms. A stray GSAP or
+  // ScrollMagic on a phone-first landing is dead weight over mobile data.
+  const globals = await page.evaluate(() => ({
+    gsap: 'gsap' in window,
+    scrollMagic: 'ScrollMagic' in window,
+    locomotive: 'LocomotiveScroll' in window,
+  }))
+  expect(globals).toEqual({ gsap: false, scrollMagic: false, locomotive: false })
 })
