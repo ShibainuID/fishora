@@ -23,7 +23,7 @@ export async function apiFetch<T>(
 
   let response: Response
   try {
-    response = await fetch(`${BASE}${path}`, { ...init, signal: combined })
+    response = await fetch(`${BASE}${path}`, { credentials: 'include', ...init, signal: combined })
   } catch (cause) {
     // Aborted means timeout, anything else means the network is gone.
     const aborted = cause instanceof DOMException && cause.name === 'AbortError'
