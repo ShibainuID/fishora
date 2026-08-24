@@ -209,7 +209,11 @@ def writer_node(state: FishoraState, llm_luna, species: SpeciesRecord | None = N
         "sources": [],
     }
     # collect sources from all experts, dedup, keep verified only
-    by_source = {c.source_id: c for c in evidence}
+    # filter only verified chunks/sources (reviewer #7)
+    verified_evidence = [c for c in evidence if c.chunk_verification_status == "verified" and c.source_verification_status == "verified"]
+    # use verified subset for citation check, but keep original for fallback empty check
+    filter_evidence = verified_evidence if verified_evidence else evidence
+    by_source = {c.source_id: c for c in filter_evidence}
     seen = set()
     for cat in ["physical", "taste", "commercial", "substitute"]:
         for s in outputs.get(cat, {}).get("sources", []):
@@ -217,8 +221,11 @@ def writer_node(state: FishoraState, llm_luna, species: SpeciesRecord | None = N
             if sid in by_source and sid not in seen:
                 merged["sources"].append({"source_id": sid})
                 seen.add(sid)
+    # reviewer #4: if evidence exists but llm missing and no sources, fail instead of silent empty completed
+    if filter_evidence and not merged["sources"] and llm_luna is None:
+        return {"error": "knowledge generation failed: no llm configured but evidence exists", "final_card": None}
     # if writer LLM provided, let it refine the merge
-    if llm_luna is not None and evidence:
+    if llm_luna is not None and filter_evidence:
         try:
             payload = json.dumps(merged, ensure_ascii=False)
             prompt = (
