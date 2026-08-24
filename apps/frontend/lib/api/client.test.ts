@@ -8,6 +8,25 @@ function jsonResponse(status: number, body: unknown) {
   })
 }
 
+/**
+ * Await a call expected to reject and hand back a typed ApiError.
+ *
+ * A bare `.catch((e) => e)` yields `unknown`, which reads fine in a test but
+ * fails the build's type check. Narrowing here also strengthens every caller:
+ * a rejection that is not an ApiError fails loudly instead of quietly
+ * returning undefined properties that satisfy the assertions below.
+ */
+async function rejectsWithApiError(promise: Promise<unknown>): Promise<ApiError> {
+  const outcome = await promise.then(
+    () => null,
+    (error: unknown) => error
+  )
+  if (!(outcome instanceof ApiError)) {
+    throw new Error(`expected an ApiError rejection, received: ${String(outcome)}`)
+  }
+  return outcome
+}
+
 afterEach(() => vi.unstubAllGlobals())
 
 describe('apiFetch error mapping', () => {
@@ -20,8 +39,7 @@ describe('apiFetch error mapping', () => {
     [413, 'image_too_large', false],
   ])('maps %s to %s (retryable=%s)', async (status, kind, retryable) => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(status, { detail: 'x' })))
-    const err = await apiFetch('/api/v1/fish/identify').catch((e) => e)
-    expect(err).toBeInstanceOf(ApiError)
+    const err = await rejectsWithApiError(apiFetch('/api/v1/fish/identify'))
     expect(err.kind).toBe(kind)
     expect(err.retryable).toBe(retryable)
   })
@@ -30,13 +48,13 @@ describe('apiFetch error mapping', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
       jsonResponse(502, { detail: 'nope', retrieved_chunk_ids: ['c1', 'c2'] })
     ))
-    const err = await apiFetch('/x').catch((e) => e)
+    const err = await rejectsWithApiError(apiFetch('/x'))
     expect(err.retrievedChunkIds).toEqual(['c1', 'c2'])
   })
 
   it('maps a network failure to offline, not to a server error', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
-    const err = await apiFetch('/x').catch((e) => e)
+    const err = await rejectsWithApiError(apiFetch('/x'))
     expect(err.kind).toBe('offline')
     expect(err.retryable).toBe(true)
   })
@@ -45,7 +63,7 @@ describe('apiFetch error mapping', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
       jsonResponse(503, { detail: 'http://internal-cv:8001 refused' })
     ))
-    const err = await apiFetch('/x').catch((e) => e)
+    const err = await rejectsWithApiError(apiFetch('/x'))
     expect(err.userMessage).not.toContain('internal-cv')
   })
 
