@@ -19,15 +19,17 @@ const geistMono = Geist_Mono({
 /** Shared html/body for both root layouts. `lang` is the only difference. */
 export function RootHtml({
   lang,
+  htmlClassName = '',
   children,
 }: {
   lang: string
+  htmlClassName?: string
   children: React.ReactNode
 }) {
   return (
     <html
       lang={lang}
-      className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} antialiased ${htmlClassName}`.trim()}
       suppressHydrationWarning
     >
       <head>

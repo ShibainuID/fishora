@@ -18,5 +18,5 @@ export default function MarketingLayout({
 }: {
   children: React.ReactNode
 }) {
-  return <RootHtml lang="en">{children}</RootHtml>
+  return <RootHtml lang="en" htmlClassName="theme-abyss">{children}</RootHtml>
 }
