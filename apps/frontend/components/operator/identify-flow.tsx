@@ -1,11 +1,14 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/common/button'
 import { Field } from '@/components/common/field'
 import { KnowledgeCardView } from '@/components/fish/knowledge-card'
 import { PredictionCard } from '@/components/fish/prediction-card'
 import type { ActionFailure, ActionResult } from '@/lib/api/action-result'
+import { publishLot as defaultPublishLot, type Lot } from '@/lib/api/commerce'
+import { ApiError } from '@/lib/api/errors'
 import type { IdentificationResult, KnowledgeResponse } from '@/lib/api/fish'
 import { downscaleImage } from '@/lib/image'
 import { SPECIES, SUPPORTED_LABELS, type SpeciesLabel } from '@/lib/species'
@@ -17,6 +20,20 @@ const LANDING_POINTS = [
   'TPI Cilacap',
   'PPI Karangsong',
 ] as const // mock
+const LANDING_POINT_IDS: Record<(typeof LANDING_POINTS)[number], string> = {
+  'PPI Muara Angke': 'lp_muara_angke',
+  'TPI Cilacap': 'lp_cilacap',
+  'PPI Karangsong': 'lp_karangsong',
+}
+
+type PublishLotPayload = {
+  prediction_id: string
+  quantity_kg: string
+  starting_price_per_kg: string
+  size_category: 'S' | 'M' | 'L'
+  landing_point_id: string
+}
+
 const DURATIONS = [
   { id: '2h', label: '2 jam' },
   { id: '4h', label: '4 jam' },
@@ -42,6 +59,7 @@ export interface IdentifyFlowProps {
     }>
   >
   loadKnowledge: (predictionId: string) => Promise<ActionResult<KnowledgeResponse>>
+  publishLot?: (payload: PublishLotPayload) => Promise<Lot | unknown>
 }
 
 // Four steps, forward-only. A 503 or 502 never blocks the operator.
@@ -49,7 +67,9 @@ export function IdentifyFlow({
   identifyCatch,
   confirmSpecies,
   loadKnowledge,
+  publishLot = defaultPublishLot,
 }: IdentifyFlowProps) {
+  const router = useRouter()
   const cameraRef = useRef<HTMLInputElement>(null)
   const uploadRef = useRef<HTMLInputElement>(null)
   const previewRef = useRef<string | null>(null)
@@ -72,6 +92,7 @@ export function IdentifyFlow({
   const [pricePerKg, setPricePerKg] = useState('')
   const [landingPoint, setLandingPoint] = useState<string>(LANDING_POINTS[0])
   const [duration, setDuration] = useState<(typeof DURATIONS)[number]['id']>('4h')
+  const [publishError, setPublishError] = useState('')
 
   useEffect(() => {
     const on = () => setOnline(true)
@@ -170,6 +191,28 @@ export function IdentifyFlow({
     setStep(3)
   }
 
+  async function runPublish() {
+    if (!prediction) return
+    setBusy(true)
+    setPublishError('')
+    try {
+      await publishLot({
+        prediction_id: prediction.prediction_id,
+        quantity_kg: quantityKg,
+        starting_price_per_kg: pricePerKg,
+        size_category: size,
+        landing_point_id: LANDING_POINT_IDS[landingPoint as (typeof LANDING_POINTS)[number]],
+      })
+      router.push('/operator/lots')
+    } catch (cause) {
+      setPublishError(
+        cause instanceof ApiError ? cause.userMessage : 'Terjadi kesalahan. Coba lagi.'
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="flex min-h-[100dvh] flex-col bg-bg">
       <div className="mx-auto flex w-full max-w-lg flex-1 flex-col px-4 pb-28 pt-4">
@@ -223,19 +266,24 @@ export function IdentifyFlow({
         )}
 
         {step === 4 && (
-          <LotForm
-            label={label}
-            quantityKg={quantityKg}
-            size={size}
-            pricePerKg={pricePerKg}
-            landingPoint={landingPoint}
-            duration={duration}
-            onQuantity={setQuantityKg}
-            onSize={setSize}
-            onPrice={setPricePerKg}
-            onLanding={setLandingPoint}
-            onDuration={setDuration}
-          />
+          <>
+            <LotForm
+              label={label}
+              quantityKg={quantityKg}
+              size={size}
+              pricePerKg={pricePerKg}
+              landingPoint={landingPoint}
+              duration={duration}
+              onQuantity={setQuantityKg}
+              onSize={setSize}
+              onPrice={setPricePerKg}
+              onLanding={setLandingPoint}
+              onDuration={setDuration}
+            />
+            {publishError && (
+              <p className="text-body-sm mt-4 text-state-error">{publishError}</p>
+            )}
+          </>
         )}
       </div>
 
@@ -300,7 +348,7 @@ export function IdentifyFlow({
           </Button>
         )}
         {step === 4 && (
-          <Button size="lg" block type="button">
+          <Button size="lg" block type="button" loading={busy} onClick={runPublish}>
             Terbitkan
           </Button>
         )}

@@ -8,6 +8,10 @@ vi.mock('@/lib/image', () => ({
   downscaleImage: vi.fn(async (file: File) => file),
 }))
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}))
+
 const highConfidence: IdentificationResult = {
   prediction_id: 'p1',
   model_version: 'v1',
@@ -174,5 +178,31 @@ describe('IdentifyFlow', () => {
     const draft = JSON.parse(sessionStorage.getItem('fishora.operator.draft') ?? '{}')
     expect(draft.quantityKg).toBe('24')
     expect(draft.imageName).toBe('tenggiri.jpg')
+  })
+
+  it('publishes the verified prediction, never a caller-supplied species id', async () => {
+    const user = userEvent.setup()
+    const publishLot = vi.fn().mockResolvedValue({
+      id: 'lot_1',
+      public_slug: 'tenggiri-abcd1234',
+      status: 'active',
+    })
+    render(flow({ publishLot }))
+    await capture(user)
+    await user.click(screen.getByRole('button', { name: /identifikasi/i }))
+    await user.click(await screen.findByRole('button', { name: /konfirmasi/i }))
+    await user.click(await screen.findByRole('button', { name: /lanjut/i }))
+    await user.type(screen.getByLabelText(/kuantitas/i), '24')
+    await user.type(screen.getByLabelText(/harga awal/i), '68000')
+    await user.click(screen.getByRole('button', { name: /terbitkan/i }))
+    await waitFor(() => {
+      expect(publishLot).toHaveBeenCalledWith({
+        prediction_id: 'p1',
+        quantity_kg: '24',
+        starting_price_per_kg: '68000',
+        size_category: 'M',
+        landing_point_id: 'lp_muara_angke',
+      })
+    })
   })
 })
