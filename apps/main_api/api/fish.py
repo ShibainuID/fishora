@@ -135,19 +135,29 @@ async def knowledge_card(prediction_id: str, request: Request):
     # If async job exists, gate on its status (background LangGraph)
     job_repo = getattr(deps, "job_repo", None)
     if job_repo is not None:
+        # Try direct job_id lookup, then fallback to latest job by prediction_id
         job = job_repo.get(prediction_id)
+        if job is None and hasattr(job_repo, "list_by_prediction"):
+            try:
+                jobs = job_repo.list_by_prediction(prediction_id)
+                if jobs:
+                    # pick latest by created_at if available, else last
+                    job = sorted(jobs, key=lambda j: getattr(j, "created_at", ""), reverse=True)[0] if hasattr(jobs[0], "created_at") else jobs[-1]
+            except Exception:
+                job = None
         if job is not None:
             if job.status == "processing":
                 return JSONResponse(status_code=202, content={"detail": "Agent orchestrating...", "job_id": job.id, "status": "processing"})
-            if job.status == "completed" and job.final_card is not None:
-                # Reconstruct KnowledgeResponse from stored final_card
-                from apps.main_api.services.generation import KnowledgeCard
+            if job.status == "completed":
+                if job.final_card is not None:
+                    from apps.main_api.services.generation import KnowledgeCard
 
-                try:
-                    card = KnowledgeCard.model_validate(job.final_card)
-                    return KnowledgeResponse(prediction_id=job.prediction_id, species_id=job.species_id, card=card)
-                except Exception:
-                    pass  # fallback to sync generation
+                    try:
+                        card = KnowledgeCard.model_validate(job.final_card)
+                        return KnowledgeResponse(prediction_id=job.prediction_id, species_id=job.species_id, card=card)
+                    except Exception:
+                        return JSONResponse(status_code=502, content={"detail": "knowledge generation failed", "job_id": job.id, "status": "failed"})
+                return JSONResponse(status_code=502, content={"detail": "knowledge generation failed", "job_id": job.id, "status": "failed"})
             if job.status == "failed":
                 return JSONResponse(status_code=502, content={"detail": job.error or "knowledge generation failed", "job_id": job.id, "status": "failed"})
     return KnowledgeService(

@@ -133,8 +133,8 @@ def _expert_node(category: str, state: FishoraState, llm_luna) -> dict:
         by_source = {c.source_id for c in evidence}
         sources = [s for s in sources if s.get("source_id") in by_source][:3]
         data["sources"] = sources
-    except Exception as exc:
-        data = {"error": str(exc), "sources": []}
+    except Exception:
+        data = {"error": "expert generation failed", "sources": []}
         if category == "physical":
             data["physical_characteristics"] = None
         elif category == "taste":
@@ -209,7 +209,11 @@ def writer_node(state: FishoraState, llm_luna, species: SpeciesRecord | None = N
         "sources": [],
     }
     # collect sources from all experts, dedup, keep verified only
-    by_source = {c.source_id: c for c in evidence}
+    # filter only verified chunks/sources (reviewer #7)
+    verified_evidence = [c for c in evidence if c.chunk_verification_status == "verified" and c.source_verification_status == "verified"]
+    # use verified subset for citation check, but keep original for fallback empty check
+    filter_evidence = verified_evidence if verified_evidence else evidence
+    by_source = {c.source_id: c for c in filter_evidence}
     seen = set()
     for cat in ["physical", "taste", "commercial", "substitute"]:
         for s in outputs.get(cat, {}).get("sources", []):
@@ -217,8 +221,11 @@ def writer_node(state: FishoraState, llm_luna, species: SpeciesRecord | None = N
             if sid in by_source and sid not in seen:
                 merged["sources"].append({"source_id": sid})
                 seen.add(sid)
+    # reviewer #4: if evidence exists but llm missing and no sources, fail instead of silent empty completed
+    if filter_evidence and not merged["sources"] and llm_luna is None:
+        return {"error": "knowledge generation failed: no llm configured but evidence exists", "final_card": None}
     # if writer LLM provided, let it refine the merge
-    if llm_luna is not None and evidence:
+    if llm_luna is not None and filter_evidence:
         try:
             payload = json.dumps(merged, ensure_ascii=False)
             prompt = (
@@ -274,8 +281,8 @@ def writer_node(state: FishoraState, llm_luna, species: SpeciesRecord | None = N
             limitations=(merged.get("limitations", []) + guardrails),
             sources=[{"source_id": s.source_id} for s in sources_meta],
         )
-    except ValidationError as exc:
-        return {"error": str(exc), "final_card": None}
+    except ValidationError:
+        return {"error": "knowledge validation failed", "final_card": None}
     card = KnowledgeCard(
         common_name=gen.common_name,
         scientific_name=gen.scientific_name,
@@ -351,12 +358,13 @@ def run_graph(job_id: str, species_id: str, prediction_id: str, knowledge_repo, 
         final = result.get("final_card")
         err = result.get("error")
         if final is not None and err is None:
-            data = final.model_dump() if hasattr(final, "model_dump") else final
+            data = final.model_dump(mode="json") if hasattr(final, "model_dump") else final
             job_repo.update(job_id, status="completed", final_card=data, expert_outputs=result.get("expert_outputs"), critic_feedback=result.get("critic_feedback"))
         else:
-            job_repo.update(job_id, status="failed", error=err or "orchestrator failed", expert_outputs=result.get("expert_outputs"))
-    except Exception as exc:
+            # generic error, hide raw detail in response but keep expert_outputs for debug
+            job_repo.update(job_id, status="failed", error="knowledge generation failed", expert_outputs=result.get("expert_outputs"))
+    except Exception:
         try:
-            job_repo.update(job_id, status="failed", error=str(exc))
+            job_repo.update(job_id, status="failed", error="knowledge generation failed")
         except Exception:
             pass

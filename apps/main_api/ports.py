@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from apps.contracts import CVPredictionEnvelope
 from apps.main_api.contracts import (
     KnowledgeChunkWrite,
+    KnowledgeJobRecord,
     KnowledgeSourceWrite,
     PredictionRecord,
     RetrievedChunk,
@@ -87,10 +88,10 @@ class PredictionRepository(Protocol):
 
 
 class KnowledgeJobRepository(Protocol):
-    def create(self, job_id: str, prediction_id: str, species_id: str) -> object: ...
-    def get(self, job_id: str) -> object | None: ...
-    def update(self, job_id: str, status: str, **fields) -> object: ...
-    def list_by_prediction(self, prediction_id: str) -> list[object]: ...
+    def create(self, job_id: str, prediction_id: str, species_id: str) -> KnowledgeJobRecord: ...
+    def get(self, job_id: str) -> KnowledgeJobRecord | None: ...
+    def update(self, job_id: str, status: str | None = None, **fields) -> KnowledgeJobRecord | None: ...
+    def list_by_prediction(self, prediction_id: str) -> list[KnowledgeJobRecord]: ...
 
 
 @dataclass
@@ -113,4 +114,4 @@ class AppDependencies:
     knowledge_repo: KnowledgeRepository | None = None
     retriever: object | None = None  # VerifiedRetriever
     generator: object | None = None  # KnowledgeGenerator
-    job_repo: object | None = None  # KnowledgeJobRepository
+    job_repo: KnowledgeJobRepository | None = None
