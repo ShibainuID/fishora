@@ -1,7 +1,19 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { act, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MarketplaceView } from './marketplace-view'
-import { LOTS } from '@/test/msw/fixtures'
+import { listLots } from '@/lib/api/commerce'
+import { LOTS, lotFixture } from '@/test/msw/fixtures'
+
+vi.mock('@/lib/api/commerce', () => ({
+  listLots: vi.fn(),
+}))
+
+// jsdom always reports a visible tab, so the poll's own gate needs a lever.
+let hidden = false
+Object.defineProperty(document, 'visibilityState', {
+  configurable: true,
+  get: () => (hidden ? 'hidden' : 'visible'),
+})
 
 vi.mock('next/image', () => ({
   default: ({ alt, src }: { alt: string; src: string }) => <img alt={alt} src={src} />,
@@ -79,5 +91,99 @@ describe('MarketplaceView', () => {
   it('does not show match scores outside the matched view', () => {
     render(<MarketplaceView lots={LOTS} inventoryEmpty={false} matchScores={{ [LOTS[0].id]: 0.94 }} />)
     expect(screen.queryByText(/94% cocok/)).not.toBeInTheDocument()
+  })
+})
+
+describe('MarketplaceView live updates', () => {
+  const NEW_LOT = lotFixture({
+    id: 'lot_tenggiri_baru',
+    public_slug: 'tenggiri-baru',
+    quantity_kg: '31.000',
+  })
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.mocked(listLots).mockReset()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  const tick = async (ms: number) => {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(ms)
+    })
+  }
+
+  it('renders a lot that arrived after the first paint', async () => {
+    vi.mocked(listLots).mockResolvedValue([...LOTS, NEW_LOT])
+    const { container } = render(<MarketplaceView lots={LOTS} inventoryEmpty={false} />)
+    expect(container.querySelector('a[href="/marketplace/lot_tenggiri_baru"]')).toBeNull()
+
+    await tick(15_000)
+
+    expect(container.querySelector('a[href="/marketplace/lot_tenggiri_baru"]')).not.toBeNull()
+  })
+
+  it('polls with the filters in the url, not an empty query', async () => {
+    vi.mocked(listLots).mockResolvedValue(LOTS)
+    render(<MarketplaceView lots={LOTS} inventoryEmpty={false} />)
+
+    await tick(15_000)
+
+    expect(listLots).toHaveBeenCalledWith('species_id=species_tenggiri&status=active')
+    expect(listLots).not.toHaveBeenCalledWith('')
+  })
+
+  it('does not poll in the matched view', async () => {
+    vi.mocked(listLots).mockResolvedValue([...LOTS, NEW_LOT])
+    render(<MarketplaceView lots={LOTS} inventoryEmpty={false} matched />)
+
+    await tick(60_000)
+
+    expect(listLots).not.toHaveBeenCalled()
+  })
+
+  it('keeps the last good list when a poll fails', async () => {
+    vi.mocked(listLots).mockRejectedValue(new Error('offline'))
+    const { container } = render(<MarketplaceView lots={LOTS} inventoryEmpty={false} />)
+
+    await tick(30_000)
+
+    expect(container.querySelector('a[href="/marketplace/lot_tenggiri_1"]')).not.toBeNull()
+    expect(screen.queryByText('Tidak ada lot yang cocok dengan filter ini.')).toBeNull()
+  })
+
+  it('counts new arrivals instead of reordering silently', async () => {
+    vi.mocked(listLots).mockResolvedValue([...LOTS, NEW_LOT])
+    render(<MarketplaceView lots={LOTS} inventoryEmpty={false} />)
+
+    await tick(15_000)
+
+    const badge = screen.getByRole('button', { name: /1 lot baru/i })
+    expect(badge).toBeInTheDocument()
+    expect(badge.className).toContain('min-h-11')
+  })
+
+  it('stops polling while the tab is hidden and resumes when it returns', async () => {
+    vi.mocked(listLots).mockResolvedValue(LOTS)
+    render(<MarketplaceView lots={LOTS} inventoryEmpty={false} />)
+
+    await tick(15_000)
+    expect(listLots).toHaveBeenCalledTimes(1)
+
+    hidden = true
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+    await tick(60_000)
+    expect(listLots).toHaveBeenCalledTimes(1)
+
+    hidden = false
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+    expect(listLots).toHaveBeenCalledTimes(2)
   })
 })

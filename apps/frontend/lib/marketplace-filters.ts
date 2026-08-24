@@ -53,3 +53,16 @@ export function activeFilterCount(filters: MarketplaceFilters): number {
     Boolean(filters.minQuantity || filters.maxQuantity),
   ].filter(Boolean).length
 }
+
+/** The API query for a set of filters. Shared by the server page and the client
+ *  poll: if these drift, polling replaces filtered results with unfiltered. */
+export function lotApiQuery(filters: MarketplaceFilters): string {
+  const params = new URLSearchParams()
+  if (filters.species.length) params.set('species_id', `species_${filters.species[0]}`)
+  if (filters.minPrice) params.set('min_price', filters.minPrice)
+  if (filters.maxPrice) params.set('max_price', filters.maxPrice)
+  if (filters.minQuantity) params.set('min_quantity', filters.minQuantity)
+  if (filters.maxQuantity) params.set('max_quantity', filters.maxQuantity)
+  params.set('status', 'active')
+  return params.toString()
+}

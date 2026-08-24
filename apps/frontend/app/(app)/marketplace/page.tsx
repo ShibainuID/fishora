@@ -1,6 +1,7 @@
 import { MarketplaceView } from '@/components/marketplace/marketplace-view'
 import { listLots, type Lot } from '@/lib/api/commerce'
 import { getMeAsServer, getRecommendationsAsServer } from '@/lib/api/server'
+import { lotApiQuery, parseFilters } from '@/lib/marketplace-filters'
 
 export default async function MarketplacePage({
   searchParams,
@@ -8,14 +9,12 @@ export default async function MarketplacePage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
   const params = await searchParams
-  const query = new URLSearchParams()
-  const species = typeof params.species === 'string' ? params.species.split(',')[0] : undefined
-  if (species) query.set('species_id', `species_${species}`)
-  if (typeof params.min_price === 'string') query.set('min_price', params.min_price)
-  if (typeof params.max_price === 'string') query.set('max_price', params.max_price)
-  if (typeof params.min_qty === 'string') query.set('min_quantity', params.min_qty)
-  if (typeof params.max_qty === 'string') query.set('max_quantity', params.max_qty)
-  query.set('status', 'active')
+  // Same builder the client poll uses, so a refresh cannot change the result set.
+  const query = new URLSearchParams(lotApiQuery(parseFilters(new URLSearchParams(
+    Object.entries(params).flatMap(([key, value]) =>
+      typeof value === 'string' ? [[key, value] as [string, string]] : []
+    )
+  ).toString())))
 
   const wantsMatched = params.matched === '1'
 
