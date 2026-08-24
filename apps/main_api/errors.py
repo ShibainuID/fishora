@@ -66,3 +66,10 @@ class InvalidGeneratedKnowledge(Exception):
     def __init__(self, message: str, retrieved_chunk_ids: list[str]):
         super().__init__(message)
         self.retrieved_chunk_ids = list(retrieved_chunk_ids)
+
+
+class InvalidLot(Exception):
+    """Lot fields fail domain checks (non-positive quantity/price, bad size). Maps to HTTP 422."""
+
+    def __init__(self, message: str):
+        super().__init__(message)

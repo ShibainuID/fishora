@@ -1,6 +1,6 @@
 import math
 
-from apps.main_api.contracts import PredictionRecord, RetrievedChunk, SpeciesRecord
+from apps.main_api.contracts import LotRecord, PredictionRecord, RetrievedChunk, SpeciesRecord
 from apps.main_api.services.embeddings import E5_MODEL_NAME
 
 
@@ -64,6 +64,26 @@ class FakePredictionRepository:
 
     def all(self):
         return list(self._records.values())
+
+
+class FakeLotRepository:
+    """In-memory lots used by publication and bidding tests."""
+
+    def __init__(self, lots: dict[str, LotRecord] | None = None):
+        self._lots = dict(lots or {})
+
+    def create(self, lot: LotRecord) -> LotRecord:
+        self._lots[lot.id] = lot
+        return lot
+
+    def get(self, lot_id: str) -> LotRecord | None:
+        return self._lots.get(lot_id)
+
+    def get_by_slug(self, public_slug: str) -> LotRecord | None:
+        return next((lot for lot in self._lots.values() if lot.public_slug == public_slug), None)
+
+    def all(self) -> list[LotRecord]:
+        return list(self._lots.values())
 
 
 class FakeImageStore:
