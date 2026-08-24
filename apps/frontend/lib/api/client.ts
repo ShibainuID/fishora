@@ -35,14 +35,17 @@ export async function apiFetch<T>(
   if (!response.ok) {
     let detail = ''
     let chunkIds: string[] | undefined
+    let highest: string | undefined
     try {
       const body = await response.json()
       detail = typeof body?.detail === 'string' ? body.detail : ''
       chunkIds = Array.isArray(body?.retrieved_chunk_ids) ? body.retrieved_chunk_ids : undefined
+      highest =
+        typeof body?.current_highest_per_kg === 'string' ? body.current_highest_per_kg : undefined
     } catch {
       // Non-JSON error body: the status carries enough.
     }
-    throw new ApiError(kindFromResponse(response.status, detail), response.status, chunkIds)
+    throw new ApiError(kindFromResponse(response.status, detail, highest), response.status, chunkIds, highest)
   }
 
   if (response.status === 204) return undefined as T

@@ -11,6 +11,7 @@ export type ApiErrorKind =
   | 'cv_unavailable'
   | 'generation_unavailable'
   | 'generation_invalid'
+  | 'outbid'
   | 'server'
 
 // Kept separate from the server's `detail`, which can carry internal hostnames.
@@ -26,6 +27,7 @@ const MESSAGES: Record<ApiErrorKind, string> = {
   cv_unavailable: 'Layanan identifikasi sedang tidak tersedia.',
   generation_unavailable: 'Pembuatan kartu pengetahuan sedang tidak tersedia.',
   generation_invalid: 'Kartu pengetahuan gagal divalidasi.',
+  outbid: 'Penawaran harus lebih tinggi dari harga tertinggi saat ini.',
   server: 'Terjadi kesalahan. Coba lagi.',
 }
 
@@ -41,8 +43,14 @@ export class ApiError extends Error {
   readonly userMessage: string
   /** Generation failures only. For diagnosis, never for display. */
   readonly retrievedChunkIds?: string[]
+  readonly currentHighestPerKg?: string
 
-  constructor(kind: ApiErrorKind, status: number, retrievedChunkIds?: string[]) {
+  constructor(
+    kind: ApiErrorKind,
+    status: number,
+    retrievedChunkIds?: string[],
+    currentHighestPerKg?: string
+  ) {
     super(`ApiError(${kind}) status=${status}`)
     this.name = 'ApiError'
     this.kind = kind
@@ -50,15 +58,20 @@ export class ApiError extends Error {
     this.retryable = RETRYABLE.has(kind)
     this.userMessage = MESSAGES[kind]
     this.retrievedChunkIds = retrievedChunkIds
+    this.currentHighestPerKg = currentHighestPerKg
   }
 }
 
-export function kindFromResponse(status: number, detail: string): ApiErrorKind {
+export function kindFromResponse(
+  status: number,
+  detail: string,
+  currentHighestPerKg?: string
+): ApiErrorKind {
   switch (status) {
     case 400: return 'image_invalid'
     case 413: return 'image_too_large'
     case 404: return 'not_found'
-    case 409: return 'not_verified'
+    case 409: return currentHighestPerKg ? 'outbid' : 'not_verified'
     case 422: return 'unsupported_species'
     case 503: return 'cv_unavailable'
     case 502:
