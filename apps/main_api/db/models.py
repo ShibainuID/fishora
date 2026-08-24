@@ -1,7 +1,8 @@
 from datetime import datetime
+from decimal import Decimal
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, String, Text, func
+from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, Index, Numeric, String, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -72,3 +73,70 @@ class Prediction(Base):
     verification_status: Mapped[str] = mapped_column(String(20), nullable=False)
     verified_species_id: Mapped[str | None] = mapped_column(ForeignKey("fish_species.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class LandingPoint(Base):
+    __tablename__ = "landing_points"
+
+    id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    latitude: Mapped[float] = mapped_column(Float, nullable=False)
+    longitude: Mapped[float] = mapped_column(Float, nullable=False)
+
+
+class Lot(Base):
+    __tablename__ = "lots"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('draft', 'active', 'closed', 'allocated')",
+            name="ck_lots_status",
+        ),
+        CheckConstraint("quantity_kg > 0", name="ck_lots_quantity_positive"),
+        CheckConstraint("starting_price_per_kg > 0", name="ck_lots_price_positive"),
+        CheckConstraint("auction_ends_at > auction_starts_at", name="ck_lots_auction_window"),
+        CheckConstraint("size_category IN ('S', 'M', 'L')", name="ck_lots_size_category"),
+        UniqueConstraint("public_slug", name="uq_lots_public_slug"),
+    )
+
+    id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    prediction_id: Mapped[str] = mapped_column(ForeignKey("predictions.id"), nullable=False, index=True)
+    operator_id: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    species_id: Mapped[str] = mapped_column(ForeignKey("fish_species.id"), nullable=False, index=True)
+    landing_point_id: Mapped[str] = mapped_column(ForeignKey("landing_points.id"), nullable=False)
+    quantity_kg: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
+    size_category: Mapped[str] = mapped_column(String(1), nullable=False)
+    starting_price_per_kg: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    auction_starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    auction_ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    knowledge_snapshot: Mapped[dict | None] = mapped_column(JSONB)
+    public_slug: Mapped[str] = mapped_column(String(160), nullable=False)
+    allocated_buyer_id: Mapped[str | None] = mapped_column(String(120))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Bid(Base):
+    __tablename__ = "bids"
+    __table_args__ = (
+        CheckConstraint("amount_per_kg > 0", name="ck_bids_amount_positive"),
+        Index("ix_bids_lot_id_created_at", "lot_id", text("created_at DESC")),
+    )
+
+    id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    lot_id: Mapped[str] = mapped_column(ForeignKey("lots.id"), nullable=False)
+    buyer_id: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    amount_per_kg: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class BuyerPreference(Base):
+    __tablename__ = "buyer_preferences"
+
+    buyer_id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    business_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    intended_uses: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    characteristics: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    max_price_per_kg: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    min_quantity_kg: Mapped[Decimal | None] = mapped_column(Numeric(12, 3))
+    latitude: Mapped[float] = mapped_column(Float, nullable=False)
+    longitude: Mapped[float] = mapped_column(Float, nullable=False)

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 from typing import Literal
 
 
@@ -89,3 +90,21 @@ class TaxonomySeed:
     source: str
     notes: str | None
     taxonomy_status: str
+
+
+@dataclass
+class LotRecord:
+    id: str
+    prediction_id: str
+    operator_id: str
+    species_id: str
+    landing_point_id: str
+    quantity_kg: Decimal
+    size_category: Literal["S", "M", "L"]
+    starting_price_per_kg: Decimal
+    status: Literal["draft", "active", "closed", "allocated"]
+    auction_starts_at: datetime
+    auction_ends_at: datetime
+    public_slug: str
+    knowledge_snapshot: dict | None = None
+    allocated_buyer_id: str | None = None
