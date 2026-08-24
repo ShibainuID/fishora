@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from apps.contracts import ImageValidationError
 from apps.main_api.api.auth import router as auth_router
 from apps.main_api.api.buyers import router as buyers_router
+from apps.main_api.api.discover import router as discover_router
 from apps.main_api.api.fish import knowledge_router, router as fish_router
 from apps.main_api.api.lots import router as lots_router
 from apps.main_api.config import DEFAULT_CORS_ALLOW_ORIGINS, MainSettings, parse_origins
@@ -65,6 +66,7 @@ def create_main_app(settings: MainSettings | None = None, deps: AppDependencies 
     app.include_router(lots_router)
     app.include_router(buyers_router)
     app.include_router(auth_router)
+    app.include_router(discover_router)
     return app
 
 

@@ -63,11 +63,21 @@ class AllocateResponse(BaseModel):
 
 def _service(request: Request) -> LotService:
     deps = request.app.state.deps
+    knowledge_service = None
+    if deps.retriever is not None and deps.generator is not None:
+        from apps.main_api.services.knowledge import KnowledgeService
+
+        knowledge_service = KnowledgeService(
+            prediction_repo=deps.prediction_repo,
+            species_repo=deps.species_repo,
+            retriever=deps.retriever,
+            generator=deps.generator,
+        )
     return LotService(
         prediction_repo=deps.prediction_repo,
         lot_repo=deps.lot_repo,
         landing_point_repo=deps.landing_point_repo,
-        knowledge_service=None if deps.generator is None else None,
+        knowledge_service=knowledge_service,
     )
 
 
