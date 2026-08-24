@@ -3,8 +3,8 @@ from typing import Callable, Literal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from apps.main_api.contracts import PredictionRecord, SpeciesRecord
-from apps.main_api.db.models import FishSpecies, Prediction
+from apps.main_api.contracts import KnowledgeJobRecord, PredictionRecord, SpeciesRecord
+from apps.main_api.db.models import FishSpecies, KnowledgeJob, Prediction
 from apps.main_api.errors import PredictionNotFound
 
 
@@ -95,4 +95,60 @@ class SqlPredictionRepository:
             model_version=row.model_version,
             verification_status=row.verification_status,
             verified_species_id=row.verified_species_id,
+        )
+
+
+class SqlKnowledgeJobRepository:
+    def __init__(self, session_factory):
+        self._session_factory = session_factory
+
+    def create(self, job_id: str, prediction_id: str, species_id: str):
+        from datetime import datetime, timezone
+
+        row = KnowledgeJob(id=job_id, prediction_id=prediction_id, species_id=species_id, status="processing")
+        with self._session_factory() as session:
+            session.add(row)
+            session.commit()
+        return self._to_record(row)
+
+    def get(self, job_id: str):
+        with self._session_factory() as session:
+            return self._to_record(session.get(KnowledgeJob, job_id))
+
+    def update(self, job_id: str, status: str | None = None, **fields):
+        from datetime import datetime, timezone
+
+        with self._session_factory() as session:
+            row = session.get(KnowledgeJob, job_id)
+            if row is None:
+                return None
+            if status is not None:
+                row.status = status
+                if status in ("completed", "failed"):
+                    row.completed_at = datetime.now(timezone.utc)
+            for k, v in fields.items():
+                setattr(row, k, v)
+            session.commit()
+            return self._to_record(row)
+
+    def list_by_prediction(self, prediction_id: str):
+        from sqlalchemy import select
+
+        with self._session_factory() as session:
+            rows = session.scalars(select(KnowledgeJob).where(KnowledgeJob.prediction_id == prediction_id)).all()
+            return [self._to_record(r) for r in rows]
+
+    @staticmethod
+    def _to_record(row: KnowledgeJob | None):
+        if row is None:
+            return None
+        return KnowledgeJobRecord(
+            id=row.id,
+            prediction_id=row.prediction_id,
+            species_id=row.species_id,
+            status=row.status,
+            expert_outputs=row.expert_outputs,
+            critic_feedback=row.critic_feedback,
+            final_card=row.final_card,
+            error=row.error,
         )

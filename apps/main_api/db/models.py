@@ -140,3 +140,21 @@ class BuyerPreference(Base):
     min_quantity_kg: Mapped[Decimal | None] = mapped_column(Numeric(12, 3))
     latitude: Mapped[float] = mapped_column(Float, nullable=False)
     longitude: Mapped[float] = mapped_column(Float, nullable=False)
+
+
+class KnowledgeJob(Base):
+    __tablename__ = "knowledge_jobs"
+    __table_args__ = (
+        CheckConstraint("status IN ('processing', 'completed', 'failed')", name="ck_knowledge_jobs_status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    prediction_id: Mapped[str] = mapped_column(ForeignKey("predictions.id", ondelete="CASCADE"), nullable=False, index=True)
+    species_id: Mapped[str] = mapped_column(ForeignKey("fish_species.id"), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    expert_outputs: Mapped[dict | None] = mapped_column(JSONB)
+    critic_feedback: Mapped[str | None] = mapped_column(Text)
+    final_card: Mapped[dict | None] = mapped_column(JSONB)
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

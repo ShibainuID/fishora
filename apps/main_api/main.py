@@ -9,13 +9,14 @@ from apps.main_api.api.auth import router as auth_router
 from apps.main_api.api.buyers import router as buyers_router
 from apps.main_api.api.discover import router as discover_router
 from apps.main_api.api.fish import knowledge_router, router as fish_router
+from apps.main_api.api.jobs import router as jobs_router
 from apps.main_api.api.lots import router as lots_router
 from apps.main_api.config import DEFAULT_CORS_ALLOW_ORIGINS, MainSettings, parse_origins
 from apps.main_api.db.lot_repository import SqlLandingPointRepository, SqlLotRepository
 from apps.main_api.db.preference_repository import SqlPreferenceRepository
 from apps.main_api.db.repositories import TAXONOMY_STATUS_BY_LABEL, SqlKnowledgeRepository
 from apps.main_api.db.session import session_factory
-from apps.main_api.db.sql_repositories import SqlPredictionRepository, SqlSpeciesRepository
+from apps.main_api.db.sql_repositories import SqlKnowledgeJobRepository, SqlPredictionRepository, SqlSpeciesRepository
 from apps.main_api.errors import (
     BidOutbid,
     CvUnavailable,
@@ -68,6 +69,7 @@ def create_main_app(settings: MainSettings | None = None, deps: AppDependencies 
     app.include_router(buyers_router)
     app.include_router(auth_router)
     app.include_router(discover_router)
+    app.include_router(jobs_router)
     return app
 
 
@@ -132,6 +134,11 @@ def _ensure_production_deps(app: FastAPI) -> None:
     if deps.generator is None:
         # Lazy: a blank OPENCODE_GO_API_KEY must not break startup.
         deps.generator = KnowledgeGenerator(lambda: OpenCodeGoClient(settings))
+    if getattr(deps, "job_repo", None) is None:
+        try:
+            deps.job_repo = SqlKnowledgeJobRepository(deps.session_factory)
+        except Exception:
+            pass
 
 
 def _register_health(app: FastAPI) -> None:

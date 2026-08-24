@@ -49,3 +49,6 @@ class MainSettings(BaseSettings):
     @property
     def cors_origins(self) -> list[str]:
         return parse_origins(self.cors_allow_origins)
+    sub2api_base_url: str = Field(default="http://localhost:8080/v1", validation_alias=AliasChoices("FISHORA_SUB2API_BASE_URL", "sub2api_base_url"))
+    sub2api_api_key: SecretStr = Field(default=SecretStr(""), validation_alias=AliasChoices("FISHORA_SUB2API_API_KEY", "sub2api_api_key"))
+    llm_medium_model: str = Field(default="gpt-4o-mini", validation_alias=AliasChoices("FISHORA_LLM_MEDIUM_MODEL", "llm_medium_model"))

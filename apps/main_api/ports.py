@@ -90,6 +90,13 @@ class PredictionRepository(Protocol):
     ) -> PredictionRecord: ...
 
 
+class KnowledgeJobRepository(Protocol):
+    def create(self, job_id: str, prediction_id: str, species_id: str) -> object: ...
+    def get(self, job_id: str) -> object | None: ...
+    def update(self, job_id: str, status: str, **fields) -> object: ...
+    def list_by_prediction(self, prediction_id: str) -> list[object]: ...
+
+
 @dataclass
 class AppDependencies:
     """Small concrete bundle of ports for the main API.
@@ -114,3 +121,4 @@ class AppDependencies:
     preference_repo: object | None = None  # PreferenceRepository
     landing_point_repo: object | None = None
     session_service: object | None = None
+    job_repo: object | None = None  # KnowledgeJobRepository
