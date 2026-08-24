@@ -37,6 +37,7 @@ type PublishLotPayload = {
   size_category: 'S' | 'M' | 'L'
   landing_point_id: string
   auction_hours?: number
+  seller_fisher_group?: string
 }
 
 const DURATIONS = [
@@ -113,6 +114,7 @@ export function IdentifyFlow({
   const [size, setSize] = useState<Size>('M')
   const [pricePerKg, setPricePerKg] = useState('')
   const [landingPoint, setLandingPoint] = useState<string>(LANDING_POINTS[0])
+  const [fisherGroup, setFisherGroup] = useState('')
   const [duration, setDuration] = useState<(typeof DURATIONS)[number]['id']>('4h')
   const [publishError, setPublishError] = useState('')
 
@@ -124,12 +126,13 @@ export function IdentifyFlow({
         size,
         pricePerKg,
         landingPoint,
+        fisherGroup,
         duration,
         imageName: image?.name ?? null,
         step,
       })
     )
-  }, [quantityKg, size, pricePerKg, landingPoint, duration, image, step])
+  }, [quantityKg, size, pricePerKg, landingPoint, fisherGroup, duration, image, step])
 
   useEffect(() => {
     return () => {
@@ -252,6 +255,7 @@ export function IdentifyFlow({
         starting_price_per_kg: pricePerKg,
         size_category: size,
         landing_point_id: LANDING_POINT_IDS[landingPoint as (typeof LANDING_POINTS)[number]],
+        seller_fisher_group: fisherGroup.trim() || undefined,
         auction_hours: DURATIONS.find((option) => option.id === duration)?.hours ?? 4,
       })
       router.push('/operator/lots')
@@ -325,6 +329,8 @@ export function IdentifyFlow({
               pricePerKg={pricePerKg}
               landingPoint={landingPoint}
               duration={duration}
+            fisherGroup={fisherGroup}
+            onFisherGroup={setFisherGroup}
               onQuantity={setQuantityKg}
               onSize={setSize}
               onPrice={setPricePerKg}
@@ -478,6 +484,8 @@ function LotForm({
   pricePerKg,
   landingPoint,
   duration,
+  fisherGroup,
+  onFisherGroup,
   onQuantity,
   onSize,
   onPrice,
@@ -490,6 +498,8 @@ function LotForm({
   pricePerKg: string
   landingPoint: string
   duration: string
+  fisherGroup: string
+  onFisherGroup: (value: string) => void
   onQuantity: (value: string) => void
   onSize: (value: Size) => void
   onPrice: (value: string) => void
@@ -531,6 +541,14 @@ function LotForm({
           ))}
         </div>
       </fieldset>
+      <Field
+        label="Kelompok nelayan (opsional)"
+        value={fisherGroup}
+        onChange={(event) => onFisherGroup(event.target.value)}
+        maxLength={160}
+        placeholder="KUB Mina Sejahtera"
+        helper="Penjual atau kelompok nelayan yang mendaratkan tangkapan ini."
+      />
       <Field
         label="Harga awal per kg"
         inputMode="numeric"

@@ -65,7 +65,11 @@ export function Sheet({ open, onClose, title, footer, children }: SheetProps) {
       }}
       className={[
         'fixed inset-0 m-0 h-full max-h-none w-full max-w-none bg-transparent p-0',
-        'flex items-end justify-center md:items-center',
+        // `hidden open:flex`, not a bare `flex`: a bare display value overrides
+        // the browser rule that keeps a closed dialog hidden, which leaves every
+        // sheet permanently on screen. Keying off [open] also preserves the exit
+        // transition, since the attribute outlives the open prop.
+        'hidden items-end justify-center open:flex md:items-center',
         'backdrop:bg-abyss-950/55',
       ].join(' ')}
     >

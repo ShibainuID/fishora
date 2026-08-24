@@ -1,5 +1,6 @@
 import { LotDetail } from '@/components/lot/lot-detail'
-import { getDiscover, getLot } from '@/lib/api/commerce'
+import { getDiscover, getLot, listReviews, type Review } from '@/lib/api/commerce'
+import { getMeAsServer } from '@/lib/api/server'
 import type { KnowledgeCard } from '@/lib/api/fish'
 
 const EMPTY_CARD: KnowledgeCard = {
@@ -30,13 +31,30 @@ export default async function LotPage({
   } catch {
     // Snapshot is optional on a live lot that has not finished generation.
   }
+
+  // Fetch first, render after: JSX built inside a try/catch is not protected.
+  let reviews: Review[] = []
+  try {
+    reviews = await listReviews(id)
+  } catch {
+    // A missing signal list must not take the lot page down with it.
+  }
+
+  let canReview = false
+  try {
+    const me = await getMeAsServer()
+    canReview = me.role === 'buyer' && lot.allocated_buyer_id === me.id
+  } catch {
+    // Anonymous or expired session: the list alone, with no form.
+  }
+
   return (
     <LotDetail
       lot={lot}
       card={card}
       reasons={[]}
-      signals={[{ businessType: 'Rumah Makan Cendana', useCase: 'Digoreng' }]}
-      photoUrl="/fish/placeholder.jpg"
+      reviews={reviews}
+      canReview={canReview}
     />
   )
 }

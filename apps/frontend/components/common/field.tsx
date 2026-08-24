@@ -14,6 +14,9 @@ export interface FieldProps
   prefix?: ReactNode
   /** Inside the trailing edge, e.g. `kg`. */
   suffix?: ReactNode
+  /** Renders a textarea. For long free text, where an input is unusable. */
+  multiline?: boolean
+  rows?: number
 }
 
 export function Field({
@@ -22,6 +25,8 @@ export function Field({
   error,
   prefix,
   suffix,
+  multiline = false,
+  rows = 4,
   className = '',
   ...rest
 }: FieldProps) {
@@ -50,13 +55,24 @@ export function Field({
             {prefix}
           </span>
         )}
-        <input
-          {...rest}
-          id={id}
-          aria-invalid={invalid || undefined}
-          aria-describedby={describedBy}
-          className="min-h-11 w-full bg-transparent text-ink outline-none"
-        />
+        {multiline ? (
+          <textarea
+            {...(rest as React.TextareaHTMLAttributes<HTMLTextAreaElement>)}
+            id={id}
+            rows={rows}
+            aria-invalid={invalid || undefined}
+            aria-describedby={describedBy}
+            className="min-h-11 w-full resize-y bg-transparent py-2 text-ink outline-none"
+          />
+        ) : (
+          <input
+            {...rest}
+            id={id}
+            aria-invalid={invalid || undefined}
+            aria-describedby={describedBy}
+            className="min-h-11 w-full bg-transparent text-ink outline-none"
+          />
+        )}
         {suffix && (
           <span className="text-num-sm shrink-0 text-ink-muted" aria-hidden>
             {suffix}

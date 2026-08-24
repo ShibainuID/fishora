@@ -12,6 +12,11 @@ import { Stratum } from '@/components/marketing/sea-strata'
  * still visually distinct.
  *
  * Deterministic from the label, so the same fish always looks the same.
+ *
+ * The caller owns the box. className lands on the root, so a caller can pass
+ * `absolute inset-0` or `aspect-[4/3] w-full` and either works; the root never
+ * sets its own position, because a position utility here would beat the
+ * caller's by stylesheet order and silently collapse the box to zero height.
  */
 export function SpeciesArt({
   label,
@@ -25,26 +30,31 @@ export function SpeciesArt({
 
   return (
     <div
-      className={`relative overflow-hidden bg-abyss-900 ${className}`}
+      className={`overflow-hidden bg-abyss-800 ${className}`}
       role="img"
       aria-label={`Ilustrasi ${name}`}
     >
-      {/* Depth, angled per species so no two cards share a horizon. */}
-      <div
-        className="absolute inset-0"
-        style={{ transform: `rotate(${tone.tilt}deg) scale(1.25)` }}
-      >
-        <Stratum depth={2} className="absolute inset-x-0 top-[38%] h-[62%] w-full" />
-        <Stratum depth={4} className="absolute inset-x-0 top-[62%] h-[52%] w-full" />
+      {/* Containing block for the strata, kept off the root so the caller's
+          position utility is free to win. */}
+      <div className="relative size-full">
+        {/* Depth, angled per species so no two cards share a horizon. */}
+        <div
+          className="absolute inset-0"
+          style={{ transform: `rotate(${tone.tilt}deg) scale(1.25)` }}
+        >
+          <Stratum depth={0} className="absolute inset-x-0 top-[26%] h-[74%] w-full" />
+          <Stratum depth={2} className="absolute inset-x-0 top-[50%] h-[64%] w-full" />
+          <Stratum depth={4} className="absolute inset-x-0 top-[74%] h-[50%] w-full" />
+        </div>
+
+        {/* One light per species, placed differently each time. */}
+        <div
+          className="absolute size-24 rounded-full bg-[radial-gradient(circle,var(--color-lamp-400)_0%,transparent_66%)] blur-xl"
+          style={{ left: `${tone.lightX}%`, top: `${tone.lightY}%`, opacity: tone.lightOpacity }}
+        />
+
+        <p className="text-num-sm absolute bottom-3 left-3 text-abyss-100">{name}</p>
       </div>
-
-      {/* One light per species, placed differently each time. */}
-      <div
-        className="absolute size-24 rounded-full bg-[radial-gradient(circle,var(--color-lamp-400)_0%,transparent_66%)] blur-xl"
-        style={{ left: `${tone.lightX}%`, top: `${tone.lightY}%`, opacity: tone.lightOpacity }}
-      />
-
-      <p className="text-num-sm absolute bottom-3 left-3 text-abyss-200">{name}</p>
     </div>
   )
 }

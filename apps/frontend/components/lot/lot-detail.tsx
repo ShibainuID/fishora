@@ -3,19 +3,20 @@
 import { useState } from 'react'
 import { KnowledgeCardView } from '@/components/fish/knowledge-card'
 import { MarketSignals } from '@/components/fish/market-signals'
+import { SpeciesArt } from '@/components/fish/species-art'
 import { SpeciesHeader } from '@/components/fish/species-header'
 import { Button } from '@/components/common/button'
 import { Field } from '@/components/common/field'
 import { Sheet } from '@/components/common/sheet'
+import { ReviewForm } from '@/components/buyer/review-form'
 import { MatchReasons } from '@/components/lot/match-reasons'
 import { Countdown } from '@/components/lot/countdown'
 import { ApiError } from '@/lib/api/errors'
-import { placeBid } from '@/lib/api/commerce'
+import { placeBid, type Review } from '@/lib/api/commerce'
 import { kilograms, rupiahPerKg } from '@/lib/format'
 import { Z } from '@/lib/z'
 import type { components } from '@/lib/api/schema'
 import type { KnowledgeCard } from '@/lib/api/fish'
-import type { MarketSignal } from '@/components/fish/market-signals'
 
 type Lot = components['schemas']['LotResponse']
 type Reason = components['schemas']['MatchReasonResponse']
@@ -24,15 +25,20 @@ export function LotDetail({
   lot,
   card,
   reasons,
-  signals,
+  reviews,
+  canReview = false,
   photoUrl,
 }: {
   lot: Lot
   card: KnowledgeCard
   reasons: Reason[]
-  signals: MarketSignal[]
-  photoUrl: string
+  reviews: Review[]
+  /** Only the buyer holding the allocation may write one. */
+  canReview?: boolean
+  /** A real photograph when one exists. Falls back to the species composition. */
+  photoUrl?: string
 }) {
+  const [posted, setPosted] = useState<Review[]>([])
   const [highest, setHighest] = useState(Number(lot.current_highest_per_kg ?? lot.starting_price_per_kg))
   const [amount, setAmount] = useState(String(highest + 1000))
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -76,7 +82,15 @@ export function LotDetail({
         </div>
       )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={photoUrl} alt="" className="aspect-[4/3] w-full rounded-2xl object-cover" />
+      {photoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- operator upload, arbitrary origin
+        <img src={photoUrl} alt="" className="aspect-[4/3] w-full rounded-2xl object-cover" />
+      ) : (
+        <SpeciesArt
+          label={lot.species_id.replace('species_', '')}
+          className="aspect-[4/3] w-full rounded-2xl"
+        />
+      )}
       <dl className="grid grid-cols-2 gap-3">
         <div>
           <dt className="text-label text-ink-muted">Volume</dt>
@@ -88,7 +102,8 @@ export function LotDetail({
         </div>
       </dl>
       <KnowledgeCardView card={card} label={label} />
-      <MarketSignals signals={signals} />
+      <MarketSignals reviews={[...posted, ...reviews]} />
+      {canReview && <ReviewForm lotId={lot.id} onSubmitted={(review) => setPosted((current) => [review, ...current])} />}
 
       <div
         className="fixed inset-x-0 bottom-0 flex items-center justify-between gap-3 border-t border-line bg-surface px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] lg:hidden"

@@ -253,7 +253,6 @@ export function MarketplaceView({
               <Link key={lot.id} href={`/marketplace/${lot.id}`}>
                 <LotCard
                   lot={lot}
-                  photoUrl="/fish/placeholder.jpg"
                   matchPercent={showMatched ? matchScores[lot.id] : undefined}
                 />
               </Link>

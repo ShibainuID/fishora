@@ -6,6 +6,8 @@ export type ApiErrorKind =
   | 'image_too_large'
   | 'not_found'
   | 'not_verified'
+  | 'forbidden'
+  | 'lot_not_allocated'
   | 'unsupported_species'
   | 'cv_label_unsupported'
   | 'cv_unavailable'
@@ -22,6 +24,8 @@ const MESSAGES: Record<ApiErrorKind, string> = {
   image_too_large: 'Gambar terlalu besar. Maksimum 10 MB.',
   not_found: 'Data tidak ditemukan.',
   not_verified: 'Spesies belum diverifikasi. Konfirmasi dulu sebelum lanjut.',
+  forbidden: 'Tindakan ini tidak diizinkan untuk akun Anda.',
+  lot_not_allocated: 'Lot ini belum dialokasikan.',
   unsupported_species: 'Spesies ini belum didukung.',
   cv_label_unsupported: 'Model mengembalikan spesies yang belum didukung.',
   cv_unavailable: 'Layanan identifikasi sedang tidak tersedia.',

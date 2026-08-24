@@ -14,6 +14,9 @@ export type DiscoverResponse = Omit<
 > & { card: KnowledgeCard }
 export type PreferenceRequest = components['schemas']['PreferenceRequest']
 
+export type Review = components['schemas']['ReviewResponse']
+export type ReviewPayload = components['schemas']['ReviewRequest']
+
 export function listLots(query = '') {
   return apiFetch<Lot[]>(`/api/v1/lots${query ? `?${query}` : ''}`)
 }
@@ -39,6 +42,19 @@ export function allocateLot(lotId: string) {
     `/api/v1/lots/${encodeURIComponent(lotId)}/allocate`,
     { method: 'POST' }
   )
+}
+
+export function submitReview(lotId: string, payload: ReviewPayload) {
+  return apiFetch<Review>(`/api/v1/lots/${encodeURIComponent(lotId)}/review`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+/** Public, and keyed on species: other buyers' experience of the same fish. */
+export function listReviews(lotId: string) {
+  return apiFetch<Review[]>(`/api/v1/lots/${encodeURIComponent(lotId)}/reviews`)
 }
 
 export function savePreferences(buyerId: string, payload: PreferenceRequest) {
@@ -86,6 +102,7 @@ export function publishLot(payload: {
   size_category: 'S' | 'M' | 'L'
   landing_point_id: string
   auction_hours?: number
+  seller_fisher_group?: string
 }) {
   return apiFetch<Lot>('/api/v1/lots', {
     method: 'POST',

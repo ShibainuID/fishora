@@ -1,0 +1,161 @@
+'use client'
+
+import { useId, useState } from 'react'
+import { Button } from '@/components/common/button'
+import { Field } from '@/components/common/field'
+import { ApiError } from '@/lib/api/errors'
+import { submitReview, type Review } from '@/lib/api/commerce'
+
+const RATINGS = [1, 2, 3, 4, 5] as const
+const MAX_USE = 120
+const MAX_COMMENT = 2000
+
+// ApiError's shared copy answers bidding and identification, so the statuses
+// this endpoint owns get their own lines instead of "Terjadi kesalahan".
+const BY_STATUS: Record<number, string> = {
+  401: 'Masuk sebagai pembeli dulu untuk menulis ulasan.',
+  403: 'Ulasan hanya bisa ditulis oleh pembeli yang mendapat alokasi lot ini.',
+  409: 'Lot ini belum dialokasikan. Ulasan bisa ditulis setelah alokasi selesai.',
+  422: 'Nilai kesesuaian olahan harus antara 1 dan 5.',
+}
+
+export function ReviewForm({
+  lotId,
+  onSubmitted,
+}: {
+  lotId: string
+  onSubmitted?: (review: Review) => void
+}) {
+  const groupId = useId()
+  const [actualUse, setActualUse] = useState('')
+  const [suitability, setSuitability] = useState(3)
+  const [substitute, setSubstitute] = useState(false)
+  const [comment, setComment] = useState('')
+  const [useError, setUseError] = useState('')
+  const [error, setError] = useState('')
+  const [saved, setSaved] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault()
+    const trimmedUse = actualUse.trim()
+    if (!trimmedUse) {
+      setUseError('Tulis dulu penggunaan ikan ini.')
+      return
+    }
+    const trimmedComment = comment.trim()
+    setUseError('')
+    setError('')
+    setSaved(false)
+    setBusy(true)
+    try {
+      const review = await submitReview(lotId, {
+        actual_use: trimmedUse,
+        processing_suitability: suitability,
+        substitute_acceptance: substitute,
+        // An empty box is not a comment, so it is left out of the body.
+        ...(trimmedComment ? { comment: trimmedComment } : {}),
+      })
+      setSaved(true)
+      setActualUse('')
+      setComment('')
+      onSubmitted?.(review)
+    } catch (cause) {
+      if (cause instanceof ApiError) {
+        setError(BY_STATUS[cause.status] ?? cause.userMessage)
+      } else {
+        setError('Gagal mengirim ulasan. Coba lagi.')
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form className="flex flex-col gap-4 rounded-2xl bg-bg-sunken px-5 py-5" onSubmit={submit}>
+      <div>
+        <h2 className="text-h3 text-ink">Tulis ulasan</h2>
+        <p className="text-body-sm mt-1 text-ink-muted">
+          Pengalaman Anda memakai ikan ini. Terbaca oleh pembeli lain, bukan sebagai pengetahuan
+          terverifikasi.
+        </p>
+      </div>
+
+      <Field
+        label="Dipakai untuk apa"
+        placeholder="Digoreng utuh"
+        maxLength={MAX_USE}
+        value={actualUse}
+        onChange={(event) => {
+          setActualUse(event.target.value)
+          setSaved(false)
+        }}
+        error={useError || undefined}
+      />
+
+      <fieldset>
+        <legend className="text-label text-ink">Kesesuaian olahan</legend>
+        {/* Five discrete options. DESIGN.md 8.5 bans a filled track here. */}
+        <div className="mt-2 flex flex-wrap gap-2">
+          {RATINGS.map((value) => (
+            <label
+              key={value}
+              className={`text-num-sm flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-full border px-4 tabular-nums ${
+                suitability === value ? 'border-ink bg-surface text-ink' : 'border-line text-ink-muted'
+              }`}
+            >
+              <input
+                type="radio"
+                className="sr-only"
+                name={`${groupId}-suitability`}
+                value={value}
+                checked={suitability === value}
+                onChange={() => {
+                  setSuitability(value)
+                  setSaved(false)
+                }}
+              />
+              {value}
+            </label>
+          ))}
+        </div>
+        <p className="text-body-sm mt-2 text-ink-muted">1 kurang sesuai, 5 sangat sesuai.</p>
+      </fieldset>
+
+      <label className="flex min-h-11 items-center gap-3 text-body-sm text-ink">
+        <input
+          type="checkbox"
+          className="size-5"
+          checked={substitute}
+          onChange={(event) => {
+            setSubstitute(event.target.checked)
+            setSaved(false)
+          }}
+        />
+        Bisa dipakai sebagai pengganti spesies lain
+      </label>
+
+      <Field
+        multiline
+        rows={4}
+        label="Catatan (opsional)"
+        placeholder="Catatan singkat untuk pembeli lain"
+        maxLength={MAX_COMMENT}
+        value={comment}
+        onChange={(event) => {
+          setComment(event.target.value)
+          setSaved(false)
+        }}
+      />
+
+      <div className="flex flex-col gap-2">
+        <Button block type="submit" loading={busy}>
+          Kirim ulasan
+        </Button>
+        <p className="text-body-sm min-h-5 text-ink-muted" aria-live="polite">
+          {error ? <span className="text-state-error">{error}</span> : saved ? 'Ulasan terkirim.' : ' '}
+        </p>
+      </div>
+    </form>
+  )
+}

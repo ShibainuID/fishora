@@ -2,13 +2,15 @@ import Image from 'next/image'
 import { Countdown } from '@/components/lot/countdown'
 import { kilograms, percent, rupiahPerKg } from '@/lib/format'
 import { resolveSpecies } from '@/lib/species'
+import { SpeciesArt } from '@/components/fish/species-art'
 import type { components } from '@/lib/api/schema'
 
 export type Lot = components['schemas']['LotResponse']
 
 export interface LotCardProps {
   lot: Lot
-  photoUrl: string
+  /** A real photograph when one exists. Falls back to the species composition. */
+  photoUrl?: string
   /** Only passed from the matched view. */
   matchPercent?: number
 }
@@ -21,7 +23,11 @@ export function LotCard({ lot, photoUrl, matchPercent }: LotCardProps) {
   return (
     <article className="flex flex-col gap-3 lg:transition-transform lg:hover:-translate-y-[2px]">
       <div className="relative aspect-[4/3] overflow-hidden rounded-[var(--radius-card)] bg-bg-sunken">
-        <Image src={photoUrl} alt={names.commonName} fill className="object-cover" sizes="(max-width: 640px) 100vw, 33vw" />
+        {photoUrl ? (
+          <Image src={photoUrl} alt={names.commonName} fill className="object-cover" sizes="(max-width: 640px) 100vw, 33vw" />
+        ) : (
+          <SpeciesArt label={label} className="absolute inset-0" />
+        )}
       </div>
       <div className="flex flex-col gap-1 px-1">
         <div className="flex items-center justify-between gap-2">

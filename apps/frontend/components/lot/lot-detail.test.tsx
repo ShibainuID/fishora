@@ -7,11 +7,26 @@ import { ApiError } from '@/lib/api/errors'
 
 vi.mock('@/lib/api/commerce', () => ({
   placeBid: vi.fn(),
+  submitReview: vi.fn(),
+  listReviews: vi.fn(),
 }))
 
-import { placeBid } from '@/lib/api/commerce'
+import { placeBid, submitReview, type Review } from '@/lib/api/commerce'
 
-const signals = [{ businessType: 'Rumah Makan Cendana', useCase: 'Digoreng' }] // mock
+// mock: one buyer's experience of this species, shaped like the API response
+const reviews: Review[] = [
+  {
+    id: 'rev_1',
+    lot_id: 'lot_tenggiri_1',
+    species_id: 'species_tenggiri',
+    buyer_id: 'buyer_dewi',
+    actual_use: 'Digoreng utuh untuk katering',
+    processing_suitability: 4,
+    substitute_acceptance: true,
+    comment: 'Cocok untuk porsi rumah makan.',
+    created_at: '2026-08-24T12:00:00+00:00',
+  },
+]
 
 describe('LotDetail', () => {
   it('puts MatchReasons above the photograph and the bid in a phone bottom bar', () => {
@@ -20,7 +35,7 @@ describe('LotDetail', () => {
         lot={lotFixture()}
         card={CARD}
         reasons={REASONS}
-        signals={signals}
+        reviews={reviews}
         photoUrl="/fish/tenggiri.jpg"
       />
     )
@@ -39,7 +54,7 @@ describe('LotDetail', () => {
         lot={lotFixture()}
         card={CARD}
         reasons={REASONS}
-        signals={signals}
+        reviews={reviews}
         photoUrl="/fish.jpg"
       />
     )
@@ -62,7 +77,7 @@ describe('LotDetail', () => {
         lot={lotFixture()}
         card={CARD}
         reasons={REASONS}
-        signals={signals}
+        reviews={reviews}
         photoUrl="/fish.jpg"
       />
     )
@@ -79,7 +94,7 @@ describe('LotDetail', () => {
         lot={lotFixture({ status: 'closed' })}
         card={CARD}
         reasons={REASONS}
-        signals={signals}
+        reviews={reviews}
         photoUrl="/fish.jpg"
       />
     )
@@ -93,7 +108,7 @@ describe('LotDetail', () => {
         lot={lotFixture()}
         card={CARD}
         reasons={[]}
-        signals={signals}
+        reviews={reviews}
         photoUrl="/fish.jpg"
       />
     )
@@ -109,5 +124,70 @@ describe('LotDetail', () => {
     }
     const shared = ancestors(knowledge).filter((node) => ancestors(signalsNode).includes(node))
     expect(shared[0]).toHaveAttribute('data-page', 'lot-detail')
+  })
+
+  it('renders the real reviews the page fetched, not a hardcoded signal', () => {
+    render(
+      <LotDetail
+        lot={lotFixture()}
+        card={CARD}
+        reasons={[]}
+        reviews={reviews}
+        photoUrl="/fish.jpg"
+      />
+    )
+    expect(screen.getByText('Digoreng utuh untuk katering')).toBeInTheDocument()
+    expect(screen.getByText('Cocok untuk porsi rumah makan.')).toBeInTheDocument()
+    expect(screen.queryByText('Rumah Makan Cendana')).not.toBeInTheDocument()
+  })
+
+  it('shows an empty state, not a blank area, when no one has reviewed yet', () => {
+    render(
+      <LotDetail
+        lot={lotFixture()}
+        card={CARD}
+        reasons={[]}
+        reviews={[]}
+        photoUrl="/fish.jpg"
+      />
+    )
+    expect(screen.getByText(/belum ada umpan balik/i)).toBeInTheDocument()
+  })
+
+  it('hides the review form from anyone who is not the allocated buyer', () => {
+    render(
+      <LotDetail
+        lot={lotFixture()}
+        card={CARD}
+        reasons={[]}
+        reviews={reviews}
+        photoUrl="/fish.jpg"
+      />
+    )
+    expect(screen.queryByRole('button', { name: 'Kirim ulasan' })).toBeNull()
+  })
+
+  it('offers the review form to the allocated buyer and grows the list on submit', async () => {
+    const user = userEvent.setup()
+    vi.mocked(submitReview).mockResolvedValue({
+      ...reviews[0],
+      id: 'rev_2',
+      actual_use: 'Dipepes',
+      processing_suitability: 5,
+      comment: null,
+    })
+    render(
+      <LotDetail
+        lot={lotFixture({ status: 'allocated', allocated_buyer_id: 'buyer_dewi' })}
+        card={CARD}
+        reasons={[]}
+        reviews={reviews}
+        canReview
+        photoUrl="/fish.jpg"
+      />
+    )
+    await user.type(screen.getByLabelText(/dipakai untuk apa/i), 'Dipepes')
+    await user.click(screen.getByRole('button', { name: 'Kirim ulasan' }))
+    expect(await screen.findByText('Dipepes')).toBeInTheDocument()
   })
 })
