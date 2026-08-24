@@ -77,3 +77,14 @@ def test_operator_cannot_publish_as_another_operator():
     ok = client.post("/api/v1/lots", json=PUBLISH)
     assert ok.status_code == 200
     assert ok.json()["operator_id"] == "op_rian"
+
+
+def test_me_requires_a_session_and_logout_clears_it():
+    client = _client()
+    assert client.get("/api/v1/auth/me").status_code == 401
+    client.post("/api/v1/auth/login", json={"username": "dewi", "password": "demo"})
+    me = client.get("/api/v1/auth/me")
+    assert me.status_code == 200
+    assert me.json()["username"] == "dewi"
+    client.post("/api/v1/auth/logout")
+    assert client.get("/api/v1/auth/me").status_code == 401

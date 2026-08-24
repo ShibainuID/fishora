@@ -34,3 +34,16 @@ def login(payload: LoginRequest, request: Request, response: Response):
         path="/",
     )
     return _body(user)
+
+
+@router.post("/logout")
+def logout(response: Response):
+    response.delete_cookie(COOKIE_NAME, path="/")
+    return {"ok": True}
+
+
+@router.get("/me", response_model=SessionResponse)
+def me(request: Request):
+    from apps.main_api.services.session import current_user
+
+    return _body(current_user(request))

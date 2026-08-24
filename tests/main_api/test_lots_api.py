@@ -95,6 +95,28 @@ def test_bid_on_closed_lot_is_409():
     assert "closed" in response.json()["detail"]
 
 
+def test_operator_can_close_an_active_lot_then_allocate():
+    lots = FakeLotRepository({"lot_1": _lot()})
+    client, _ = _client(lots)
+    _login(client, "dewi")
+    assert client.post("/api/v1/lots/lot_1/bids", json={"amount_per_kg": "70000"}).status_code == 200
+    _login(client, "rian")
+    closed = client.post("/api/v1/lots/lot_1/close")
+    assert closed.status_code == 200
+    assert closed.json()["status"] == "closed"
+    allocated = client.post("/api/v1/lots/lot_1/allocate")
+    assert allocated.status_code == 200
+    assert allocated.json()["allocated_buyer_id"] == "buyer_dewi"
+
+
+def test_buyer_cannot_close_a_lot():
+    lots = FakeLotRepository({"lot_1": _lot()})
+    client, _ = _client(lots)
+    _login(client, "dewi")
+    response = client.post("/api/v1/lots/lot_1/close")
+    assert response.status_code == 403
+
+
 def test_allocate_requires_closed_lot_and_is_idempotent():
     lots = FakeLotRepository({"lot_1": _lot()})
     client, _ = _client(lots)

@@ -121,6 +121,9 @@ def _ensure_production_deps(app: FastAPI) -> None:
         deps.lot_repo = SqlLotRepository(deps.session_factory)
     if deps.landing_point_repo is None:
         deps.landing_point_repo = SqlLandingPointRepository(deps.session_factory)
+        from apps.main_api.services.landing_points import seed_demo_landing_points
+
+        seed_demo_landing_points(deps.landing_point_repo)
     if deps.preference_repo is None:
         deps.preference_repo = SqlPreferenceRepository(deps.session_factory)
     if deps.retriever is None:

@@ -141,6 +141,16 @@ class FakeLotRepository:
         self._bids.setdefault(lot_id, []).append(bid)
         return bid
 
+    def close(self, lot_id: str) -> LotRecord:
+        lot = self.get(lot_id)
+        if lot is None:
+            raise LotNotFound(lot_id)
+        if lot.status == "allocated":
+            raise LotNotAllocatable(lot_id, "allocated lot cannot be closed")
+        if lot.status != "closed":
+            lot.status = "closed"
+        return lot
+
     def allocate(self, lot_id: str, now: datetime | None = None) -> LotRecord:
         lot = self.get(lot_id)
         if lot is None:
@@ -164,6 +174,10 @@ class FakeLotRepository:
 class FakeLandingPointRepository:
     def __init__(self, points: list[LandingPointRecord] | None = None):
         self._by_id = {point.id: point for point in (points or [])}
+
+    def upsert(self, point: LandingPointRecord) -> LandingPointRecord:
+        self._by_id[point.id] = point
+        return point
 
     def get(self, landing_point_id: str) -> LandingPointRecord | None:
         return self._by_id.get(landing_point_id)

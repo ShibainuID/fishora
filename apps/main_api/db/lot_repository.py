@@ -98,6 +98,19 @@ class SqlLotRepository:
             session.refresh(bid)
             return self._to_bid(bid)
 
+    def close(self, lot_id: str) -> LotRecord:
+        with self._session_factory() as session:
+            lot = session.execute(select(Lot).where(Lot.id == lot_id).with_for_update()).scalar_one_or_none()
+            if lot is None:
+                raise LotNotFound(lot_id)
+            if lot.status == "allocated":
+                raise LotNotAllocatable(lot_id, "allocated lot cannot be closed")
+            if lot.status != "closed":
+                lot.status = "closed"
+                session.commit()
+                session.refresh(lot)
+            return self._to_lot(lot)
+
     def allocate(self, lot_id: str, now: datetime | None = None) -> LotRecord:
         clock = now or datetime.now(timezone.utc)
         with self._session_factory() as session:
@@ -173,3 +186,22 @@ class SqlLandingPointRepository:
                 LandingPointRecord(id=row.id, name=row.name, latitude=row.latitude, longitude=row.longitude)
                 for row in rows
             ]
+
+    def upsert(self, point: LandingPointRecord) -> LandingPointRecord:
+        with self._session_factory() as session:
+            row = session.get(LandingPoint, point.id)
+            if row is None:
+                session.add(
+                    LandingPoint(
+                        id=point.id,
+                        name=point.name,
+                        latitude=point.latitude,
+                        longitude=point.longitude,
+                    )
+                )
+            else:
+                row.name = point.name
+                row.latitude = point.latitude
+                row.longitude = point.longitude
+            session.commit()
+        return point

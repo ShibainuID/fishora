@@ -5,7 +5,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 # Both spellings, since tools disagree on which they resolve.
-DEFAULT_CORS_ALLOW_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000"
+DEFAULT_CORS_ALLOW_ORIGINS = (
+    "http://localhost:3000,http://127.0.0.1:3000,"
+    "http://localhost:3111,http://127.0.0.1:3111"
+)
 
 
 def parse_origins(value: str) -> list[str]:

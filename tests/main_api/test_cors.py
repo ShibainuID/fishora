@@ -75,9 +75,11 @@ def test_default_origins_cover_local_frontend_development(monkeypatch):
     monkeypatch.setenv("FISHORA_DATABASE_URL", "postgresql+psycopg://x:y@localhost:5432/z")
     monkeypatch.delenv("FISHORA_CORS_ALLOW_ORIGINS", raising=False)
     settings = MainSettings()
-    # Both spellings, since tools disagree on which one they resolve.
+    # Next defaults to 3000; Playwright in this repo serves the app on 3111.
     assert "http://localhost:3000" in settings.cors_origins
     assert "http://127.0.0.1:3000" in settings.cors_origins
+    assert "http://localhost:3111" in settings.cors_origins
+    assert "http://127.0.0.1:3111" in settings.cors_origins
 
 
 def test_blank_origins_setting_denies_everything(monkeypatch):

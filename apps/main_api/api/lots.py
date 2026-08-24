@@ -177,6 +177,16 @@ def list_bids(lot_id: str, request: Request):
     return [_bid_response(bid) for bid in service.list_bids(lot_id)]
 
 
+@router.post("/{lot_id}/close", response_model=LotResponse)
+def close_lot(lot_id: str, request: Request):
+    user = require_role(request, "operator")
+    service = _service(request)
+    lot = service.get(lot_id)
+    if lot.operator_id != user.id:
+        raise Forbidden("only the listing operator can close")
+    return _lot_response(service, service.close(lot_id))
+
+
 @router.post("/{lot_id}/allocate", response_model=AllocateResponse)
 def allocate_lot(lot_id: str, request: Request):
     user = require_role(request, "operator")

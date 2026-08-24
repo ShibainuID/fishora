@@ -150,5 +150,8 @@ class LotService:
     def current_highest(self, lot_id: str) -> Decimal | None:
         return self._lot_repo.highest(lot_id)
 
+    def close(self, lot_id: str) -> LotRecord:
+        return self._lot_repo.close(lot_id)
+
     def allocate(self, lot_id: str, now: datetime | None = None) -> LotRecord:
         return self._lot_repo.allocate(lot_id, now=now)
