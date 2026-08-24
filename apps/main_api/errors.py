@@ -108,3 +108,14 @@ class LotNotAllocatable(Exception):
     def __init__(self, lot_id: str, message: str = "lot is not allocatable"):
         super().__init__(message)
         self.lot_id = lot_id
+
+
+class Unauthenticated(Exception):
+    """No valid session cookie. Maps to HTTP 401."""
+
+
+class Forbidden(Exception):
+    """Authenticated but the role or identity is not allowed. Maps to HTTP 403."""
+
+    def __init__(self, message: str = "forbidden"):
+        super().__init__(message)

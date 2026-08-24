@@ -24,7 +24,7 @@ def _lot(lot_id: str, landing_point_id: str, price: Decimal = Decimal("68000")) 
     return LotRecord(
         id=lot_id,
         prediction_id="pred_ok",
-        operator_id="op_1",
+            operator_id="op_rian",
         species_id="species_tenggiri",
         landing_point_id=landing_point_id,
         quantity_kg=Decimal("24"),
@@ -70,6 +70,10 @@ def _client():
     return TestClient(app)
 
 
+def _login(client: TestClient) -> None:
+    assert client.post("/api/v1/auth/login", json={"username": "dewi", "password": "demo"}).status_code == 200
+
+
 PREFS = {
     "business_type": "rumah_makan",
     "intended_uses": ["digoreng"],
@@ -82,7 +86,9 @@ PREFS = {
 
 
 def test_missing_profile_is_200_with_flag_not_404():
-    response = _client().get("/api/v1/buyers/buyer_dewi/recommendations")
+    client = _client()
+    _login(client)
+    response = client.get("/api/v1/buyers/buyer_dewi/recommendations")
     assert response.status_code == 200
     body = response.json()
     assert body["items"] == []
@@ -91,6 +97,7 @@ def test_missing_profile_is_200_with_flag_not_404():
 
 def test_recommendations_are_ordered_and_carry_reasons():
     client = _client()
+    _login(client)
     saved = client.put("/api/v1/buyers/buyer_dewi/preferences", json=PREFS)
     assert saved.status_code == 200
     response = client.get("/api/v1/buyers/buyer_dewi/recommendations")

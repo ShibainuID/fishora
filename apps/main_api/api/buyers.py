@@ -5,8 +5,10 @@ from pydantic import BaseModel
 
 from apps.main_api.api.lots import LotResponse, _lot_response
 from apps.main_api.contracts import BuyerPreferenceRecord
+from apps.main_api.errors import Forbidden
 from apps.main_api.services.lots import LotService
 from apps.main_api.services.matching import recommend
+from apps.main_api.services.session import current_user
 
 router = APIRouter(prefix="/api/v1/buyers")
 
@@ -45,6 +47,9 @@ class RecommendationsResponse(BaseModel):
 
 @router.put("/{buyer_id}/preferences", response_model=PreferenceResponse)
 def put_preferences(buyer_id: str, payload: PreferenceRequest, request: Request):
+    user = current_user(request)
+    if user.id != buyer_id:
+        raise Forbidden("cannot write another buyer's preferences")
     record = BuyerPreferenceRecord(buyer_id=buyer_id, **payload.model_dump())
     saved = request.app.state.deps.preference_repo.upsert(record)
     return PreferenceResponse(buyer_id=saved.buyer_id, **payload.model_dump())
@@ -52,6 +57,9 @@ def put_preferences(buyer_id: str, payload: PreferenceRequest, request: Request)
 
 @router.get("/{buyer_id}/recommendations", response_model=RecommendationsResponse)
 def get_recommendations(buyer_id: str, request: Request):
+    user = current_user(request)
+    if user.id != buyer_id:
+        raise Forbidden("cannot read another buyer's recommendations")
     deps = request.app.state.deps
     prefs = deps.preference_repo.get(buyer_id)
     if prefs is None:

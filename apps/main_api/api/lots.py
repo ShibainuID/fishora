@@ -6,15 +6,17 @@ from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel, Field
 
 from apps.main_api.contracts import BidRecord, LotRecord
+from apps.main_api.errors import Forbidden
 from apps.main_api.services.geo import DEFAULT_SERVICEABILITY_RADIUS_KM
 from apps.main_api.services.lots import LotService
+from apps.main_api.services.session import require_role
 
 router = APIRouter(prefix="/api/v1/lots")
 
 
 class PublishLotRequest(BaseModel):
     prediction_id: str
-    operator_id: str
+    operator_id: str | None = None
     quantity_kg: Decimal = Field(gt=0)
     starting_price_per_kg: Decimal = Field(gt=0)
     size_category: Literal["S", "M", "L"]
@@ -40,7 +42,7 @@ class LotResponse(BaseModel):
 
 
 class PlaceBidRequest(BaseModel):
-    buyer_id: str
+    buyer_id: str | None = None
     amount_per_kg: Decimal = Field(gt=0)
 
 
@@ -101,10 +103,13 @@ def _bid_response(bid: BidRecord) -> BidResponse:
 
 @router.post("", response_model=LotResponse)
 def publish_lot(payload: PublishLotRequest, request: Request):
+    user = require_role(request, "operator")
+    if payload.operator_id and payload.operator_id != user.id:
+        raise Forbidden("operator token cannot publish as another operator")
     service = _service(request)
     lot = service.publish(
         prediction_id=payload.prediction_id,
-        operator_id=payload.operator_id,
+        operator_id=user.id,
         quantity_kg=payload.quantity_kg,
         starting_price_per_kg=payload.starting_price_per_kg,
         size_category=payload.size_category,
@@ -149,8 +154,11 @@ def get_lot(lot_id: str, request: Request):
 
 @router.post("/{lot_id}/bids", response_model=BidResponse)
 def place_bid(lot_id: str, payload: PlaceBidRequest, request: Request):
+    user = require_role(request, "buyer")
+    if payload.buyer_id and payload.buyer_id != user.id:
+        raise Forbidden("buyer token cannot bid as another buyer")
     service = _service(request)
-    return _bid_response(service.place_bid(lot_id, payload.buyer_id, payload.amount_per_kg))
+    return _bid_response(service.place_bid(lot_id, user.id, payload.amount_per_kg))
 
 
 @router.get("/{lot_id}/bids", response_model=list[BidResponse])
@@ -161,7 +169,11 @@ def list_bids(lot_id: str, request: Request):
 
 @router.post("/{lot_id}/allocate", response_model=AllocateResponse)
 def allocate_lot(lot_id: str, request: Request):
+    user = require_role(request, "operator")
     service = _service(request)
+    lot = service.get(lot_id)
+    if lot.operator_id != user.id:
+        raise Forbidden("only the listing operator can allocate")
     lot = service.allocate(lot_id)
     return AllocateResponse(
         id=lot.id,

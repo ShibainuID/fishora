@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from apps.contracts import ImageValidationError
+from apps.main_api.api.auth import router as auth_router
 from apps.main_api.api.buyers import router as buyers_router
 from apps.main_api.api.fish import knowledge_router, router as fish_router
 from apps.main_api.api.lots import router as lots_router
@@ -17,6 +18,7 @@ from apps.main_api.db.sql_repositories import SqlPredictionRepository, SqlSpecie
 from apps.main_api.errors import (
     BidOutbid,
     CvUnavailable,
+    Forbidden,
     InvalidGeneratedKnowledge,
     InvalidLot,
     LotClosed,
@@ -25,6 +27,7 @@ from apps.main_api.errors import (
     OpenCodeUnavailable,
     PredictionNotFound,
     PredictionNotVerified,
+    Unauthenticated,
     UnsupportedCvLabel,
     UnsupportedSpecies,
 )
@@ -48,6 +51,10 @@ def create_main_app(settings: MainSettings | None = None, deps: AppDependencies 
     reads environment variables, and never creates a DB session factory.
     """
     deps = deps or AppDependencies()
+    if deps.session_service is None:
+        from apps.main_api.services.session import SessionService
+
+        deps.session_service = SessionService()
     app = FastAPI(lifespan=_lifespan)
     app.state.settings = settings  # may be None when all ports are injected
     app.state.deps = deps
@@ -57,6 +64,7 @@ def create_main_app(settings: MainSettings | None = None, deps: AppDependencies 
     app.include_router(knowledge_router)
     app.include_router(lots_router)
     app.include_router(buyers_router)
+    app.include_router(auth_router)
     return app
 
 
@@ -199,6 +207,14 @@ def _register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(LotNotAllocatable)
     async def _lot_not_allocatable(request: Request, exc: LotNotAllocatable):
         return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+    @app.exception_handler(Unauthenticated)
+    async def _unauthenticated(request: Request, exc: Unauthenticated):
+        return JSONResponse(status_code=401, content={"detail": "authentication required"})
+
+    @app.exception_handler(Forbidden)
+    async def _forbidden(request: Request, exc: Forbidden):
+        return JSONResponse(status_code=403, content={"detail": str(exc)})
 
 
 _app: FastAPI | None = None

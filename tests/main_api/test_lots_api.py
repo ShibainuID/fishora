@@ -36,7 +36,7 @@ def _lot(**overrides) -> LotRecord:
     row = dict(
         id="lot_1",
         prediction_id="pred_ok",
-        operator_id="op_1",
+        operator_id="op_rian",
         species_id="species_tenggiri",
         landing_point_id="lp_muara_angke",
         quantity_kg=Decimal("24"),
@@ -67,23 +67,30 @@ def _client(lot_repo=None, prediction_repo=None):
     return TestClient(app), lots
 
 
+def _login(client: TestClient, username: str = "dewi") -> None:
+    response = client.post("/api/v1/auth/login", json={"username": username, "password": "demo"})
+    assert response.status_code == 200
+
+
 def test_bid_at_or_below_highest_is_409_with_current_highest():
     client, lots = _client(FakeLotRepository({"lot_1": _lot()}))
-    first = client.post("/api/v1/lots/lot_1/bids", json={"buyer_id": "buyer_a", "amount_per_kg": "70000"})
+    _login(client, "dewi")
+    first = client.post("/api/v1/lots/lot_1/bids", json={"amount_per_kg": "70000"})
     assert first.status_code == 200
-    blocked = client.post("/api/v1/lots/lot_1/bids", json={"buyer_id": "buyer_b", "amount_per_kg": "70000"})
+    blocked = client.post("/api/v1/lots/lot_1/bids", json={"amount_per_kg": "70000"})
     assert blocked.status_code == 409
     body = blocked.json()
     assert body["detail"] == "bid must exceed current highest"
     assert Decimal(body["current_highest_per_kg"]) == Decimal("70000")
-    below = client.post("/api/v1/lots/lot_1/bids", json={"buyer_id": "buyer_b", "amount_per_kg": "69000"})
+    below = client.post("/api/v1/lots/lot_1/bids", json={"amount_per_kg": "69000"})
     assert below.status_code == 409
     assert Decimal(below.json()["current_highest_per_kg"]) == Decimal("70000")
 
 
 def test_bid_on_closed_lot_is_409():
     client, _ = _client(FakeLotRepository({"lot_1": _lot(status="closed")}))
-    response = client.post("/api/v1/lots/lot_1/bids", json={"buyer_id": "buyer_a", "amount_per_kg": "70000"})
+    _login(client, "dewi")
+    response = client.post("/api/v1/lots/lot_1/bids", json={"amount_per_kg": "70000"})
     assert response.status_code == 409
     assert "closed" in response.json()["detail"]
 
@@ -91,7 +98,9 @@ def test_bid_on_closed_lot_is_409():
 def test_allocate_requires_closed_lot_and_is_idempotent():
     lots = FakeLotRepository({"lot_1": _lot()})
     client, _ = _client(lots)
-    client.post("/api/v1/lots/lot_1/bids", json={"buyer_id": "buyer_a", "amount_per_kg": "70000"})
+    _login(client, "dewi")
+    client.post("/api/v1/lots/lot_1/bids", json={"amount_per_kg": "70000"})
+    _login(client, "rian")
     too_early = client.post("/api/v1/lots/lot_1/allocate")
     assert too_early.status_code == 409
 
@@ -100,11 +109,11 @@ def test_allocate_requires_closed_lot_and_is_idempotent():
     assert first.status_code == 200
     body = first.json()
     assert body["status"] == "allocated"
-    assert body["allocated_buyer_id"] == "buyer_a"
+    assert body["allocated_buyer_id"] == "buyer_dewi"
 
     second = client.post("/api/v1/lots/lot_1/allocate")
     assert second.status_code == 200
-    assert second.json()["allocated_buyer_id"] == "buyer_a"
+    assert second.json()["allocated_buyer_id"] == "buyer_dewi"
     assert lots.get("lot_1").status == "allocated"
 
 
