@@ -15,6 +15,37 @@ export const handlers = [
     })
   }),
 
+  http.post(`${API}/api/v1/auth/logout`, () => HttpResponse.json({ ok: true })),
+
+  http.get(`${API}/api/v1/auth/me`, () =>
+    HttpResponse.json({
+      id: 'buyer_dewi',
+      role: 'buyer',
+      name: 'Dewi Anggraini',
+      username: 'dewi',
+    })
+  ),
+
+  http.post(`${API}/api/v1/lots`, async ({ request }) => {
+    const body = (await request.json()) as {
+      prediction_id: string
+      quantity_kg: string
+      starting_price_per_kg: string
+      size_category: 'S' | 'M' | 'L'
+      landing_point_id: string
+    }
+    return HttpResponse.json(
+      lotFixture({
+        prediction_id: body.prediction_id,
+        quantity_kg: body.quantity_kg,
+        starting_price_per_kg: body.starting_price_per_kg,
+        size_category: body.size_category,
+        landing_point_id: body.landing_point_id,
+        status: 'active',
+      })
+    )
+  }),
+
   http.get(`${API}/api/v1/lots`, ({ request }) => {
     const url = new URL(request.url)
     const species = url.searchParams.get('species_id')
@@ -49,6 +80,10 @@ export const handlers = [
       created_at: '2026-08-24T11:00:00+00:00',
     })
   }),
+
+  http.post(`${API}/api/v1/lots/:id/close`, ({ params }) =>
+    HttpResponse.json(lotFixture({ id: String(params.id), status: 'closed' }))
+  ),
 
   http.post(`${API}/api/v1/lots/:id/allocate`, () =>
     HttpResponse.json({

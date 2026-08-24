@@ -20,5 +20,8 @@ describe('MSW fixtures', () => {
     expect(info.some((row) => row.includes('/api/v1/buyers'))).toBe(true)
     expect(info.some((row) => row.includes('/api/v1/discover'))).toBe(true)
     expect(info.some((row) => row.includes('/api/v1/auth/login'))).toBe(true)
+    expect(info.some((row) => row.includes('/api/v1/auth/me'))).toBe(true)
+    expect(info.some((row) => row.includes('/api/v1/auth/logout'))).toBe(true)
+    expect(info.some((row) => row.includes('/close'))).toBe(true)
   })
 })

@@ -63,3 +63,29 @@ export function login(username: string, password: string) {
     }
   )
 }
+
+export function logout() {
+  return apiFetch<{ ok: boolean }>('/api/v1/auth/logout', { method: 'POST' })
+}
+
+export function getMe() {
+  return apiFetch<{ id: string; role: string; name: string; username: string }>('/api/v1/auth/me')
+}
+
+export function publishLot(payload: {
+  prediction_id: string
+  quantity_kg: string
+  starting_price_per_kg: string
+  size_category: 'S' | 'M' | 'L'
+  landing_point_id: string
+}) {
+  return apiFetch<Lot>('/api/v1/lots', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+export function closeLot(lotId: string) {
+  return apiFetch<Lot>(`/api/v1/lots/${encodeURIComponent(lotId)}/close`, { method: 'POST' })
+}
