@@ -1,7 +1,7 @@
 from dataclasses import asdict
 from typing import Literal
 
-from fastapi import APIRouter, File, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, Request, UploadFile
 from pydantic import BaseModel, Field
 
 from apps.main_api.config import MainSettings
@@ -74,12 +74,51 @@ async def identify(request: Request, file: UploadFile = File(...)):
 
 
 @router.post("/verify", response_model=VerificationResponse)
-async def verify(payload: VerifyRequest, request: Request):
+async def verify(payload: VerifyRequest, request: Request, background_tasks: BackgroundTasks):
     deps = request.app.state.deps
     result = VerificationService(
         species_repo=deps.species_repo,
         prediction_repo=deps.prediction_repo,
     ).verify(payload.prediction_id, payload.verified_species_id)
+    job_repo = getattr(deps, "job_repo", None)
+    if job_repo is not None:
+        try:
+            job = job_repo.create(result.prediction_id, result.prediction_id, result.verified_species_id)
+            # Lazy import to avoid circular
+            try:
+                from apps.main_api.services.orchestrator import run_graph
+
+                embedder = getattr(deps, "embedder", None)
+                knowledge_repo = getattr(deps, "knowledge_repo", None)
+                species_repo = getattr(deps, "species_repo", None)
+                settings = getattr(request.app.state, "settings", None)
+                llm_luna = None
+                llm_medium = None
+                if settings is not None and getattr(settings, "sub2api_api_key", None):
+                    try:
+                        if settings.sub2api_api_key.get_secret_value():
+                            from apps.main_api.services.sub2api_client import make_luna_llm, make_medium_llm
+
+                            llm_luna = make_luna_llm(settings)
+                            llm_medium = make_medium_llm(settings)
+                    except Exception:
+                        pass
+                background_tasks.add_task(
+                    run_graph,
+                    job.id,
+                    result.verified_species_id,
+                    result.prediction_id,
+                    knowledge_repo,
+                    embedder,
+                    llm_luna,
+                    llm_medium,
+                    species_repo,
+                    job_repo,
+                )
+            except Exception:
+                pass
+        except Exception:
+            pass
     return VerificationResponse(
         prediction_id=result.prediction_id,
         predicted_species_id=result.predicted_species_id,
@@ -90,9 +129,27 @@ async def verify(payload: VerifyRequest, request: Request):
 
 @knowledge_router.get("/predictions/{prediction_id}/knowledge", response_model=KnowledgeResponse)
 async def knowledge_card(prediction_id: str, request: Request):
-    # No species query/body parameter: identity resolves exclusively from the
-    # stored verified_species_id inside the service.
+    from fastapi.responses import JSONResponse
+
     deps = request.app.state.deps
+    # If async job exists, gate on its status (background LangGraph)
+    job_repo = getattr(deps, "job_repo", None)
+    if job_repo is not None:
+        job = job_repo.get(prediction_id)
+        if job is not None:
+            if job.status == "processing":
+                return JSONResponse(status_code=202, content={"detail": "Agent orchestrating...", "job_id": job.id, "status": "processing"})
+            if job.status == "completed" and job.final_card is not None:
+                # Reconstruct KnowledgeResponse from stored final_card
+                from apps.main_api.services.generation import KnowledgeCard
+
+                try:
+                    card = KnowledgeCard.model_validate(job.final_card)
+                    return KnowledgeResponse(prediction_id=job.prediction_id, species_id=job.species_id, card=card)
+                except Exception:
+                    pass  # fallback to sync generation
+            if job.status == "failed":
+                return JSONResponse(status_code=502, content={"detail": job.error or "knowledge generation failed", "job_id": job.id, "status": "failed"})
     return KnowledgeService(
         prediction_repo=deps.prediction_repo,
         species_repo=deps.species_repo,

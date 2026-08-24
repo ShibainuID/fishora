@@ -5,10 +5,11 @@ from fastapi.responses import JSONResponse
 
 from apps.contracts import ImageValidationError
 from apps.main_api.api.fish import knowledge_router, router as fish_router
+from apps.main_api.api.jobs import router as jobs_router
 from apps.main_api.config import MainSettings
 from apps.main_api.db.repositories import SqlKnowledgeRepository
 from apps.main_api.db.session import session_factory
-from apps.main_api.db.sql_repositories import SqlPredictionRepository, SqlSpeciesRepository
+from apps.main_api.db.sql_repositories import SqlKnowledgeJobRepository, SqlPredictionRepository, SqlSpeciesRepository
 from apps.main_api.errors import (
     CvUnavailable,
     InvalidGeneratedKnowledge,
@@ -44,6 +45,7 @@ def create_main_app(settings: MainSettings | None = None, deps: AppDependencies 
     _register_error_handlers(app)
     app.include_router(fish_router)
     app.include_router(knowledge_router)
+    app.include_router(jobs_router)
     return app
 
 
@@ -102,6 +104,11 @@ def _ensure_production_deps(app: FastAPI) -> None:
         # has evidence, so a blank OPENCODE_GO_API_KEY never breaks startup
         # or empty-evidence requests.
         deps.generator = KnowledgeGenerator(lambda: OpenCodeGoClient(settings))
+    if getattr(deps, "job_repo", None) is None:
+        try:
+            deps.job_repo = SqlKnowledgeJobRepository(deps.session_factory)
+        except Exception:
+            pass
 
 
 def _register_error_handlers(app: FastAPI) -> None:
