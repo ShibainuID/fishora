@@ -164,6 +164,29 @@ Two preconditions are worth checking before blaming the code:
   all, so any flow that needs AI identification has to go through `POST /api/v1/fish/manual`
   instead. Verification, publication, bidding, and knowledge snapshots are unaffected.
 
+### Seeding a database you can actually click through
+
+`artifacts/` is gitignored, so a fresh clone has no taxonomy CSV and no lots. Two scripts get you to
+a working marketplace without the real dataset:
+
+```bash
+python -m scripts.make_synthetic_taxonomy   # writes the 11 supported labels
+python -m scripts.seed_taxonomy             # loads them into fish_species
+python -m scripts.seed_demo_lots            # landing points, live auctions, one allocated lot
+```
+
+`make_synthetic_taxonomy` stamps every row `synthetic-dev-fixture` and refuses to overwrite a file
+that does not look synthetic, so restoring the real dataset later is safe. `seed_demo_lots` writes
+`demo_`-prefixed rows only, attaches an illustrative knowledge card to each lot so the knowledge
+panel and buyer matching have something to work on, and allocates one Nila lot to `buyer_dewi` so
+the review flow is reachable. It also deletes rows the pytest suite leaves behind when it is pointed
+at a development database rather than a throwaway one.
+
+None of these values are authoritative. Replace them with the real dataset before publishing any
+claim about a species.
+
+Demo logins are `rian` / `demo` (operator) and `dewi` / `demo` (buyer).
+
 Stop with `Ctrl+C`. All three processes are terminated; PostgreSQL stays up in Docker:
 
 ```bash
