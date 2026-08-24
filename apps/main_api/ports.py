@@ -121,4 +121,5 @@ class AppDependencies:
     preference_repo: object | None = None  # PreferenceRepository
     landing_point_repo: object | None = None
     session_service: object | None = None
+    review_repo: object | None = None  # ReviewRepository
     job_repo: object | None = None  # KnowledgeJobRepository

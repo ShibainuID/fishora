@@ -120,6 +120,9 @@ class LotRecord:
     public_slug: str
     knowledge_snapshot: dict | None = None
     allocated_buyer_id: str | None = None
+    # PRD 8.3.1 requires Seller / Fisher Group on every lot. The operator
+    # publishes, so this is how the fisher stays visible in the record.
+    seller_fisher_group: str | None = None
 
 
 @dataclass
@@ -149,3 +152,19 @@ class LandingPointRecord:
     name: str
     latitude: float
     longitude: float
+
+
+@dataclass
+class ReviewRecord:
+    """Commercial-buyer review (PRD 8.5). A market signal, never verified
+    knowledge, so it is stored and served apart from the knowledge card."""
+
+    id: str
+    lot_id: str
+    species_id: str
+    buyer_id: str
+    actual_use: str
+    processing_suitability: int
+    substitute_acceptance: bool | None = None
+    comment: str | None = None
+    created_at: datetime | None = None

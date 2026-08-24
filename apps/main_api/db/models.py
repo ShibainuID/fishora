@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, Index, Numeric, String, Text, UniqueConstraint, func, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -112,6 +112,7 @@ class Lot(Base):
     knowledge_snapshot: Mapped[dict | None] = mapped_column(JSONB)
     public_slug: Mapped[str] = mapped_column(String(160), nullable=False)
     allocated_buyer_id: Mapped[str | None] = mapped_column(String(120))
+    seller_fisher_group: Mapped[str | None] = mapped_column(String(160))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -158,3 +159,28 @@ class KnowledgeJob(Base):
     error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class CommercialBuyerReview(Base):
+    __tablename__ = "commercial_buyer_reviews"
+    __table_args__ = (
+        CheckConstraint(
+            "processing_suitability BETWEEN 1 AND 5",
+            name="ck_reviews_suitability_range",
+        ),
+        # One review per buyer per lot: post-use feedback, not a comment thread.
+        UniqueConstraint("lot_id", "buyer_id", name="uq_reviews_lot_buyer"),
+        # Reviews are read by species so one buyer's experience reaches every
+        # auction for that fish, including lots from a different fisher group.
+        Index("ix_reviews_species_created_at", "species_id", text("created_at DESC")),
+    )
+
+    id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    lot_id: Mapped[str] = mapped_column(ForeignKey("lots.id"), nullable=False, index=True)
+    species_id: Mapped[str] = mapped_column(ForeignKey("fish_species.id"), nullable=False)
+    buyer_id: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    actual_use: Mapped[str] = mapped_column(String(120), nullable=False)
+    processing_suitability: Mapped[int] = mapped_column(Integer, nullable=False)
+    substitute_acceptance: Mapped[bool | None] = mapped_column(Boolean)
+    comment: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

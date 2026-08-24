@@ -1,7 +1,7 @@
 """commerce tables for lots, bids, preferences, landing points
 
-Revision ID: 0002
-Revises: 0001
+Revision ID: 0003
+Revises: 0002
 Create Date: 2026-08-24
 """
 

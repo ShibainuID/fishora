@@ -26,6 +26,7 @@ class PublishLotRequest(BaseModel):
     size_category: Literal["S", "M", "L"]
     landing_point_id: str
     auction_hours: int | None = Field(default=None, ge=MIN_AUCTION_HOURS, le=MAX_AUCTION_HOURS)
+    seller_fisher_group: str | None = Field(default=None, max_length=160)
 
 
 class LotResponse(BaseModel):
@@ -42,6 +43,7 @@ class LotResponse(BaseModel):
     auction_ends_at: datetime
     public_slug: str
     allocated_buyer_id: str | None = None
+    seller_fisher_group: str | None = None
     current_highest_per_kg: Decimal | None = None
     serviceability_radius_km: float = DEFAULT_SERVICEABILITY_RADIUS_KM
 
@@ -101,6 +103,7 @@ def _lot_response(service: LotService, lot: LotRecord) -> LotResponse:
         auction_ends_at=lot.auction_ends_at,
         public_slug=lot.public_slug,
         allocated_buyer_id=lot.allocated_buyer_id,
+        seller_fisher_group=lot.seller_fisher_group,
         current_highest_per_kg=service.current_highest(lot.id),
         serviceability_radius_km=DEFAULT_SERVICEABILITY_RADIUS_KM,
     )
@@ -130,6 +133,7 @@ def publish_lot(payload: PublishLotRequest, request: Request):
         size_category=payload.size_category,
         landing_point_id=payload.landing_point_id,
         auction_hours=payload.auction_hours,
+        seller_fisher_group=payload.seller_fisher_group,
     )
     return _lot_response(service, lot)
 

@@ -11,6 +11,7 @@ from apps.main_api.api.discover import router as discover_router
 from apps.main_api.api.fish import knowledge_router, router as fish_router
 from apps.main_api.api.jobs import router as jobs_router
 from apps.main_api.api.lots import router as lots_router
+from apps.main_api.api.reviews import router as reviews_router
 from apps.main_api.config import DEFAULT_CORS_ALLOW_ORIGINS, MainSettings, parse_origins
 from apps.main_api.db.lot_repository import SqlLandingPointRepository, SqlLotRepository
 from apps.main_api.db.preference_repository import SqlPreferenceRepository
@@ -69,6 +70,7 @@ def create_main_app(settings: MainSettings | None = None, deps: AppDependencies 
     app.include_router(buyers_router)
     app.include_router(auth_router)
     app.include_router(discover_router)
+    app.include_router(reviews_router)
     app.include_router(jobs_router)
     return app
 
@@ -122,6 +124,10 @@ def _ensure_production_deps(app: FastAPI) -> None:
         deps.knowledge_repo = SqlKnowledgeRepository(deps.session_factory)
     if deps.lot_repo is None:
         deps.lot_repo = SqlLotRepository(deps.session_factory)
+    if deps.review_repo is None:
+        from apps.main_api.db.review_repository import SqlReviewRepository
+
+        deps.review_repo = SqlReviewRepository(deps.session_factory)
     if deps.landing_point_repo is None:
         deps.landing_point_repo = SqlLandingPointRepository(deps.session_factory)
         from apps.main_api.services.landing_points import seed_demo_landing_points

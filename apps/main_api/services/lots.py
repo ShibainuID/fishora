@@ -46,6 +46,7 @@ class LotService:
         size_category: str,
         landing_point_id: str,
         auction_hours: int | None = None,
+        seller_fisher_group: str | None = None,
         now: datetime | None = None,
     ) -> LotRecord:
         hours = self._auction_hours if auction_hours is None else int(auction_hours)
@@ -83,6 +84,7 @@ class LotService:
             auction_ends_at=starts + timedelta(hours=hours),
             public_slug=f"{label}-{lot_id[:8]}",
             knowledge_snapshot=snapshot,
+            seller_fisher_group=seller_fisher_group,
         )
         return self._lot_repo.create(lot)
 

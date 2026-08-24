@@ -429,3 +429,18 @@ class FakeKnowledgeRepository:
             ))
         rows.sort(key=lambda row: (row.distance, row.chunk_id))
         return rows[:limit]
+
+
+class FakeReviewRepository:
+    def __init__(self, records: list[ReviewRecord] | None = None):
+        self._records = list(records or [])
+
+    def create(self, review):
+        self._records.append(review)
+        return review
+
+    def list_for_species(self, species_id):
+        return [row for row in self._records if row.species_id == species_id]
+
+    def all(self):
+        return list(self._records)

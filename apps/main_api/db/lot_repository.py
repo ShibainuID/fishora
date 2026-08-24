@@ -33,6 +33,7 @@ class SqlLotRepository:
             knowledge_snapshot=lot.knowledge_snapshot,
             public_slug=lot.public_slug,
             allocated_buyer_id=lot.allocated_buyer_id,
+            seller_fisher_group=lot.seller_fisher_group,
         )
         with self._session_factory() as session:
             session.add(row)
@@ -153,6 +154,7 @@ class SqlLotRepository:
             public_slug=row.public_slug,
             knowledge_snapshot=row.knowledge_snapshot,
             allocated_buyer_id=row.allocated_buyer_id,
+            seller_fisher_group=row.seller_fisher_group,
         )
 
     @staticmethod
