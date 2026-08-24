@@ -4,8 +4,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { OperatorLots } from './operator-lots'
 import { lotFixture } from '@/test/msw/fixtures'
 
-vi.mock('@/lib/api/commerce', () => ({ allocateLot: vi.fn() }))
-import { allocateLot } from '@/lib/api/commerce'
+vi.mock('@/lib/api/commerce', () => ({ allocateLot: vi.fn(), closeLot: vi.fn() }))
+import { allocateLot, closeLot } from '@/lib/api/commerce'
 
 describe('OperatorLots', () => {
   it('does not allocate on a single tap and names the buyer in a confirmation sheet', async () => {
@@ -16,5 +16,14 @@ describe('OperatorLots', () => {
     expect(screen.getByText(/Dewi Anggraini/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Konfirmasi' }))
     expect(allocateLot).toHaveBeenCalled()
+  })
+
+  it('closes an open auction from a confirmation sheet, not a single tap', async () => {
+    const user = userEvent.setup()
+    render(<OperatorLots lots={[lotFixture({ status: 'active' })]} />)
+    await user.click(screen.getByRole('button', { name: 'Tutup lelang' }))
+    expect(closeLot).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Konfirmasi tutup' }))
+    expect(closeLot).toHaveBeenCalled()
   })
 })

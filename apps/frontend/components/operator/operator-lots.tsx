@@ -4,26 +4,35 @@ import { useState } from 'react'
 import { Button } from '@/components/common/button'
 import { Sheet } from '@/components/common/sheet'
 import { QrSheet } from '@/components/qr/qr-sheet'
-import { allocateLot } from '@/lib/api/commerce'
+import { allocateLot, closeLot } from '@/lib/api/commerce'
 import { rupiahPerKg } from '@/lib/format'
 import type { components } from '@/lib/api/schema'
 
 type Lot = components['schemas']['LotResponse']
+type Pending = { lot: Lot; kind: 'allocate' | 'close' }
 
 export function OperatorLots({ lots }: { lots: Lot[] }) {
-  const [confirm, setConfirm] = useState<Lot | null>(null)
+  const [items, setItems] = useState(lots)
+  const [pending, setPending] = useState<Pending | null>(null)
   const [qr, setQr] = useState<Lot | null>(null)
+  const closing = pending?.kind === 'close'
+  const allocating = pending?.kind === 'allocate'
 
   return (
     <main className="px-4 py-6 pb-24">
       <h1 className="text-h1 text-ink">Lot saya</h1>
       <ul className="mt-6 flex flex-col gap-4">
-        {lots.map((lot) => (
+        {items.map((lot) => (
           <li key={lot.id} className="rounded-2xl border border-line p-4">
             <p className="text-h3 text-ink">{lot.species_id.replace('species_', '')}</p>
             <p className="text-body-sm text-ink-muted">{lot.status}</p>
+            {lot.status === 'active' && (
+              <Button type="button" className="mt-3" onClick={() => setPending({ lot, kind: 'close' })}>
+                Tutup lelang
+              </Button>
+            )}
             {lot.status === 'closed' && (
-              <Button type="button" className="mt-3" onClick={() => setConfirm(lot)}>
+              <Button type="button" className="mt-3" onClick={() => setPending({ lot, kind: 'allocate' })}>
                 Allocate to winning bidder
               </Button>
             )}
@@ -36,27 +45,42 @@ export function OperatorLots({ lots }: { lots: Lot[] }) {
         ))}
       </ul>
       <Sheet
-        open={Boolean(confirm)}
-        onClose={() => setConfirm(null)}
-        title="Konfirmasi alokasi"
+        open={Boolean(pending)}
+        onClose={() => setPending(null)}
+        title={closing ? 'Konfirmasi tutup lelang' : 'Konfirmasi alokasi'}
         footer={
           <Button
             block
             type="button"
             onClick={async () => {
-              if (!confirm) return
-              await allocateLot(confirm.id)
-              setQr(confirm)
-              setConfirm(null)
+              if (!pending) return
+              if (pending.kind === 'close') {
+                await closeLot(pending.lot.id)
+                setItems((current) =>
+                  current.map((item) =>
+                    item.id === pending.lot.id ? { ...item, status: 'closed' } : item
+                  )
+                )
+                setPending(null)
+                return
+              }
+              await allocateLot(pending.lot.id)
+              setQr(pending.lot)
+              setPending(null)
             }}
           >
-            Konfirmasi
+            {closing ? 'Konfirmasi tutup' : 'Konfirmasi'}
           </Button>
         }
       >
-        {confirm && (
+        {closing && pending && (
           <p className="text-body text-ink">
-            Alokasikan ke Dewi Anggraini sebesar {rupiahPerKg(Number(confirm.current_highest_per_kg ?? confirm.starting_price_per_kg))}?
+            Tutup lelang ini sekarang? Pembeli tidak bisa mengajukan tawaran baru.
+          </p>
+        )}
+        {allocating && pending && (
+          <p className="text-body text-ink">
+            Alokasikan ke Dewi Anggraini sebesar {rupiahPerKg(Number(pending.lot.current_highest_per_kg ?? pending.lot.starting_price_per_kg))}?
           </p>
         )}
       </Sheet>
