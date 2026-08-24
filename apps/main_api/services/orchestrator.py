@@ -133,8 +133,8 @@ def _expert_node(category: str, state: FishoraState, llm_luna) -> dict:
         by_source = {c.source_id for c in evidence}
         sources = [s for s in sources if s.get("source_id") in by_source][:3]
         data["sources"] = sources
-    except Exception as exc:
-        data = {"error": str(exc), "sources": []}
+    except Exception:
+        data = {"error": "expert generation failed", "sources": []}
         if category == "physical":
             data["physical_characteristics"] = None
         elif category == "taste":
@@ -274,8 +274,8 @@ def writer_node(state: FishoraState, llm_luna, species: SpeciesRecord | None = N
             limitations=(merged.get("limitations", []) + guardrails),
             sources=[{"source_id": s.source_id} for s in sources_meta],
         )
-    except ValidationError as exc:
-        return {"error": str(exc), "final_card": None}
+    except ValidationError:
+        return {"error": "knowledge validation failed", "final_card": None}
     card = KnowledgeCard(
         common_name=gen.common_name,
         scientific_name=gen.scientific_name,
