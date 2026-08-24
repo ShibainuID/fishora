@@ -5,8 +5,12 @@ from sqlalchemy.orm import Session
 
 from apps.contracts import CVPredictionEnvelope
 from apps.main_api.contracts import (
+    BidRecord,
+    BuyerPreferenceRecord,
     KnowledgeChunkWrite,
     KnowledgeSourceWrite,
+    LandingPointRecord,
+    LotRecord,
     PredictionRecord,
     RetrievedChunk,
     SpeciesRecord,
@@ -106,3 +110,7 @@ class AppDependencies:
     knowledge_repo: KnowledgeRepository | None = None
     retriever: object | None = None  # VerifiedRetriever
     generator: object | None = None  # KnowledgeGenerator
+    lot_repo: object | None = None  # LotRepository
+    preference_repo: object | None = None  # PreferenceRepository
+    landing_point_repo: object | None = None
+    session_service: object | None = None

@@ -6,13 +6,20 @@ from fastapi.responses import JSONResponse
 
 from apps.contracts import ImageValidationError
 from apps.main_api.api.fish import knowledge_router, router as fish_router
+from apps.main_api.api.lots import router as lots_router
 from apps.main_api.config import DEFAULT_CORS_ALLOW_ORIGINS, MainSettings, parse_origins
+from apps.main_api.db.lot_repository import SqlLotRepository
 from apps.main_api.db.repositories import SqlKnowledgeRepository
 from apps.main_api.db.session import session_factory
 from apps.main_api.db.sql_repositories import SqlPredictionRepository, SqlSpeciesRepository
 from apps.main_api.errors import (
+    BidOutbid,
     CvUnavailable,
     InvalidGeneratedKnowledge,
+    InvalidLot,
+    LotClosed,
+    LotNotAllocatable,
+    LotNotFound,
     OpenCodeUnavailable,
     PredictionNotFound,
     PredictionNotVerified,
@@ -46,6 +53,7 @@ def create_main_app(settings: MainSettings | None = None, deps: AppDependencies 
     _register_error_handlers(app)
     app.include_router(fish_router)
     app.include_router(knowledge_router)
+    app.include_router(lots_router)
     return app
 
 
@@ -96,6 +104,8 @@ def _ensure_production_deps(app: FastAPI) -> None:
         )
     if deps.knowledge_repo is None:
         deps.knowledge_repo = SqlKnowledgeRepository(deps.session_factory)
+    if deps.lot_repo is None:
+        deps.lot_repo = SqlLotRepository(deps.session_factory)
     if deps.retriever is None:
         deps.retriever = VerifiedRetriever(deps.knowledge_repo, deps.embedder)
     if deps.generator is None:
@@ -159,6 +169,29 @@ def _register_error_handlers(app: FastAPI) -> None:
             "detail": "generated knowledge failed validation",
             "retrieved_chunk_ids": exc.retrieved_chunk_ids,
         })
+
+    @app.exception_handler(InvalidLot)
+    async def _invalid_lot(request: Request, exc: InvalidLot):
+        return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+    @app.exception_handler(LotNotFound)
+    async def _lot_not_found(request: Request, exc: LotNotFound):
+        return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+    @app.exception_handler(LotClosed)
+    async def _lot_closed(request: Request, exc: LotClosed):
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+    @app.exception_handler(BidOutbid)
+    async def _bid_outbid(request: Request, exc: BidOutbid):
+        return JSONResponse(status_code=409, content={
+            "detail": "bid must exceed current highest",
+            "current_highest_per_kg": str(exc.current_highest_per_kg),
+        })
+
+    @app.exception_handler(LotNotAllocatable)
+    async def _lot_not_allocatable(request: Request, exc: LotNotAllocatable):
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
 _app: FastAPI | None = None

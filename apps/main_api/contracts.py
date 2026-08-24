@@ -108,3 +108,32 @@ class LotRecord:
     public_slug: str
     knowledge_snapshot: dict | None = None
     allocated_buyer_id: str | None = None
+
+
+@dataclass
+class BidRecord:
+    id: str
+    lot_id: str
+    buyer_id: str
+    amount_per_kg: Decimal
+    created_at: datetime
+
+
+@dataclass
+class BuyerPreferenceRecord:
+    buyer_id: str
+    business_type: str
+    intended_uses: list[str]
+    characteristics: list[str]
+    max_price_per_kg: Decimal | None
+    min_quantity_kg: Decimal | None
+    latitude: float
+    longitude: float
+
+
+@dataclass
+class LandingPointRecord:
+    id: str
+    name: str
+    latitude: float
+    longitude: float

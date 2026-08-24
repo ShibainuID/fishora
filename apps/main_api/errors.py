@@ -1,3 +1,6 @@
+from decimal import Decimal
+
+
 class CvUnavailable(Exception):
     """Upstream CV failure: connection error, timeout, non-2xx, or unparsable body.
 
@@ -73,3 +76,35 @@ class InvalidLot(Exception):
 
     def __init__(self, message: str):
         super().__init__(message)
+
+
+class LotNotFound(Exception):
+    """No stored lot for the given id. Maps to HTTP 404."""
+
+    def __init__(self, lot_id: str):
+        super().__init__(f"lot {lot_id!r} not found")
+        self.lot_id = lot_id
+
+
+class LotClosed(Exception):
+    """The auction window is over or the lot is no longer active. Maps to HTTP 409."""
+
+    def __init__(self, lot_id: str):
+        super().__init__(f"lot {lot_id!r} is closed")
+        self.lot_id = lot_id
+
+
+class BidOutbid(Exception):
+    """The bid is at or below the current highest. Maps to HTTP 409 with that floor."""
+
+    def __init__(self, current_highest_per_kg: Decimal):
+        super().__init__("bid must exceed current highest")
+        self.current_highest_per_kg = current_highest_per_kg
+
+
+class LotNotAllocatable(Exception):
+    """Allocation requires a closed lot with at least one bid. Maps to HTTP 409."""
+
+    def __init__(self, lot_id: str, message: str = "lot is not allocatable"):
+        super().__init__(message)
+        self.lot_id = lot_id

@@ -1,6 +1,19 @@
 import math
 
-from apps.main_api.contracts import LotRecord, PredictionRecord, RetrievedChunk, SpeciesRecord
+from datetime import datetime, timezone
+from decimal import Decimal
+from uuid import uuid4
+
+from apps.main_api.contracts import (
+    BidRecord,
+    BuyerPreferenceRecord,
+    LandingPointRecord,
+    LotRecord,
+    PredictionRecord,
+    RetrievedChunk,
+    SpeciesRecord,
+)
+from apps.main_api.errors import BidOutbid, LotClosed, LotNotAllocatable, LotNotFound
 from apps.main_api.services.embeddings import E5_MODEL_NAME
 
 
@@ -71,6 +84,7 @@ class FakeLotRepository:
 
     def __init__(self, lots: dict[str, LotRecord] | None = None):
         self._lots = dict(lots or {})
+        self._bids: dict[str, list[BidRecord]] = {}
 
     def create(self, lot: LotRecord) -> LotRecord:
         self._lots[lot.id] = lot
@@ -84,6 +98,90 @@ class FakeLotRepository:
 
     def all(self) -> list[LotRecord]:
         return list(self._lots.values())
+
+    def highest(self, lot_id: str) -> Decimal | None:
+        bids = self._bids.get(lot_id) or []
+        if not bids:
+            return None
+        return max(bid.amount_per_kg for bid in bids)
+
+    def list_bids(self, lot_id: str) -> list[BidRecord]:
+        bids = list(self._bids.get(lot_id) or [])
+        bids.sort(key=lambda bid: bid.created_at, reverse=True)
+        return bids
+
+    def place_bid(
+        self,
+        lot_id: str,
+        buyer_id: str,
+        amount_per_kg: Decimal,
+        now: datetime | None = None,
+    ) -> BidRecord:
+        lot = self.get(lot_id)
+        if lot is None:
+            raise LotNotFound(lot_id)
+        clock = now or datetime.now(timezone.utc)
+        if lot.status != "active" or clock >= lot.auction_ends_at:
+            if lot.status == "active":
+                lot.status = "closed"
+            raise LotClosed(lot_id)
+        highest = self.highest(lot_id)
+        if highest is not None:
+            if amount_per_kg <= highest:
+                raise BidOutbid(highest)
+        elif amount_per_kg < lot.starting_price_per_kg:
+            raise BidOutbid(lot.starting_price_per_kg)
+        bid = BidRecord(
+            id=uuid4().hex,
+            lot_id=lot_id,
+            buyer_id=buyer_id,
+            amount_per_kg=amount_per_kg,
+            created_at=clock,
+        )
+        self._bids.setdefault(lot_id, []).append(bid)
+        return bid
+
+    def allocate(self, lot_id: str, now: datetime | None = None) -> LotRecord:
+        lot = self.get(lot_id)
+        if lot is None:
+            raise LotNotFound(lot_id)
+        clock = now or datetime.now(timezone.utc)
+        if lot.status == "allocated":
+            return lot
+        if lot.status == "active" and clock >= lot.auction_ends_at:
+            lot.status = "closed"
+        if lot.status != "closed":
+            raise LotNotAllocatable(lot_id, "allocation requires a closed lot")
+        bids = self._bids.get(lot_id) or []
+        if not bids:
+            raise LotNotAllocatable(lot_id, "closed lot has no bids")
+        winner = max(bids, key=lambda bid: (bid.amount_per_kg, -bid.created_at.timestamp()))
+        lot.allocated_buyer_id = winner.buyer_id
+        lot.status = "allocated"
+        return lot
+
+
+class FakeLandingPointRepository:
+    def __init__(self, points: list[LandingPointRecord] | None = None):
+        self._by_id = {point.id: point for point in (points or [])}
+
+    def get(self, landing_point_id: str) -> LandingPointRecord | None:
+        return self._by_id.get(landing_point_id)
+
+    def all(self) -> list[LandingPointRecord]:
+        return list(self._by_id.values())
+
+
+class FakePreferenceRepository:
+    def __init__(self, rows: dict[str, BuyerPreferenceRecord] | None = None):
+        self._rows = dict(rows or {})
+
+    def get(self, buyer_id: str) -> BuyerPreferenceRecord | None:
+        return self._rows.get(buyer_id)
+
+    def upsert(self, record: BuyerPreferenceRecord) -> BuyerPreferenceRecord:
+        self._rows[record.buyer_id] = record
+        return record
 
 
 class FakeImageStore:
