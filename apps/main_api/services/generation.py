@@ -55,20 +55,40 @@ class GeneratedKnowledgeCard(BaseModel):
 
 
 class OpenCodeGoClient:
-    """LangChain client making one Responses API call per generation."""
+    """LangChain client making one Responses API call per generation.
+
+    Now supports both providers: prefers sub2api (FISHORA_SUB2API_*) when its
+    key is set, otherwise falls back to opencode Go. This keeps the sync
+    KnowledgeService path working after the env switch to sub2api.
+    """
 
     def __init__(self, settings):
         # SecretStr stays secret: only get_secret_value() ever leaves the object.
-        api_key = settings.opencode_go_api_key.get_secret_value()
-        if not api_key:
-            raise ValueError(
-                "OPENCODE_GO_API_KEY must be set to construct the production OpenCode client"
-            )
+        # Prefer sub2api when configured (new primary), fallback to opencode for compat.
+        sub2api_key = ""
+        try:
+            sub2api_key = settings.sub2api_api_key.get_secret_value().strip()  # type: ignore
+        except Exception:
+            pass
+        if sub2api_key:
+            api_key = sub2api_key
+            base_url = settings.sub2api_base_url  # type: ignore
+            model = settings.opencode_go_model  # luna via sub2api
+            timeout = settings.opencode_go_timeout_seconds
+        else:
+            api_key = settings.opencode_go_api_key.get_secret_value()
+            if not api_key.strip():
+                raise ValueError(
+                    "OPENCODE_GO_API_KEY or FISHORA_SUB2API_API_KEY must be set to construct the production client"
+                )
+            base_url = settings.opencode_go_base_url
+            model = settings.opencode_go_model
+            timeout = settings.opencode_go_timeout_seconds
         llm = ChatOpenAI(
-            model=settings.opencode_go_model,
-            base_url=settings.opencode_go_base_url,
+            model=model,
+            base_url=base_url,
             api_key=api_key,
-            timeout=settings.opencode_go_timeout_seconds,
+            timeout=timeout,
             use_responses_api=True,
         )
         self._structured_llm = llm.with_structured_output(
