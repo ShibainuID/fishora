@@ -28,13 +28,16 @@ def _seed(connection) -> None:
         "VALUES ('lp_race_1', 'PPI Muara Angke', -6.104, 106.792) "
         "ON CONFLICT (id) DO NOTHING"
     ))
-    now = datetime(2026, 8, 24, 10, 0, tzinfo=timezone.utc)
+    # Relative to the clock: a pinned window expires and the lot is then closed,
+    # so this passed only inside one 4 hour slot on one calendar day.
+    now = datetime.now(timezone.utc) - timedelta(hours=1)
     connection.execute(text(
         "INSERT INTO lots (id, prediction_id, operator_id, species_id, landing_point_id, quantity_kg, "
         "size_category, starting_price_per_kg, status, auction_starts_at, auction_ends_at, public_slug) "
         "VALUES ('lot_race_1', 'pred_race_1', 'op_1', 'species_race_tenggiri', 'lp_race_1', 24, "
         "'L', 68000, 'active', :starts, :ends, 'tenggiri-race1') "
-        "ON CONFLICT (id) DO UPDATE SET status = 'active', allocated_buyer_id = NULL"
+        "ON CONFLICT (id) DO UPDATE SET status = 'active', allocated_buyer_id = NULL, "
+        "auction_starts_at = :starts, auction_ends_at = :ends"
     ), {"starts": now, "ends": now + timedelta(hours=4)})
     connection.execute(text("DELETE FROM bids WHERE lot_id = 'lot_race_1'"))
 
