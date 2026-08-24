@@ -1,0 +1,489 @@
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
+import { Button } from '@/components/common/button'
+import { Field } from '@/components/common/field'
+import { KnowledgeCardView } from '@/components/fish/knowledge-card'
+import { PredictionCard } from '@/components/fish/prediction-card'
+import type { ActionFailure, ActionResult } from '@/lib/api/action-result'
+import type { IdentificationResult, KnowledgeResponse } from '@/lib/api/fish'
+import { downscaleImage } from '@/lib/image'
+import { SPECIES, SUPPORTED_LABELS, type SpeciesLabel } from '@/lib/species'
+import { Z } from '@/lib/z'
+
+const DRAFT_KEY = 'fishora.operator.draft'
+const LANDING_POINTS = [
+  'PPI Muara Angke',
+  'TPI Cilacap',
+  'PPI Karangsong',
+] as const // mock
+const DURATIONS = [
+  { id: '2h', label: '2 jam' },
+  { id: '4h', label: '4 jam' },
+  { id: '8h', label: '8 jam' },
+  { id: '24h', label: '24 jam' },
+] as const
+const SIZES = ['S', 'M', 'L'] as const
+
+type Size = (typeof SIZES)[number]
+type Step = 1 | 2 | 3 | 4
+
+export interface IdentifyFlowProps {
+  identifyCatch: (formData: FormData) => Promise<ActionResult<IdentificationResult>>
+  confirmSpecies: (
+    predictionId: string,
+    verifiedSpeciesId: string
+  ) => Promise<
+    ActionResult<{
+      prediction_id: string
+      predicted_species_id: string
+      verified_species_id: string
+      verification_status: 'confirmed' | 'corrected'
+    }>
+  >
+  loadKnowledge: (predictionId: string) => Promise<ActionResult<KnowledgeResponse>>
+}
+
+/**
+ * Operator identify and publish flow. DESIGN.md 6.2.
+ *
+ * Four steps, forward-only. The CV being down never blocks a crate of fish:
+ * 503 offers Retry and a manual species list. The LLM being down never blocks
+ * commerce: 502 still reaches publish with the card marked pending.
+ */
+export function IdentifyFlow({
+  identifyCatch,
+  confirmSpecies,
+  loadKnowledge,
+}: IdentifyFlowProps) {
+  const cameraRef = useRef<HTMLInputElement>(null)
+  const uploadRef = useRef<HTMLInputElement>(null)
+  const previewRef = useRef<string | null>(null)
+
+  const [step, setStep] = useState<Step>(1)
+  const [online, setOnline] = useState(
+    typeof navigator === 'undefined' ? true : navigator.onLine
+  )
+  const [image, setImage] = useState<File | null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [identifyError, setIdentifyError] = useState<ActionFailure | null>(null)
+  const [manualOpen, setManualOpen] = useState(false)
+  const [prediction, setPrediction] = useState<IdentificationResult | null>(null)
+  const [knowledge, setKnowledge] = useState<KnowledgeResponse | null>(null)
+  const [knowledgePending, setKnowledgePending] = useState(false)
+  const [label, setLabel] = useState<string>('tenggiri')
+  const [quantityKg, setQuantityKg] = useState('')
+  const [size, setSize] = useState<Size>('M')
+  const [pricePerKg, setPricePerKg] = useState('')
+  const [landingPoint, setLandingPoint] = useState<string>(LANDING_POINTS[0])
+  const [duration, setDuration] = useState<(typeof DURATIONS)[number]['id']>('4h')
+
+  useEffect(() => {
+    const on = () => setOnline(true)
+    const off = () => setOnline(false)
+    window.addEventListener('online', on)
+    window.addEventListener('offline', off)
+    return () => {
+      window.removeEventListener('online', on)
+      window.removeEventListener('offline', off)
+    }
+  }, [])
+
+  useEffect(() => {
+    sessionStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({
+        quantityKg,
+        size,
+        pricePerKg,
+        landingPoint,
+        duration,
+        imageName: image?.name ?? null,
+        step,
+      })
+    )
+  }, [quantityKg, size, pricePerKg, landingPoint, duration, image, step])
+
+  useEffect(() => {
+    return () => {
+      if (previewRef.current) URL.revokeObjectURL(previewRef.current)
+    }
+  }, [])
+
+  function takeFile(file: File | undefined) {
+    if (!file) return
+    if (previewRef.current) URL.revokeObjectURL(previewRef.current)
+    const url = URL.createObjectURL(file)
+    previewRef.current = url
+    setImage(file)
+    setPreview(url)
+    setIdentifyError(null)
+    setManualOpen(false)
+  }
+
+  async function runIdentify() {
+    if (!image) return
+    setBusy(true)
+    setIdentifyError(null)
+    try {
+      const scaled = await downscaleImage(image)
+      const body = new FormData()
+      body.append('file', scaled)
+      const result = await identifyCatch(body)
+      if (!result.ok) {
+        setIdentifyError(result)
+        return
+      }
+      setPrediction(result.data)
+      setLabel(result.data.prediction.normalized_label)
+      setStep(2)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function runConfirm(speciesId: string) {
+    if (!prediction) return
+    setBusy(true)
+    try {
+      const verified = await confirmSpecies(prediction.prediction_id, speciesId)
+      if (!verified.ok) {
+        setIdentifyError(verified)
+        return
+      }
+      const card = await loadKnowledge(prediction.prediction_id)
+      if (!card.ok) {
+        setKnowledge(null)
+        setKnowledgePending(true)
+        setStep(3)
+        return
+      }
+      setKnowledge(card.data)
+      setKnowledgePending(false)
+      setStep(3)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function pickManual(species: SpeciesLabel) {
+    setLabel(species)
+    setKnowledge(null)
+    setKnowledgePending(true)
+    setManualOpen(false)
+    setIdentifyError(null)
+    setStep(3)
+  }
+
+  return (
+    <div className="flex min-h-[100dvh] flex-col bg-bg">
+      <div className="mx-auto flex w-full max-w-lg flex-1 flex-col px-4 pb-28 pt-4">
+        <p className="text-num-sm text-ink-muted">Langkah {step} dari 4</p>
+        <div className="mt-2 flex gap-1" aria-hidden>
+          {([1, 2, 3, 4] as const).map((n) => (
+            <span
+              key={n}
+              className={[
+                'h-px flex-1',
+                n <= step ? 'bg-ink' : 'bg-line',
+              ].join(' ')}
+            />
+          ))}
+        </div>
+
+        {!online && (
+          <p className="text-body-sm mt-4 rounded-[var(--radius-input)] border border-state-warn px-3 py-3 text-state-warn">
+            Tidak ada koneksi. Data yang sudah diisi tetap tersimpan.
+          </p>
+        )}
+
+        {step === 1 && (
+          <CaptureStep
+            preview={preview}
+            error={identifyError}
+            manualOpen={manualOpen}
+            onManualOpen={() => setManualOpen(true)}
+            onPickManual={pickManual}
+            onRetry={runIdentify}
+          />
+        )}
+
+        {step === 2 && prediction && (
+          <div className="mt-6">
+            <PredictionCard result={prediction} onConfirm={runConfirm} />
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="mt-6 flex flex-col gap-4">
+            {knowledgePending && (
+              <p className="text-body-sm rounded-[var(--radius-input)] border border-state-warn px-3 py-3 text-state-warn">
+                Kartu pengetahuan tertunda. Lot tetap dapat diterbitkan.
+              </p>
+            )}
+            {knowledge && (
+              <KnowledgeCardView card={knowledge.card} label={label} />
+            )}
+          </div>
+        )}
+
+        {step === 4 && (
+          <LotForm
+            label={label}
+            quantityKg={quantityKg}
+            size={size}
+            pricePerKg={pricePerKg}
+            landingPoint={landingPoint}
+            duration={duration}
+            onQuantity={setQuantityKg}
+            onSize={setSize}
+            onPrice={setPricePerKg}
+            onLanding={setLandingPoint}
+            onDuration={setDuration}
+          />
+        )}
+      </div>
+
+      <div
+        className="fixed inset-x-0 bottom-0 flex gap-2 bg-surface px-4 py-3 pb-[env(safe-area-inset-bottom)]"
+        style={{ zIndex: Z.actionBar }}
+      >
+        <input
+          ref={cameraRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden
+          onChange={(event) => takeFile(event.target.files?.[0])}
+        />
+        <input
+          ref={uploadRef}
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden
+          onChange={(event) => takeFile(event.target.files?.[0])}
+        />
+        {step === 1 && !image && (
+          <>
+            <Button size="lg" block onClick={() => cameraRef.current?.click()}>
+              Kamera
+            </Button>
+            <Button
+              size="lg"
+              variant="secondary"
+              onClick={() => uploadRef.current?.click()}
+            >
+              Unggah
+            </Button>
+          </>
+        )}
+        {step === 1 && image && (
+          <>
+            <Button
+              size="lg"
+              variant="secondary"
+              onClick={() => {
+                setImage(null)
+                setPreview(null)
+                setIdentifyError(null)
+              }}
+            >
+              Ambil ulang
+            </Button>
+            <Button size="lg" block loading={busy} onClick={runIdentify}>
+              Identifikasi
+            </Button>
+          </>
+        )}
+        {step === 3 && (
+          <Button size="lg" block onClick={() => setStep(4)}>
+            Lanjut
+          </Button>
+        )}
+        {step === 4 && (
+          <Button size="lg" block type="button">
+            Terbitkan
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function CaptureStep({
+  preview,
+  error,
+  manualOpen,
+  onManualOpen,
+  onPickManual,
+  onRetry,
+}: {
+  preview: string | null
+  error: ActionFailure | null
+  manualOpen: boolean
+  onManualOpen: () => void
+  onPickManual: (label: SpeciesLabel) => void
+  onRetry: () => void
+}) {
+  return (
+    <div className="mt-6 flex flex-col gap-4">
+      <p className="text-body-sm text-ink-muted">
+        Ikan utuh, latar polos, cahaya cukup.
+      </p>
+      {preview && (
+        // Operator just captured this frame; no next/image for blob URLs.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={preview}
+          alt="Hasil tangkapan"
+          className="aspect-[4/3] w-full rounded-2xl object-cover"
+        />
+      )}
+      {error && (
+        <div className="flex flex-col gap-3 rounded-[var(--radius-input)] border border-state-error px-3 py-3">
+          <p className="text-body-sm text-state-error">{error.userMessage}</p>
+          {error.kind === 'cv_unavailable' && (
+            <div className="flex flex-col gap-2">
+              <Button size="lg" block onClick={onRetry}>
+                Coba lagi
+              </Button>
+              <Button size="lg" variant="secondary" block onClick={onManualOpen}>
+                Pilih spesies manual
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+      {manualOpen && (
+        <ul className="flex flex-col gap-2">
+          {SUPPORTED_LABELS.map((species) => (
+            <li key={species}>
+              <Button
+                size="lg"
+                variant="secondary"
+                block
+                onClick={() => onPickManual(species)}
+              >
+                {SPECIES[species].commonName}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+function LotForm({
+  label,
+  quantityKg,
+  size,
+  pricePerKg,
+  landingPoint,
+  duration,
+  onQuantity,
+  onSize,
+  onPrice,
+  onLanding,
+  onDuration,
+}: {
+  label: string
+  quantityKg: string
+  size: Size
+  pricePerKg: string
+  landingPoint: string
+  duration: string
+  onQuantity: (value: string) => void
+  onSize: (value: Size) => void
+  onPrice: (value: string) => void
+  onLanding: (value: string) => void
+  onDuration: (value: (typeof DURATIONS)[number]['id']) => void
+}) {
+  const resolved = SPECIES[label as SpeciesLabel]
+  return (
+    <form className="mt-6 flex flex-col gap-5" onSubmit={(event) => event.preventDefault()}>
+      <div className="rounded-[var(--radius-input)] bg-bg-sunken px-3 py-3">
+        <p className="text-h3 text-ink">{resolved?.commonName ?? label}</p>
+        <p className="text-body-sm text-ink-muted">{landingPoint}</p>
+      </div>
+      <Field
+        label="Kuantitas (kg)"
+        inputMode="decimal"
+        value={quantityKg}
+        onChange={(event) => onQuantity(event.target.value)}
+        suffix="kg"
+        helper="Volume total lot ini."
+      />
+      <fieldset>
+        <legend className="text-label mb-2 text-ink">Kategori ukuran</legend>
+        <div className="grid grid-cols-3 gap-2">
+          {SIZES.map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => onSize(option)}
+              className={[
+                'min-h-12 rounded-full border text-body',
+                option === size
+                  ? 'border-ink bg-ink text-bg'
+                  : 'border-line-input bg-surface text-ink',
+              ].join(' ')}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+      <Field
+        label="Harga awal per kg"
+        inputMode="numeric"
+        value={pricePerKg}
+        onChange={(event) => onPrice(event.target.value)}
+        prefix="Rp"
+        helper="Harga pembuka lelang."
+      />
+      <div className="flex flex-col gap-2">
+        <label htmlFor="landing-point" className="text-label text-ink">
+          Titik pendaratan
+        </label>
+        <select
+          id="landing-point"
+          value={landingPoint}
+          onChange={(event) => onLanding(event.target.value)}
+          className="min-h-11 rounded-[var(--radius-input)] border border-line-input bg-surface px-3 text-ink"
+        >
+          {LANDING_POINTS.map((point) => (
+            <option key={point} value={point}>
+              {point}
+            </option>
+          ))}
+        </select>
+      </div>
+      <fieldset>
+        <legend className="text-label mb-2 text-ink">Durasi lelang</legend>
+        <div className="grid grid-cols-4 gap-2">
+          {DURATIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => onDuration(option.id)}
+              className={[
+                'min-h-12 rounded-full border text-body-sm',
+                option.id === duration
+                  ? 'border-ink bg-ink text-bg'
+                  : 'border-line-input bg-surface text-ink',
+              ].join(' ')}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+    </form>
+  )
+}

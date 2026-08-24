@@ -3,7 +3,7 @@ import { Button } from '@/components/common/button'
 import { EmptyState } from '@/components/common/empty-state'
 import { Skeleton, SkeletonLotCard } from '@/components/common/skeleton'
 import { ThemeToggle } from '@/components/common/theme-toggle'
-import { KitFields, KitSheet } from './kit-client'
+import { KitFields, KitSheet } from '../kit-client'
 import { kilograms, kilometres, percent, rupiahPerKg } from '@/lib/format'
 
 /**
