@@ -4,6 +4,23 @@ from pydantic import AliasChoices, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+# Local frontend origins. Both spellings: Next.js prints localhost while some
+# tools resolve the loopback address, and a mismatch reads as an inexplicable
+# CORS failure. Kept as a module constant, not reached out of MainSettings, so
+# callers can read the default without touching the settings class at all.
+DEFAULT_CORS_ALLOW_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000"
+
+
+def parse_origins(value: str) -> list[str]:
+    """Split a comma-separated origin list, tolerating stray whitespace.
+
+    An explicitly blank value yields an empty list, which denies every browser
+    origin. That is a valid API-only deployment and must never widen into a
+    wildcard: a wildcard cannot coexist with the credentialed cookie session.
+    """
+    return [origin.strip() for origin in value.split(",") if origin.strip()]
+
+
 class MainSettings(BaseSettings):
     """Application settings.
 
@@ -28,3 +45,18 @@ class MainSettings(BaseSettings):
     opencode_go_api_key: SecretStr = Field(default=SecretStr(""), validation_alias=AliasChoices("OPENCODE_GO_API_KEY", "opencode_go_api_key"))
     opencode_go_model: str = Field(default="gpt-5.6-luna", validation_alias=AliasChoices("FISHORA_OPENCODE_GO_MODEL", "opencode_go_model"))
     opencode_go_timeout_seconds: float = Field(default=60.0, validation_alias=AliasChoices("FISHORA_OPENCODE_GO_TIMEOUT_SECONDS", "opencode_go_timeout_seconds"))
+    # Browser origins allowed to call this API, comma separated. Typed as a
+    # plain string rather than list[str] so a bare comma-separated value in
+    # .env works: pydantic-settings would otherwise try to JSON-parse it and
+    # fail on the value every operator would naturally write. Both localhost
+    # and the loopback address are defaults because Next.js prints the former
+    # while some tools resolve the latter, and a mismatch reads as an
+    # inexplicable CORS failure.
+    cors_allow_origins: str = Field(
+        default=DEFAULT_CORS_ALLOW_ORIGINS,
+        validation_alias=AliasChoices("FISHORA_CORS_ALLOW_ORIGINS", "cors_allow_origins"),
+    )
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return parse_origins(self.cors_allow_origins)

@@ -1,11 +1,12 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from apps.contracts import ImageValidationError
 from apps.main_api.api.fish import knowledge_router, router as fish_router
-from apps.main_api.config import MainSettings
+from apps.main_api.config import DEFAULT_CORS_ALLOW_ORIGINS, MainSettings, parse_origins
 from apps.main_api.db.repositories import SqlKnowledgeRepository
 from apps.main_api.db.session import session_factory
 from apps.main_api.db.sql_repositories import SqlPredictionRepository, SqlSpeciesRepository
@@ -41,6 +42,7 @@ def create_main_app(settings: MainSettings | None = None, deps: AppDependencies 
     app = FastAPI(lifespan=_lifespan)
     app.state.settings = settings  # may be None when all ports are injected
     app.state.deps = deps
+    _register_cors(app, settings)
     _register_error_handlers(app)
     app.include_router(fish_router)
     app.include_router(knowledge_router)
@@ -102,6 +104,34 @@ def _ensure_production_deps(app: FastAPI) -> None:
         # has evidence, so a blank OPENCODE_GO_API_KEY never breaks startup
         # or empty-evidence requests.
         deps.generator = KnowledgeGenerator(lambda: OpenCodeGoClient(settings))
+
+
+def _register_cors(app: FastAPI, settings: MainSettings | None) -> None:
+    """Allow the frontend's origin to reach this API from a browser.
+
+    Middleware must be installed at construction time, not in the lifespan, so
+    the origin list comes from the passed settings when present and from the
+    module-level default otherwise. That default is read from a plain constant
+    rather than off MainSettings, because a complete fake dependency bundle
+    must never touch the settings class at all: it needs no DATABASE_URL, and
+    it still gets working CORS.
+
+    allow_credentials is on because the operator and buyer session is a cookie.
+    That rules out the wildcard origin by specification, which is why the
+    origin list is explicit and why an empty list denies rather than widens.
+    """
+    origins = (
+        settings.cors_origins
+        if settings is not None
+        else parse_origins(DEFAULT_CORS_ALLOW_ORIGINS)
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["content-type", "authorization"],
+    )
 
 
 def _register_error_handlers(app: FastAPI) -> None:
