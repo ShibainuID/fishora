@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Fish, Funnel, Sliders } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/common/button'
 import { EmptyState } from '@/components/common/empty-state'
+import { MatchedEmpty } from '@/components/buyer/matched-empty'
 import { LotCard } from '@/components/lot/lot-card'
 import { FilterRail } from '@/components/marketplace/filter-rail'
 import { FilterSheet } from '@/components/marketplace/filter-sheet'
@@ -23,9 +24,17 @@ type Lot = components['schemas']['LotResponse']
 export function MarketplaceView({
   lots,
   inventoryEmpty,
+  matched = false,
+  matchScores = {},
+  profileMissing = false,
 }: {
   lots: Lot[]
   inventoryEmpty: boolean
+  /** True when the caller resolved recommendations rather than the open grid. */
+  matched?: boolean
+  /** Real per-lot scores from the matching engine, keyed by lot id. */
+  matchScores?: Record<string, number>
+  profileMissing?: boolean
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -33,6 +42,7 @@ export function MarketplaceView({
   const filters = parseFilters(searchParams.toString())
   const [sheetOpen, setSheetOpen] = useState(false)
   const count = activeFilterCount(filters)
+  const showMatched = matched || filters.matched
 
   const apply = (next: MarketplaceFilters) => {
     const query = serializeFilters(next)
@@ -92,7 +102,9 @@ export function MarketplaceView({
           </div>
         )}
 
-        {inventoryEmpty ? (
+        {showMatched && profileMissing ? (
+          <MatchedEmpty hasProfile={false} />
+        ) : inventoryEmpty ? (
           <EmptyState icon={Fish} message="Belum ada lot aktif." action={<Button type="button">Muat ulang</Button>} />
         ) : visible.length === 0 ? (
           <EmptyState
@@ -111,7 +123,7 @@ export function MarketplaceView({
                 <LotCard
                   lot={lot}
                   photoUrl="/fish/placeholder.jpg"
-                  matchPercent={filters.matched ? 0.9 : undefined}
+                  matchPercent={showMatched ? matchScores[lot.id] : undefined}
                 />
               </Link>
             ))}

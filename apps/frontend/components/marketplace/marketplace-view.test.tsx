@@ -42,4 +42,42 @@ describe('MarketplaceView', () => {
     expect(screen.getByText('Tidak ada lot yang cocok dengan filter ini.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Hapus filter' })).toBeInTheDocument()
   })
+
+  it('shows the score the matching engine returned, not a placeholder', () => {
+    vi.doMock('next/navigation', () => ({
+      useRouter: () => ({ replace: vi.fn() }),
+      usePathname: () => '/marketplace',
+      useSearchParams: () => new URLSearchParams('matched=1'),
+    }))
+    render(
+      <MarketplaceView
+        lots={LOTS}
+        inventoryEmpty={false}
+        matched
+        matchScores={{ [LOTS[0].id]: 0.94 }}
+      />
+    )
+    // A hardcoded 90% would make every lot look equally good, which defeats
+    // the point of explainable matching.
+    expect(screen.getByText(/94% cocok/)).toBeInTheDocument()
+    expect(screen.queryByText(/90% cocok/)).not.toBeInTheDocument()
+  })
+
+  it('prompts for a profile when the matching engine reports none', () => {
+    render(
+      <MarketplaceView
+        lots={[]}
+        inventoryEmpty={false}
+        matched
+        matchScores={{}}
+        profileMissing
+      />
+    )
+    expect(screen.getByText(/buat profil preferensi/i)).toBeInTheDocument()
+  })
+
+  it('does not show match scores outside the matched view', () => {
+    render(<MarketplaceView lots={LOTS} inventoryEmpty={false} matchScores={{ [LOTS[0].id]: 0.94 }} />)
+    expect(screen.queryByText(/94% cocok/)).not.toBeInTheDocument()
+  })
 })
