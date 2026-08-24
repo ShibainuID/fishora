@@ -281,6 +281,24 @@
   }
 }
 
+/* Marine snow drifts up as the camera sinks. Transform only. */
+@keyframes marine-snow {
+  from {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-70vh);
+    opacity: 0;
+  }
+}
+
 /* Reduced motion backstop. */
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -1,29 +1,91 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import { useReducedMotion, useScroll, useTransform, motion } from 'motion/react'
+import { useRef } from 'react'
+import {
+  motion,
+  useMotionTemplate,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from 'motion/react'
 import { HeroStatic } from '@/components/marketing/hero-static'
+import { LampGlow, MarineSnow, Stratum } from '@/components/marketing/sea-strata'
 
 export function HeroDescent() {
   const reduce = useReducedMotion()
-  if (reduce) return <HeroStatic />
+  // Reduced motion still gets the composition, just held still. Dropping to
+  // bare copy would leave the hero with no visual at all.
+  if (reduce) return <HeroStill />
   return <HeroTrack />
 }
 
+function HeroStill() {
+  return (
+    <div className="relative min-h-dvh overflow-hidden bg-abyss-950">
+      <div className="absolute inset-x-0 top-0 h-[46vh]">
+        <LampGlow className="absolute inset-0" />
+      </div>
+      {PLANES.map((plane) => (
+        <div key={plane.depth} className={`absolute inset-x-0 ${plane.position}`}>
+          <Stratum depth={plane.depth} className="h-full w-full" />
+        </div>
+      ))}
+      <div className="relative z-10">
+        <HeroStatic />
+      </div>
+    </div>
+  )
+}
+
+// Nearer water travels further, which is what reads as depth.
+const PLANES = [
+  { depth: 0, travel: 10, position: 'top-[26%] h-[30vh]' },
+  { depth: 1, travel: 24, position: 'top-[38%] h-[34vh]' },
+  { depth: 2, travel: 42, position: 'top-[52%] h-[38vh]' },
+  { depth: 3, travel: 62, position: 'top-[68%] h-[42vh]' },
+  { depth: 4, travel: 84, position: 'top-[84%] h-[46vh]' },
+] as const
+
 function HeroTrack() {
   const ref = useRef<HTMLDivElement>(null)
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] })
-  const y0 = useTransform(scrollYProgress, [0, 1], [0, 40])
-  const y1 = useTransform(scrollYProgress, [0, 1], [0, 120])
-  const y2 = useTransform(scrollYProgress, [0, 1], [0, 200])
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ['start start', 'end start'],
+  })
+
+  // Water removes warm light first, so the descent desaturates and the lamp is
+  // the last colour to go. That loss is the argument the page is making.
+  const saturate = useTransform(scrollYProgress, [0.15, 0.7], [1, 0.3])
+  const contrast = useTransform(scrollYProgress, [0.15, 0.7], [1, 1.08])
+  const grade = useMotionTemplate`saturate(${saturate}) contrast(${contrast})`
+
+  const tint = useTransform(scrollYProgress, [0.2, 0.75], [0, 0.9])
+  const lampFade = useTransform(scrollYProgress, [0, 0.55], [1, 0])
+  const lampRise = useTransform(scrollYProgress, [0, 1], ['0vh', '-24vh'])
 
   return (
     <div ref={ref} className="relative h-[320vh]">
-      <div className="sticky top-0 min-h-dvh overflow-hidden">
-        <motion.div style={{ y: y0 }} className="absolute inset-0 bg-abyss-950" />
-        <motion.div style={{ y: y1 }} className="absolute inset-x-0 top-1/3 h-40 bg-abyss-800" />
-        <motion.div style={{ y: y2 }} className="absolute inset-x-0 bottom-0 h-24 bg-abyss-600" />
-        <DesktopPlates />
+      <div className="sticky top-0 min-h-dvh overflow-hidden bg-abyss-950">
+        {/* The grade sits inside the sticky element: a filter on an ancestor of
+            a sticky node drops it out of its sticky context on iOS Safari. */}
+        <motion.div style={{ filter: grade }} className="absolute inset-0">
+          <motion.div
+            style={{ y: lampRise, opacity: lampFade }}
+            className="absolute inset-x-0 top-0 h-[46vh] will-change-transform"
+          >
+            <LampGlow className="absolute inset-0" />
+          </motion.div>
+
+          {PLANES.map((plane) => (
+            <HeroPlane key={plane.depth} plane={plane} progress={scrollYProgress} />
+          ))}
+
+          <MarineSnow className="pointer-events-none absolute inset-0 hidden lg:block" />
+        </motion.div>
+
+        {/* Depth tint: the abyss closing over the composition. */}
+        <motion.div style={{ opacity: tint }} className="absolute inset-0 bg-abyss-950" />
+
         <div className="relative z-10">
           <HeroStatic />
         </div>
@@ -32,20 +94,20 @@ function HeroTrack() {
   )
 }
 
-function DesktopPlates() {
-  const shown = useRef(false)
-  const node = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (window.matchMedia('(min-width: 1024px)').matches) {
-      shown.current = true
-      if (node.current) node.current.hidden = false
-    }
-  }, [])
+function HeroPlane({
+  plane,
+  progress,
+}: {
+  plane: (typeof PLANES)[number]
+  progress: ReturnType<typeof useScroll>['scrollYProgress']
+}) {
+  const y = useTransform(progress, [0, 1], ['0vh', `${plane.travel}vh`])
   return (
-    <div ref={node} hidden className="pointer-events-none absolute inset-0 hidden lg:block">
-      {/* Extra plates exist only at lg and are not in the phone DOM fetch path. */}
-      <div className="absolute inset-y-0 left-0 w-1/5 bg-abyss-900/40" />
-      <div className="absolute inset-y-0 right-0 w-1/5 bg-abyss-800/40" />
-    </div>
+    <motion.div
+      style={{ y }}
+      className={`absolute inset-x-0 ${plane.position} will-change-transform`}
+    >
+      <Stratum depth={plane.depth} className="h-full w-full" />
+    </motion.div>
   )
 }
