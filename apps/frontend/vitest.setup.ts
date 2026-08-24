@@ -1,4 +1,10 @@
 import '@testing-library/jest-dom/vitest'
+import { afterAll, afterEach, beforeAll } from 'vitest'
+import { server } from './test/msw/server'
+
+beforeAll(() => server.listen({ onUnhandledRequest: 'bypass' }))
+afterEach(() => server.resetHandlers())
+afterAll(() => server.close())
 
 // jsdom implements neither, and both are used.
 if (!window.matchMedia) {

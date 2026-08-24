@@ -55,14 +55,190 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/lots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Lots */
+        get: operations["list_lots_api_v1_lots_get"];
+        put?: never;
+        /** Publish Lot */
+        post: operations["publish_lot_api_v1_lots_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lots/{lot_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Lot */
+        get: operations["get_lot_api_v1_lots__lot_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lots/{lot_id}/bids": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Bids */
+        get: operations["list_bids_api_v1_lots__lot_id__bids_get"];
+        put?: never;
+        /** Place Bid */
+        post: operations["place_bid_api_v1_lots__lot_id__bids_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lots/{lot_id}/allocate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Allocate Lot */
+        post: operations["allocate_lot_api_v1_lots__lot_id__allocate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/buyers/{buyer_id}/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Put Preferences */
+        put: operations["put_preferences_api_v1_buyers__buyer_id__preferences_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/buyers/{buyer_id}/recommendations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Recommendations */
+        get: operations["get_recommendations_api_v1_buyers__buyer_id__recommendations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Login */
+        post: operations["login_api_v1_auth_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/discover/{public_slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Discover */
+        get: operations["discover_api_v1_discover__public_slug__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AllocateResponse */
+        AllocateResponse: {
+            /** Id */
+            id: string;
+            /**
+             * Status
+             * @constant
+             */
+            status: "allocated";
+            /** Allocated Buyer Id */
+            allocated_buyer_id: string;
+            /** Current Highest Per Kg */
+            current_highest_per_kg?: string | null;
+        };
+        /** BidResponse */
+        BidResponse: {
+            /** Id */
+            id: string;
+            /** Lot Id */
+            lot_id: string;
+            /** Buyer Id */
+            buyer_id: string;
+            /** Amount Per Kg */
+            amount_per_kg: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** Body_identify_api_v1_fish_identify_post */
         Body_identify_api_v1_fish_identify_post: {
             /** File */
             file: string;
+        };
+        /** DiscoverResponse */
+        DiscoverResponse: {
+            /** Public Slug */
+            public_slug: string;
+            /** Species Id */
+            species_id: string;
+            card: components["schemas"]["KnowledgeCard"];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -125,6 +301,162 @@ export interface components {
             /** Species Id */
             species_id: string;
             card: components["schemas"]["KnowledgeCard"];
+        };
+        /** LoginRequest */
+        LoginRequest: {
+            /** Username */
+            username: string;
+            /** Password */
+            password: string;
+        };
+        /** LotResponse */
+        LotResponse: {
+            /** Id */
+            id: string;
+            /** Prediction Id */
+            prediction_id: string;
+            /** Operator Id */
+            operator_id: string;
+            /** Species Id */
+            species_id: string;
+            /** Landing Point Id */
+            landing_point_id: string;
+            /** Quantity Kg */
+            quantity_kg: string;
+            /**
+             * Size Category
+             * @enum {string}
+             */
+            size_category: "S" | "M" | "L";
+            /** Starting Price Per Kg */
+            starting_price_per_kg: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "active" | "closed" | "allocated";
+            /**
+             * Auction Starts At
+             * Format: date-time
+             */
+            auction_starts_at: string;
+            /**
+             * Auction Ends At
+             * Format: date-time
+             */
+            auction_ends_at: string;
+            /** Public Slug */
+            public_slug: string;
+            /** Allocated Buyer Id */
+            allocated_buyer_id?: string | null;
+            /** Current Highest Per Kg */
+            current_highest_per_kg?: string | null;
+            /**
+             * Serviceability Radius Km
+             * @default 100
+             */
+            serviceability_radius_km: number;
+        };
+        /** MatchReasonResponse */
+        MatchReasonResponse: {
+            /** Criterion */
+            criterion: string;
+            /** Met */
+            met: boolean;
+            /** Detail */
+            detail: string;
+            /** Value */
+            value?: string | null;
+        };
+        /** PlaceBidRequest */
+        PlaceBidRequest: {
+            /** Buyer Id */
+            buyer_id?: string | null;
+            /** Amount Per Kg */
+            amount_per_kg: number | string;
+        };
+        /** PreferenceRequest */
+        PreferenceRequest: {
+            /** Business Type */
+            business_type: string;
+            /** Intended Uses */
+            intended_uses: string[];
+            /** Characteristics */
+            characteristics: string[];
+            /** Max Price Per Kg */
+            max_price_per_kg?: number | string | null;
+            /** Min Quantity Kg */
+            min_quantity_kg?: number | string | null;
+            /** Latitude */
+            latitude: number;
+            /** Longitude */
+            longitude: number;
+        };
+        /** PreferenceResponse */
+        PreferenceResponse: {
+            /** Business Type */
+            business_type: string;
+            /** Intended Uses */
+            intended_uses: string[];
+            /** Characteristics */
+            characteristics: string[];
+            /** Max Price Per Kg */
+            max_price_per_kg?: string | null;
+            /** Min Quantity Kg */
+            min_quantity_kg?: string | null;
+            /** Latitude */
+            latitude: number;
+            /** Longitude */
+            longitude: number;
+            /** Buyer Id */
+            buyer_id: string;
+        };
+        /** PublishLotRequest */
+        PublishLotRequest: {
+            /** Prediction Id */
+            prediction_id: string;
+            /** Operator Id */
+            operator_id?: string | null;
+            /** Quantity Kg */
+            quantity_kg: number | string;
+            /** Starting Price Per Kg */
+            starting_price_per_kg: number | string;
+            /**
+             * Size Category
+             * @enum {string}
+             */
+            size_category: "S" | "M" | "L";
+            /** Landing Point Id */
+            landing_point_id: string;
+        };
+        /** RecommendationItem */
+        RecommendationItem: {
+            lot: components["schemas"]["LotResponse"];
+            /** Score */
+            score: number;
+            /** Reasons */
+            reasons: components["schemas"]["MatchReasonResponse"][];
+        };
+        /** RecommendationsResponse */
+        RecommendationsResponse: {
+            /** Items */
+            items: components["schemas"]["RecommendationItem"][];
+            /**
+             * Profile Missing
+             * @default false
+             */
+            profile_missing: boolean;
+        };
+        /** SessionResponse */
+        SessionResponse: {
+            /** Id */
+            id: string;
+            /** Role */
+            role: string;
+            /** Name */
+            name: string;
+            /** Username */
+            username: string;
         };
         /**
          * SourceMetadata
@@ -287,6 +619,336 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["KnowledgeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_lots_api_v1_lots_get: {
+        parameters: {
+            query?: {
+                species_id?: string | null;
+                min_price?: number | string | null;
+                max_price?: number | string | null;
+                min_quantity?: number | string | null;
+                max_quantity?: number | string | null;
+                status?: string | null;
+                buyer_lat?: number | null;
+                buyer_lon?: number | null;
+                serviceability_radius_km?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LotResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    publish_lot_api_v1_lots_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishLotRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LotResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_lot_api_v1_lots__lot_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LotResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_bids_api_v1_lots__lot_id__bids_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BidResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    place_bid_api_v1_lots__lot_id__bids_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlaceBidRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BidResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    allocate_lot_api_v1_lots__lot_id__allocate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AllocateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_preferences_api_v1_buyers__buyer_id__preferences_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                buyer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreferenceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreferenceResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_recommendations_api_v1_buyers__buyer_id__recommendations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                buyer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecommendationsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    login_api_v1_auth_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    discover_api_v1_discover__public_slug__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                public_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoverResponse"];
                 };
             };
             /** @description Validation Error */

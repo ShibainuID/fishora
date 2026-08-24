@@ -1,8 +1,8 @@
 // Generate lib/api/schema.d.ts from the live server, or from create_main_app().
 import { spawnSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const frontendRoot = resolve(here, '..')
@@ -45,7 +45,7 @@ if (py.status !== 0) {
   process.exit(py.status ?? 1)
 }
 
-const tmp = resolve(frontendRoot, 'lib/api/openapi.json')
+const tmp = resolve(tmpdir(), 'fishora-openapi.json')
 writeFileSync(tmp, py.stdout)
 const dumped = spawnSync(
   'pnpm',
