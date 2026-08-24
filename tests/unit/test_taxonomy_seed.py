@@ -5,7 +5,14 @@ import pytest
 
 from apps.main_api.db.repositories import load_taxonomy_csv
 
-TAXONOMY = Path("/home/athilla/Documents/IF_ITB/Lomba/COMPFEST/AIC-2026/artifacts/Dataset/fishora_dataset/metadata/taxonomy.csv")
+# Repo-relative: an absolute path under one developer's home directory fails
+# on every other machine even when the artifact is present.
+REPO_ROOT = Path(__file__).resolve().parents[2]
+TAXONOMY = REPO_ROOT / "artifacts" / "Dataset" / "fishora_dataset" / "metadata" / "taxonomy.csv"
+
+pytestmark = pytest.mark.skipif(
+    not TAXONOMY.exists(), reason="taxonomy dataset artifact is not present"
+)
 EXPECTED = {
     "bandeng", "gelama_bunga", "gembolo", "gulamah", "kembung", "kuniran",
     "mujair", "nila", "senangin", "tenggiri", "tuna",
