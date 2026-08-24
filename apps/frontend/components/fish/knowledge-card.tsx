@@ -4,8 +4,7 @@ import { SourceList } from '@/components/fish/source-list'
 import type { KnowledgeCard } from '@/lib/api/fish'
 import { normaliseDashes } from '@/lib/format'
 
-// The verified surface. MarketSignals must stay a sibling, never a child:
-// unverified feedback must not wear the verified chrome.
+// The verified surface. MarketSignals stays a sibling, never a child.
 export interface KnowledgeCardViewProps {
   card: KnowledgeCard
   /** Normalized CV label, so MIXED_TAXONOMY on tuna can name the genus. */

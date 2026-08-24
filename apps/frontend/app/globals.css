@@ -1,8 +1,6 @@
 @import "tailwindcss";
 
-/* Three-state theming: an explicit data-theme wins either way, the system
-   preference decides otherwise. Tailwind's stock media-only variant cannot
-   express that. */
+/* Three-state theming, which the stock media-only variant cannot express. */
 @custom-variant dark {
   &:where([data-theme="dark"], [data-theme="dark"] *) {
     @slot;
@@ -45,8 +43,7 @@
   --color-lamp-300: #f7bd6b;
   --color-lamp-100: #fbe6c6;
 
-  /* Per-theme values live in the theme blocks: one hex cannot clear AA
-     against both an off-white and an abyss. */
+  /* Per-theme: one hex cannot clear AA on both an off-white and an abyss. */
   --color-state-live: var(--state-live);
   --color-state-warn: var(--state-warn);
   --color-state-error: var(--state-error);

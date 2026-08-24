@@ -44,8 +44,7 @@ export interface IdentifyFlowProps {
   loadKnowledge: (predictionId: string) => Promise<ActionResult<KnowledgeResponse>>
 }
 
-// Four steps, forward-only. A 503 offers manual species selection and a 502
-// still reaches publish, so neither service being down blocks the operator.
+// Four steps, forward-only. A 503 or 502 never blocks the operator.
 export function IdentifyFlow({
   identifyCatch,
   confirmSpecies,
@@ -331,8 +330,7 @@ function CaptureStep({
         Ikan utuh, latar polos, cahaya cukup.
       </p>
       {preview && (
-        // Blob URL from the capture; next/image cannot take it.
-        // eslint-disable-next-line @next/next/no-img-element
+        // eslint-disable-next-line @next/next/no-img-element -- blob URL from the capture
         <img
           src={preview}
           alt="Hasil tangkapan"

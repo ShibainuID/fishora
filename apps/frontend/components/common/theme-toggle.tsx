@@ -4,8 +4,7 @@ import { useLayoutEffect } from 'react'
 import { Moon, Sun } from '@phosphor-icons/react/dist/ssr'
 import { applyTheme, readTheme, resolvedTheme } from '@/lib/theme'
 
-// Holds no state: `data-theme` is the source of truth, both icons render and
-// CSS picks. Avoids an SSR/hydration mismatch.
+// No state: `data-theme` decides, both icons render and CSS picks.
 export function ThemeToggle() {
   useLayoutEffect(() => {
     const stored = readTheme()

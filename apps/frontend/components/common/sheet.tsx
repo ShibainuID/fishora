@@ -24,8 +24,7 @@ export function Sheet({ open, onClose, title, footer, children }: SheetProps) {
     if (open && node && !node.open) node.showModal()
   }, [open])
 
-  // Backstop: if transitionend never fires the dialog would stay open and keep
-  // the focus trap forever.
+  // Backstop: without it a missed transitionend leaves the dialog trapping focus.
   useEffect(() => {
     if (open) return
     const node = ref.current
@@ -71,8 +70,7 @@ export function Sheet({ open, onClose, title, footer, children }: SheetProps) {
       ].join(' ')}
     >
       <div
-        // Inline, not a data-variant utility: both states write `translate`, so
-        // this avoids depending on utility ordering.
+        // Inline: both states write `translate`, so utility ordering cannot decide.
         style={{ translate: open ? '0 0' : '0 100%' }}
         onClick={(event) => event.stopPropagation()}
         onTransitionEnd={(event) => {

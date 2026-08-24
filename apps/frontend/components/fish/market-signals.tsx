@@ -2,8 +2,7 @@ import { ChatCircle } from '@phosphor-icons/react/dist/ssr'
 import { EmptyState } from '@/components/common/empty-state'
 import { normaliseDashes } from '@/lib/format'
 
-// The unverified surface: sunken ground, no shield, no verified edge.
-// Must look nothing like KnowledgeCard.
+// The unverified surface: no shield, no verified edge, unlike KnowledgeCard.
 export interface MarketSignal {
   businessType: string
   useCase: string

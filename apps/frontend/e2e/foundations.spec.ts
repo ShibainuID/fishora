@@ -25,8 +25,7 @@ test('every interactive target clears 44px', async ({ page }) => {
 
 test('no axe violations in either theme', async ({ page }) => {
   await page.goto('/')
-  // Theme tokens transition color and background. Audit the settled theme,
-  // not a 150ms interpolation that would fail contrast mid-fade.
+  // Audit the settled theme, not a mid-fade interpolation.
   await page.addStyleTag({
     content: '*, *::before, *::after { transition: none !important; animation: none !important; }',
   })

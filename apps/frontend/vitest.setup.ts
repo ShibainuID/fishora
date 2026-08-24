@@ -1,7 +1,6 @@
 import '@testing-library/jest-dom/vitest'
 
-// jsdom implements neither, and both are used: matchMedia for theme and
-// reduced motion, <dialog> for Sheet.
+// jsdom implements neither, and both are used.
 if (!window.matchMedia) {
   window.matchMedia = (query: string) =>
     ({

@@ -25,8 +25,7 @@ export async function apiFetch<T>(
   try {
     response = await fetch(`${BASE}${path}`, { ...init, signal: combined })
   } catch (cause) {
-    // Aborted means timeout; anything else here means the network is gone.
-    // Neither is a server error.
+    // Aborted means timeout, anything else means the network is gone.
     const aborted = cause instanceof DOMException && cause.name === 'AbortError'
     throw new ApiError(aborted ? 'timeout' : 'offline', 0)
   } finally {

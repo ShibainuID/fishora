@@ -34,8 +34,7 @@ export FISHORA_FRONTEND_PORT="${FISHORA_FRONTEND_PORT:-3000}"
 
 export FISHORA_CV_SERVICE_URL="${FISHORA_CV_SERVICE_URL:-http://localhost:${FISHORA_CV_SERVICE_PORT}}"
 
-# These two must agree or every browser request fails. Derived from the ports
-# above so changing a port keeps them in step.
+# Must agree or every browser request fails, so both derive from the ports above.
 export NEXT_PUBLIC_API_BASE_URL="${NEXT_PUBLIC_API_BASE_URL:-http://localhost:${FISHORA_MAIN_API_PORT}}"
 export FISHORA_CORS_ALLOW_ORIGINS="${FISHORA_CORS_ALLOW_ORIGINS:-http://localhost:${FISHORA_FRONTEND_PORT},http://127.0.0.1:${FISHORA_FRONTEND_PORT}}"
 

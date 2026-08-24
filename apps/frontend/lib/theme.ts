@@ -4,8 +4,7 @@ export type Theme = 'light' | 'dark'
 /** `system` means no override stored: CSS decides via prefers-color-scheme. */
 export type ThemeChoice = Theme | 'system'
 
-// Runs synchronously in <head> before first paint. try/catch because
-// localStorage throws outright in private mode and when site data is blocked.
+// Runs in <head> before first paint. try/catch: localStorage can throw.
 export const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem("${THEME_KEY}");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}})()`
 
 export function readTheme(): ThemeChoice {

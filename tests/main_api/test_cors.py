@@ -1,9 +1,4 @@
-"""Browser access control for the frontend.
-
-Without CORS the browser refuses every request before it reaches FastAPI.
-Credentials are allowed for the cookie session, so the origin list must be
-explicit: a wildcard is invalid alongside credentialed requests.
-"""
+"""Browser access control: without CORS every request fails before FastAPI."""
 
 from fastapi.testclient import TestClient
 
@@ -53,8 +48,7 @@ def test_unknown_origin_is_not_granted_access(main_app):
 
 
 def test_cors_works_without_any_settings_object(main_app):
-    """A complete fake bundle passes settings=None, so CORS must fall back to
-    the default rather than constructing MainSettings."""
+    """settings=None must fall back to the default, not construct MainSettings."""
     client = TestClient(main_app)
     response = client.options(
         "/api/v1/fish/identify",

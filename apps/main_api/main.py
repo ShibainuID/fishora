@@ -77,8 +77,7 @@ def _ensure_production_deps(app: FastAPI) -> None:
     if complete:
         return
     settings = app.state.settings or MainSettings()
-    # Store the constructed settings so routes read configured values
-    # (e.g. cv_max_image_bytes) instead of the class default.
+    # Stored so routes read configured values, not the class defaults.
     app.state.settings = settings
     if deps.session_factory is None:
         deps.session_factory = session_factory(settings)
@@ -100,22 +99,12 @@ def _ensure_production_deps(app: FastAPI) -> None:
     if deps.retriever is None:
         deps.retriever = VerifiedRetriever(deps.knowledge_repo, deps.embedder)
     if deps.generator is None:
-        # Lazy OpenCode client: constructed only when a card request actually
-        # has evidence, so a blank OPENCODE_GO_API_KEY never breaks startup
-        # or empty-evidence requests.
+        # Lazy: a blank OPENCODE_GO_API_KEY must not break startup.
         deps.generator = KnowledgeGenerator(lambda: OpenCodeGoClient(settings))
 
 
 def _register_cors(app: FastAPI, settings: MainSettings | None) -> None:
-    """Allow the frontend's origin to reach this API from a browser.
-
-    Middleware is installed at construction time, so the origin list falls back
-    to the module default when no settings object was passed: a complete fake
-    bundle must never touch MainSettings.
-
-    allow_credentials rules out the wildcard origin, so the list is explicit
-    and an empty list denies rather than widens.
-    """
+    """Allow the frontend's origin to reach this API from a browser."""
     origins = (
         settings.cors_origins
         if settings is not None
@@ -158,8 +147,7 @@ def _register_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(OpenCodeUnavailable)
     async def _opencode_unavailable(request: Request, exc: OpenCodeUnavailable):
-        # Fixed generic detail plus retrieved chunk ids for diagnosis; never
-        # credentials, internal URLs, headers, or the raw upstream error.
+        # Generic detail plus chunk ids only, never credentials or internal URLs.
         return JSONResponse(status_code=502, content={
             "detail": "knowledge generation is temporarily unavailable",
             "retrieved_chunk_ids": exc.retrieved_chunk_ids,

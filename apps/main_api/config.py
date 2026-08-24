@@ -4,8 +4,7 @@ from pydantic import AliasChoices, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-# Both spellings: Next.js prints localhost, some tools resolve the loopback
-# address. A module constant so callers need not touch MainSettings.
+# Both spellings, since tools disagree on which they resolve.
 DEFAULT_CORS_ALLOW_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000"
 
 
@@ -38,8 +37,7 @@ class MainSettings(BaseSettings):
     opencode_go_api_key: SecretStr = Field(default=SecretStr(""), validation_alias=AliasChoices("OPENCODE_GO_API_KEY", "opencode_go_api_key"))
     opencode_go_model: str = Field(default="gpt-5.6-luna", validation_alias=AliasChoices("FISHORA_OPENCODE_GO_MODEL", "opencode_go_model"))
     opencode_go_timeout_seconds: float = Field(default=60.0, validation_alias=AliasChoices("FISHORA_OPENCODE_GO_TIMEOUT_SECONDS", "opencode_go_timeout_seconds"))
-    # A plain string, not list[str]: pydantic-settings would JSON-parse a
-    # list field and reject a bare comma-separated .env value.
+    # A plain string: pydantic-settings would JSON-parse a list[str] field.
     cors_allow_origins: str = Field(
         default=DEFAULT_CORS_ALLOW_ORIGINS,
         validation_alias=AliasChoices("FISHORA_CORS_ALLOW_ORIGINS", "cors_allow_origins"),

@@ -1,11 +1,4 @@
-/**
- * Generate `lib/api/schema.d.ts` from the running FastAPI app.
- *
- * Preferred: the live server (`pnpm gen:api`).
- * Fallback: dump OpenAPI from `create_main_app().openapi()` so types can be
- * regenerated when Postgres is not up. The schema is the FastAPI contract
- * either way; it does not depend on a live database.
- */
+// Generate lib/api/schema.d.ts from the live server, or from create_main_app().
 import { spawnSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'

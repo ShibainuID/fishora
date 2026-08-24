@@ -1,5 +1,4 @@
-// Locale is pinned: an unpinned toLocaleString() formats with the server's
-// locale during SSR and the browser's on hydration, which mismatches.
+// Locale is pinned: an unpinned one formats differently on server and client.
 
 /** Non-breaking space. */
 const NBSP = ' '
