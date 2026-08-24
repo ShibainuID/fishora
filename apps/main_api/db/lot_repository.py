@@ -8,8 +8,8 @@ from uuid import uuid4
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from apps.main_api.contracts import BidRecord, LotRecord
-from apps.main_api.db.models import Bid, Lot
+from apps.main_api.contracts import BidRecord, LandingPointRecord, LotRecord
+from apps.main_api.db.models import Bid, LandingPoint, Lot
 from apps.main_api.errors import BidOutbid, LotClosed, LotNotAllocatable, LotNotFound
 
 
@@ -151,3 +151,25 @@ class SqlLotRepository:
             amount_per_kg=Decimal(row.amount_per_kg),
             created_at=row.created_at,
         )
+
+
+class SqlLandingPointRepository:
+    def __init__(self, session_factory: Callable[[], Session]):
+        self._session_factory = session_factory
+
+    def get(self, landing_point_id: str) -> LandingPointRecord | None:
+        with self._session_factory() as session:
+            row = session.get(LandingPoint, landing_point_id)
+            if row is None:
+                return None
+            return LandingPointRecord(
+                id=row.id, name=row.name, latitude=row.latitude, longitude=row.longitude
+            )
+
+    def all(self) -> list[LandingPointRecord]:
+        with self._session_factory() as session:
+            rows = session.scalars(select(LandingPoint)).all()
+            return [
+                LandingPointRecord(id=row.id, name=row.name, latitude=row.latitude, longitude=row.longitude)
+                for row in rows
+            ]

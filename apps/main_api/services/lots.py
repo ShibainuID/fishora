@@ -116,17 +116,17 @@ class LotService:
                 continue
             if max_quantity is not None and lot.quantity_kg > max_quantity:
                 continue
-            if (
-                buyer_lat is not None
-                and buyer_lon is not None
-                and serviceability_radius_km is not None
-                and self._landing_point_repo is not None
-            ):
-                from apps.main_api.services.geo import within_serviceability
+            if buyer_lat is not None and buyer_lon is not None and self._landing_point_repo is not None:
+                from apps.main_api.services.geo import DEFAULT_SERVICEABILITY_RADIUS_KM, within_serviceability
 
+                radius = (
+                    serviceability_radius_km
+                    if serviceability_radius_km is not None
+                    else DEFAULT_SERVICEABILITY_RADIUS_KM
+                )
                 point = self._landing_point_repo.get(lot.landing_point_id)
                 if point is None or not within_serviceability(
-                    buyer_lat, buyer_lon, point.latitude, point.longitude, serviceability_radius_km
+                    buyer_lat, buyer_lon, point.latitude, point.longitude, radius
                 ):
                     continue
             filtered.append(lot)

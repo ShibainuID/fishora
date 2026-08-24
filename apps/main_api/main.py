@@ -8,7 +8,7 @@ from apps.contracts import ImageValidationError
 from apps.main_api.api.fish import knowledge_router, router as fish_router
 from apps.main_api.api.lots import router as lots_router
 from apps.main_api.config import DEFAULT_CORS_ALLOW_ORIGINS, MainSettings, parse_origins
-from apps.main_api.db.lot_repository import SqlLotRepository
+from apps.main_api.db.lot_repository import SqlLandingPointRepository, SqlLotRepository
 from apps.main_api.db.repositories import SqlKnowledgeRepository
 from apps.main_api.db.session import session_factory
 from apps.main_api.db.sql_repositories import SqlPredictionRepository, SqlSpeciesRepository
@@ -106,6 +106,8 @@ def _ensure_production_deps(app: FastAPI) -> None:
         deps.knowledge_repo = SqlKnowledgeRepository(deps.session_factory)
     if deps.lot_repo is None:
         deps.lot_repo = SqlLotRepository(deps.session_factory)
+    if deps.landing_point_repo is None:
+        deps.landing_point_repo = SqlLandingPointRepository(deps.session_factory)
     if deps.retriever is None:
         deps.retriever = VerifiedRetriever(deps.knowledge_repo, deps.embedder)
     if deps.generator is None:

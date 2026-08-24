@@ -6,10 +6,8 @@ from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel, Field
 
 from apps.main_api.contracts import BidRecord, LotRecord
+from apps.main_api.services.geo import DEFAULT_SERVICEABILITY_RADIUS_KM
 from apps.main_api.services.lots import LotService
-
-# Named in the contract so Task 18 can keep the proxy explicit. Not freshness.
-DEFAULT_SERVICEABILITY_RADIUS_KM = 100.0
 
 router = APIRouter(prefix="/api/v1/lots")
 
