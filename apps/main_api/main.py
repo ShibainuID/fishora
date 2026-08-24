@@ -5,10 +5,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from apps.contracts import ImageValidationError
+from apps.main_api.api.buyers import router as buyers_router
 from apps.main_api.api.fish import knowledge_router, router as fish_router
 from apps.main_api.api.lots import router as lots_router
 from apps.main_api.config import DEFAULT_CORS_ALLOW_ORIGINS, MainSettings, parse_origins
 from apps.main_api.db.lot_repository import SqlLandingPointRepository, SqlLotRepository
+from apps.main_api.db.preference_repository import SqlPreferenceRepository
 from apps.main_api.db.repositories import SqlKnowledgeRepository
 from apps.main_api.db.session import session_factory
 from apps.main_api.db.sql_repositories import SqlPredictionRepository, SqlSpeciesRepository
@@ -54,6 +56,7 @@ def create_main_app(settings: MainSettings | None = None, deps: AppDependencies 
     app.include_router(fish_router)
     app.include_router(knowledge_router)
     app.include_router(lots_router)
+    app.include_router(buyers_router)
     return app
 
 
@@ -108,6 +111,8 @@ def _ensure_production_deps(app: FastAPI) -> None:
         deps.lot_repo = SqlLotRepository(deps.session_factory)
     if deps.landing_point_repo is None:
         deps.landing_point_repo = SqlLandingPointRepository(deps.session_factory)
+    if deps.preference_repo is None:
+        deps.preference_repo = SqlPreferenceRepository(deps.session_factory)
     if deps.retriever is None:
         deps.retriever = VerifiedRetriever(deps.knowledge_repo, deps.embedder)
     if deps.generator is None:
