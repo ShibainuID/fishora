@@ -2,14 +2,8 @@ import { ChatCircle } from '@phosphor-icons/react/dist/ssr'
 import { EmptyState } from '@/components/common/empty-state'
 import { normaliseDashes } from '@/lib/format'
 
-/**
- * MarketSignals, the unverified surface. DESIGN.md 8.4.1.
- *
- * Deliberately different from KnowledgeCard: sunken ground, no shield, no
- * 2px verified edge. Buyer reviews live here, keyed by species so a review
- * of Tenggiri from one landing point appears on every Tenggiri lot, not only
- * the fisherman who sold that catch.
- */
+// The unverified surface: sunken ground, no shield, no verified edge.
+// Must look nothing like KnowledgeCard.
 export interface MarketSignal {
   businessType: string
   useCase: string

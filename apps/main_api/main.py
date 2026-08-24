@@ -109,16 +109,12 @@ def _ensure_production_deps(app: FastAPI) -> None:
 def _register_cors(app: FastAPI, settings: MainSettings | None) -> None:
     """Allow the frontend's origin to reach this API from a browser.
 
-    Middleware must be installed at construction time, not in the lifespan, so
-    the origin list comes from the passed settings when present and from the
-    module-level default otherwise. That default is read from a plain constant
-    rather than off MainSettings, because a complete fake dependency bundle
-    must never touch the settings class at all: it needs no DATABASE_URL, and
-    it still gets working CORS.
+    Middleware is installed at construction time, so the origin list falls back
+    to the module default when no settings object was passed: a complete fake
+    bundle must never touch MainSettings.
 
-    allow_credentials is on because the operator and buyer session is a cookie.
-    That rules out the wildcard origin by specification, which is why the
-    origin list is explicit and why an empty list denies rather than widens.
+    allow_credentials rules out the wildcard origin, so the list is explicit
+    and an empty list denies rather than widens.
     """
     origins = (
         settings.cors_origins
@@ -181,7 +177,7 @@ _app: FastAPI | None = None
 
 
 def __getattr__(name: str):
-    # ponytail: lazy module-level app; importing this module never needs env vars or a database
+    # Lazy module-level app: importing never needs env vars or a database.
     if name == "app":
         global _app
         if _app is None:

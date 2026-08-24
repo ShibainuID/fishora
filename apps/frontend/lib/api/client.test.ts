@@ -8,14 +8,7 @@ function jsonResponse(status: number, body: unknown) {
   })
 }
 
-/**
- * Await a call expected to reject and hand back a typed ApiError.
- *
- * A bare `.catch((e) => e)` yields `unknown`, which reads fine in a test but
- * fails the build's type check. Narrowing here also strengthens every caller:
- * a rejection that is not an ApiError fails loudly instead of quietly
- * returning undefined properties that satisfy the assertions below.
- */
+/** Await a rejection and return it typed. A bare .catch yields `unknown`. */
 async function rejectsWithApiError(promise: Promise<unknown>): Promise<ApiError> {
   const outcome = await promise.then(
     () => null,

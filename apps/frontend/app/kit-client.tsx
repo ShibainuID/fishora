@@ -5,7 +5,7 @@ import { Button } from '@/components/common/button'
 import { Field } from '@/components/common/field'
 import { Sheet } from '@/components/common/sheet'
 
-/** Client islands for the foundations preview. Temporary, see app/page.tsx. */
+/** Client islands for the foundations preview. Temporary. */
 
 export function KitFields() {
   const [price, setPrice] = useState('68000')

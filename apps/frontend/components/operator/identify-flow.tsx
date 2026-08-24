@@ -44,13 +44,8 @@ export interface IdentifyFlowProps {
   loadKnowledge: (predictionId: string) => Promise<ActionResult<KnowledgeResponse>>
 }
 
-/**
- * Operator identify and publish flow. DESIGN.md 6.2.
- *
- * Four steps, forward-only. The CV being down never blocks a crate of fish:
- * 503 offers Retry and a manual species list. The LLM being down never blocks
- * commerce: 502 still reaches publish with the card marked pending.
- */
+// Four steps, forward-only. A 503 offers manual species selection and a 502
+// still reaches publish, so neither service being down blocks the operator.
 export function IdentifyFlow({
   identifyCatch,
   confirmSpecies,
@@ -336,7 +331,7 @@ function CaptureStep({
         Ikan utuh, latar polos, cahaya cukup.
       </p>
       {preview && (
-        // Operator just captured this frame; no next/image for blob URLs.
+        // Blob URL from the capture; next/image cannot take it.
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={preview}

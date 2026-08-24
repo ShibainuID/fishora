@@ -16,8 +16,7 @@ const geistMono = Geist_Mono({
   display: 'swap',
 })
 
-/** Shared html/body chrome for the two root layouts. Next 16 still requires
- *  each route-group root to render html and body; lang is the only split. */
+/** Shared html/body for both root layouts. `lang` is the only difference. */
 export function RootHtml({
   lang,
   children,

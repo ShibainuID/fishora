@@ -15,13 +15,7 @@ const VERDICT: Record<ReturnType<typeof confidenceBand>, string> = {
   low: 'Perlu verifikasi',
 }
 
-/**
- * PredictionCard. DESIGN.md 8.5 and PRD 8.1 / 12.2.
- *
- * High confidence: Confirm is the primary action on the predicted species.
- * Low confidence: Confirm stays disabled until the operator picks a candidate.
- * That gate is the difference between augmenting and replacing the operator.
- */
+// Low confidence keeps Confirm disabled until the operator picks a candidate.
 export interface PredictionCardProps {
   result: IdentificationResult
   onConfirm: (speciesId: string) => void

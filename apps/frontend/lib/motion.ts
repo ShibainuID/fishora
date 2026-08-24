@@ -1,7 +1,4 @@
-/**
- * Motion tokens. DESIGN.md 3.5.
- * Only `transform`, `opacity` and `filter` animate. Never width, height, top, left.
- */
+// Only transform, opacity and filter animate. Never width, height, top, left.
 
 export const EASE = {
   /** Entrances. */
@@ -23,10 +20,7 @@ export const SPRING = {
   gentle: { type: 'spring', stiffness: 120, damping: 22 },
 } as const
 
-/**
- * The standard scroll reveal. Capped at 6 children by convention: a stagger
- * longer than that stops reading as one gesture and starts reading as a queue.
- */
+/** Standard scroll reveal. Keep to 6 children or fewer per stagger. */
 export const reveal = (index = 0) =>
   ({
     initial: { opacity: 0, y: 24 },

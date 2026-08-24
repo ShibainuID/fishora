@@ -1,7 +1,4 @@
-/**
- * The 11 labels the CV model actually emits. A UI that shows a fish the
- * model cannot identify is the worst possible demo bug.
- */
+/** The 11 labels the CV model emits. Nothing outside this set is identifiable. */
 export const SUPPORTED_LABELS = [
   'bandeng',
   'gelama_bunga',
@@ -23,11 +20,7 @@ export interface SpeciesNames {
   scientificName: string | null
 }
 
-/**
- * Display names keyed by normalized label. Scientific names follow the
- * relational taxonomy seed: gembolo has none (ambiguous vernacular), tuna is
- * locked at genus, tenggiri is Scomberomorus commerson.
- */
+// Follows the taxonomy seed: gembolo has no scientific name, tuna is genus-level.
 export const SPECIES: Record<SpeciesLabel, SpeciesNames> = {
   bandeng: { commonName: 'Bandeng', scientificName: 'Chanos chanos' },
   gelama_bunga: { commonName: 'Gelama Bunga', scientificName: 'Pennahia anea' },

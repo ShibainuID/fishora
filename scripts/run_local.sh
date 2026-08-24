@@ -6,8 +6,7 @@ cd "$ROOT_DIR"
 
 FRONTEND_DIR="$ROOT_DIR/apps/frontend"
 
-# Virtualenvs put the interpreter in bin/ on POSIX and Scripts/ on Windows.
-# Detect it rather than assuming, so the same script works from Git Bash.
+# bin/ on POSIX, Scripts/ on Windows.
 if [[ -x .venv/bin/python ]]; then
   PY=".venv/bin/python"
 elif [[ -x .venv/Scripts/python.exe ]]; then
@@ -28,23 +27,19 @@ export FISHORA_CV_MODEL_VERSION="${FISHORA_CV_MODEL_VERSION:-fishora-dinov3-expo
 export FISHORA_CV_DEVICE="${FISHORA_CV_DEVICE:-cuda}"
 export FISHORA_EMBEDDING_DEVICE="${FISHORA_EMBEDDING_DEVICE:-cpu}"
 
-# Ports for the three HTTP surfaces. The frontend keeps Next.js's own default.
+# Ports for the three HTTP surfaces.
 export FISHORA_MAIN_API_PORT="${FISHORA_MAIN_API_PORT:-8000}"
 export FISHORA_CV_SERVICE_PORT="${FISHORA_CV_SERVICE_PORT:-8001}"
 export FISHORA_FRONTEND_PORT="${FISHORA_FRONTEND_PORT:-3000}"
 
 export FISHORA_CV_SERVICE_URL="${FISHORA_CV_SERVICE_URL:-http://localhost:${FISHORA_CV_SERVICE_PORT}}"
 
-# The browser calls the API directly, so these two must agree or every request
-# fails: the frontend needs the API's address, and the API needs the frontend's
-# origin in its CORS allow-list. Deriving both from the ports above keeps them
-# in step when someone changes a port to dodge a conflict.
+# These two must agree or every browser request fails. Derived from the ports
+# above so changing a port keeps them in step.
 export NEXT_PUBLIC_API_BASE_URL="${NEXT_PUBLIC_API_BASE_URL:-http://localhost:${FISHORA_MAIN_API_PORT}}"
 export FISHORA_CORS_ALLOW_ORIGINS="${FISHORA_CORS_ALLOW_ORIGINS:-http://localhost:${FISHORA_FRONTEND_PORT},http://127.0.0.1:${FISHORA_FRONTEND_PORT}}"
 
-# The frontend is optional: the backend and CV service are useful on their own,
-# and a machine without Node should still be able to run them. Set
-# FISHORA_SKIP_FRONTEND=1 to skip it deliberately.
+# Optional: a machine without Node still runs the backend and CV service.
 RUN_FRONTEND=1
 if [[ "${FISHORA_SKIP_FRONTEND:-0}" == "1" ]]; then
   RUN_FRONTEND=0
@@ -56,8 +51,7 @@ elif [[ ! -d "$FRONTEND_DIR/node_modules" ]]; then
   RUN_FRONTEND=0
 fi
 
-# Distinguish "torch is not installed" from "torch cannot see the GPU": they
-# have different fixes, and a bare traceback sends people to the wrong one.
+# Missing torch and a GPU-less torch have different fixes.
 if ! "$PY" -c 'import torch' 2>/dev/null; then
   printf 'PyTorch is not installed in .venv. Install the CV extra:\n' >&2
   printf "  %s -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128\n" "$PY" >&2
@@ -75,8 +69,7 @@ export FISHORA_DATABASE_URL="${FISHORA_DATABASE_URL:-postgresql+psycopg://fishor
 "$PY" -m scripts.seed_taxonomy
 
 cleanup() {
-  # ${VAR:-} guards a pid that was never assigned: the trap is installed before
-  # the services start, and set -u would otherwise abort the handler itself.
+  # ${VAR:-} guards a pid that was never assigned; set -u would abort the handler.
   for pid in "${FRONTEND_PID:-}" "${MAIN_PID:-}" "${CV_PID:-}"; do
     [[ -n "$pid" ]] || continue
     kill "$pid" 2>/dev/null || true
@@ -90,9 +83,7 @@ CV_PID=$!
 MAIN_PID=$!
 
 if (( RUN_FRONTEND )); then
-  # --hostname 0.0.0.0 exposes the dev server on the LAN, which is how you open
-  # the operator flow on a real phone. DESIGN.md treats mobile as the primary
-  # target, and that is not verifiable from a desktop browser alone.
+  # 0.0.0.0 exposes the dev server on the LAN, for testing on a real phone.
   (cd "$FRONTEND_DIR" && pnpm dev --port "$FISHORA_FRONTEND_PORT" --hostname 0.0.0.0) &
   FRONTEND_PID=$!
 fi
@@ -107,6 +98,5 @@ else
   printf '  Frontend    not started\n\n'
 fi
 
-# Exit as soon as any service dies, so a crash is visible immediately instead
-# of leaving a half-running stack that still looks healthy.
+# Exit as soon as any service dies.
 wait -n "$CV_PID" "$MAIN_PID" ${FRONTEND_PID:+"$FRONTEND_PID"}

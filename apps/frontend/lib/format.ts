@@ -1,22 +1,14 @@
-/**
- * Number and unit formatting. DESIGN.md 2.3.
- *
- * The locale is pinned to `id-ID` rather than left to the runtime. That is not
- * only a product decision: an unpinned `toLocaleString()` formats with the
- * server's locale during SSR and the browser's on hydration, which is a
- * guaranteed mismatch. Pinning makes both sides agree by construction.
- *
- * Every value these return is rendered in mono with tabular numerals.
- */
+// Locale is pinned: an unpinned toLocaleString() formats with the server's
+// locale during SSR and the browser's on hydration, which mismatches.
 
-/** Non-breaking space. Welds "Rp" to its figure and "24" to its unit. */
+/** Non-breaking space. */
 const NBSP = ' '
-/** Zero-width and non-breaking. Stops "68.000/kg" breaking at the slash. */
+/** Zero-width, non-breaking. Stops "68.000/kg" breaking at the slash. */
 const WORD_JOINER = '⁠'
 
 const decimal = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 })
 
-/** `68000` -> `Rp 68.000`. Built by hand so ICU version drift cannot change it. */
+/** `68000` -> `Rp 68.000`. Built by hand so ICU drift cannot change it. */
 export function rupiah(value: number): string {
   return `Rp${NBSP}${decimal.format(Math.round(value))}`
 }
@@ -31,7 +23,7 @@ export function kilograms(value: number): string {
   return `${decimal.format(value)}${NBSP}kg`
 }
 
-/** `37.4` -> `37 km`. Distance is never shown to a decimal: it is a proxy. */
+/** `37.4` -> `37 km`. Never shown to a decimal: it is only a proxy. */
 export function kilometres(value: number): string {
   return `${decimal.format(Math.round(value))}${NBSP}km`
 }
@@ -41,10 +33,6 @@ export function percent(fraction: number): string {
   return `${Math.round(fraction * 100)}%`
 }
 
-/**
- * Confidence never renders as a bare number. DESIGN.md 8.5: a numeral plus a
- * one-word verdict, because colour alone is not allowed to carry meaning.
- */
 export type ConfidenceBand = 'high' | 'medium' | 'low'
 
 export function confidenceBand(fraction: number): ConfidenceBand {
@@ -53,11 +41,7 @@ export function confidenceBand(fraction: number): ConfidenceBand {
   return 'low'
 }
 
-/**
- * `H:MM:SS` under an hour, `Xh Ym` above it. DESIGN.md 8.9.
- * Takes remaining milliseconds so the caller owns the clock and the drift
- * correction; this stays pure and therefore safe to render on the server.
- */
+/** `m:ss` under an hour, `Xh Ym` above it. Pure, so it is safe to render on the server. */
 export function countdown(msRemaining: number): string {
   const total = Math.max(0, Math.floor(msRemaining / 1000))
   const hours = Math.floor(total / 3600)
@@ -68,11 +52,7 @@ export function countdown(msRemaining: number): string {
   return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
-/**
- * Long dashes are banned in every visible string, including generated copy
- * coming back from the RAG service. DESIGN.md 2.2. Applied at the render
- * boundary so no upstream fix is needed for the ban to hold.
- */
+/** Applied at the render boundary, so generated copy cannot reintroduce them. */
 export function normaliseDashes(text: string): string {
   return text.replace(/[—–]/g, '-')
 }

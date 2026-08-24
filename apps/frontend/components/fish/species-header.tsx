@@ -1,17 +1,10 @@
 import { ShieldCheck } from '@phosphor-icons/react/dist/ssr'
 import { resolveSpecies } from '@/lib/species'
 
-/**
- * SpeciesHeader. DESIGN.md 8.3.
- *
- * Indonesian name, scientific name in italic, optional verified mark. The
- * mark is the word Terverifikasi beside a shield: an icon alone is never
- * enough. Unknown labels render as-is so a model update cannot white-screen
- * the operator.
- */
+// Unknown labels render as-is, so a model update cannot white-screen the operator.
 export interface SpeciesHeaderProps {
   label: string
-  /** Override the map when the knowledge card already carries a scientific name. */
+  /** Overrides the map when the card already carries a scientific name. */
   scientificName?: string | null
   verified?: boolean
 }

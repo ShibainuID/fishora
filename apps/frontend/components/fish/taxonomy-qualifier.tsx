@@ -1,11 +1,7 @@
 import { WarningCircle } from '@phosphor-icons/react/dist/ssr'
 import type { TaxonomyStatus } from '@/lib/api/fish'
 
-/**
- * TaxonomyQualifier. Required by DESIGN.md 8.4: anything other than
- * VERIFIED_TAXONOMY must be visible beside the scientific name. Hiding this
- * to make a card look authoritative is the overclaiming PRD 26 forbids.
- */
+// Anything other than VERIFIED_TAXONOMY must stay visible beside the name.
 export interface TaxonomyQualifierProps {
   status: TaxonomyStatus
   label: string

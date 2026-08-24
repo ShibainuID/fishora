@@ -1,8 +1,4 @@
-/**
- * Every way the backend can fail, as a closed set. Derived from the exception
- * handlers in apps/main_api/main.py, so adding a handler there means adding a
- * kind here. Components switch on `kind` and never parse status codes.
- */
+/** Closed set, mirroring the exception handlers in apps/main_api/main.py. */
 export type ApiErrorKind =
   | 'offline'
   | 'timeout'
@@ -17,12 +13,7 @@ export type ApiErrorKind =
   | 'generation_invalid'
   | 'server'
 
-/**
- * User-facing copy, in Bahasa Indonesia, one per kind. Deliberately separate
- * from the server's `detail`: those strings can carry internal hostnames, and
- * the backend's own handlers exist to avoid leaking them. Echoing detail into
- * the UI would undo that.
- */
+// Kept separate from the server's `detail`, which can carry internal hostnames.
 const MESSAGES: Record<ApiErrorKind, string> = {
   offline: 'Tidak ada koneksi. Data yang sudah diisi tetap tersimpan.',
   timeout: 'Permintaan terlalu lama. Coba lagi.',
@@ -38,7 +29,7 @@ const MESSAGES: Record<ApiErrorKind, string> = {
   server: 'Terjadi kesalahan. Coba lagi.',
 }
 
-/** Only these are worth offering a Retry button for. */
+/** Only these get a Retry button. */
 const RETRYABLE: ReadonlySet<ApiErrorKind> = new Set([
   'offline', 'timeout', 'cv_unavailable', 'generation_unavailable', 'server',
 ])
@@ -48,7 +39,7 @@ export class ApiError extends Error {
   readonly status: number
   readonly retryable: boolean
   readonly userMessage: string
-  /** Present on generation failures. For diagnosis, never for display. */
+  /** Generation failures only. For diagnosis, never for display. */
   readonly retrievedChunkIds?: string[]
 
   constructor(kind: ApiErrorKind, status: number, retrievedChunkIds?: string[]) {
@@ -71,8 +62,7 @@ export function kindFromResponse(status: number, detail: string): ApiErrorKind {
     case 422: return 'unsupported_species'
     case 503: return 'cv_unavailable'
     case 502:
-      // Three different 502s share a status; the detail text is the only
-      // discriminator the backend gives us.
+      // Three 502s share the status; detail text is the only discriminator.
       if (detail.includes('failed validation')) return 'generation_invalid'
       if (detail.includes('unsupported species label')) return 'cv_label_unsupported'
       return 'generation_unavailable'

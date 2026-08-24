@@ -1,11 +1,3 @@
-/**
- * Skeleton. DESIGN.md 9.
- *
- * Skeletons are shaped like the content they replace, never a generic grey box
- * and never a centred spinner. The shimmer is a single transform-based sweep,
- * which the reduced-motion backstop in globals.css disables for free.
- */
-
 export function Skeleton({ className = '' }: { className?: string }) {
   return (
     <span
@@ -21,10 +13,7 @@ export function Skeleton({ className = '' }: { className?: string }) {
   )
 }
 
-/**
- * The LotCard skeleton, shaped to the real card: a 4:3 media block then four
- * text bars at the real widths. DESIGN.md 8.7.
- */
+/** Shaped to the real LotCard: 4:3 media block, then four text bars. */
 export function SkeletonLotCard() {
   return (
     <div className="flex flex-col gap-3">

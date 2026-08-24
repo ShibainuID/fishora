@@ -1,19 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { CircleNotch } from '@phosphor-icons/react/dist/ssr'
 
-/**
- * Button. DESIGN.md 8.1.
- *
- * Locked rules this component enforces rather than documents:
- * - `rounded-full`, always. A square button in this product is a bug.
- * - Amber fill never carries amber text. `primary` pairs --accent with
- *   --accent-ink, which is white in light mode and near-black in dark.
- * - Label stays on one line at every width. A wrapped CTA is a layout failure,
- *   so the fix belongs in the label, not in the wrapping.
- * - `loading` keeps the button's width so the layout cannot shift under it.
- * - Tactile press on every variant.
- */
-
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger'
 type Size = 'sm' | 'md' | 'lg'
 
@@ -36,7 +23,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant
   size?: Size
   loading?: boolean
-  /** Stretches to the container. The default on phones for primary actions. */
+  /** Stretches to the container. Default for primary actions on phones. */
   block?: boolean
   icon?: ReactNode
 }

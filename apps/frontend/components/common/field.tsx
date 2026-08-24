@@ -4,28 +4,15 @@ import { useId } from 'react'
 import type { InputHTMLAttributes, ReactNode } from 'react'
 import { WarningCircle } from '@phosphor-icons/react/dist/ssr'
 
-/**
- * Field. DESIGN.md 8.2 and 4.6.
- *
- * Locked rules this component enforces:
- * - Label above the input. Always a real <label for>. Never a placeholder
- *   standing in for a label.
- * - Helper text is always in the DOM, even when empty, so revealing an error
- *   cannot reflow the form under the user's thumb.
- * - Error replaces helper text and wires aria-invalid + aria-describedby.
- * - 44px minimum height, 16px minimum type, so iOS does not zoom on focus.
- */
-
 export interface FieldProps
-  // `id` is owned by useId. `prefix` is a real HTML attribute (a URI string on
-  // some elements) and is deliberately shadowed here with a richer type.
+  // `prefix` is a real HTML attribute, shadowed here with a richer type.
   extends Omit<InputHTMLAttributes<HTMLInputElement>, 'id' | 'prefix'> {
   label: string
   helper?: string
   error?: string
-  /** Rendered inside the input's leading edge, e.g. `Rp` on a price field. */
+  /** Inside the leading edge, e.g. `Rp`. */
   prefix?: ReactNode
-  /** Rendered inside the trailing edge, e.g. `kg`. */
+  /** Inside the trailing edge, e.g. `kg`. */
   suffix?: ReactNode
 }
 

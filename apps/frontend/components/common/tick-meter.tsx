@@ -1,9 +1,4 @@
-/**
- * TickMeter. DESIGN.md 8.5.
- *
- * Five hairline ticks. Filled ticks are 2px solid; empty ticks are 2px at 20%
- * opacity. Not a progress bar, not a filled track, not a dashboard widget.
- */
+// Five hairline ticks. Deliberately not a progress bar or a filled track.
 export interface TickMeterProps {
   value: number
 }

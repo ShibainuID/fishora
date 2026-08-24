@@ -1,19 +1,11 @@
 import type { ComponentType, ReactNode } from 'react'
 import type { IconProps } from '@phosphor-icons/react'
 
-/**
- * EmptyState. DESIGN.md 9.
- *
- * Every empty state names the cause and offers exactly one action. No mascot,
- * no custom illustration: one Phosphor duotone glyph at 40px in --ink-faint.
- * "No results" with no way forward is a dead end, not a state.
- */
-
 export interface EmptyStateProps {
   icon: ComponentType<IconProps>
-  /** Names the cause, not the absence. "No lots match these filters". */
+  /** Names the cause, not the absence. */
   message: string
-  /** The single way forward. Omitted only where none exists, e.g. bid history. */
+  /** Omitted only where no action exists. */
   action?: ReactNode
 }
 

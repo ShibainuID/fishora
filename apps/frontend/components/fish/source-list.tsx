@@ -3,12 +3,7 @@ import { normaliseDashes } from '@/lib/format'
 
 const VISIBLE = 3
 
-/**
- * SourceList. DESIGN.md 8.4.
- *
- * Numbered titles, collapsed past three into a disclosure that announces
- * the remaining count. A wall of sources is not a source list.
- */
+// Numbered titles, collapsed past three into a disclosure.
 export interface SourceListProps {
   sources: SourceMetadata[]
 }

@@ -2,12 +2,7 @@ import { ApiError } from './api/client'
 
 const JPEG_QUALITY = 0.82
 
-/**
- * Shrink a capture to `maxEdge` on its longest side before upload.
- * Phone cameras produce 4-12MB files; the backend caps at 10MB and a landing
- * point connection makes the upload the slowest step. 1280px is enough for
- * the CV model and keeps the request in the low hundreds of KB.
- */
+/** Shrink a capture to `maxEdge` before upload. The backend caps at 10MB. */
 export async function downscaleImage(
   file: File,
   maxEdge = 1280

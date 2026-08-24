@@ -25,9 +25,8 @@ export async function apiFetch<T>(
   try {
     response = await fetch(`${BASE}${path}`, { ...init, signal: combined })
   } catch (cause) {
-    // An aborted request is a timeout; anything else at this layer is the
-    // network being gone. Neither is a server error, and conflating them
-    // produces the wrong UI: a Retry button for a problem retrying cannot fix.
+    // Aborted means timeout; anything else here means the network is gone.
+    // Neither is a server error.
     const aborted = cause instanceof DOMException && cause.name === 'AbortError'
     throw new ApiError(aborted ? 'timeout' : 'offline', 0)
   } finally {
@@ -42,7 +41,7 @@ export async function apiFetch<T>(
       detail = typeof body?.detail === 'string' ? body.detail : ''
       chunkIds = Array.isArray(body?.retrieved_chunk_ids) ? body.retrieved_chunk_ids : undefined
     } catch {
-      // A non-JSON error body is still an error; the status carries enough.
+      // Non-JSON error body: the status carries enough.
     }
     throw new ApiError(kindFromResponse(response.status, detail), response.status, chunkIds)
   }

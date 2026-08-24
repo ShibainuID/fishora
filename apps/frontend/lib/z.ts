@@ -1,7 +1,4 @@
-/**
- * The only z-index source in the product. DESIGN.md 3.4.
- * Arbitrary `z-50` in a component is a bug: add a layer here instead.
- */
+/** The only z-index source. Add a layer here rather than an arbitrary z-*. */
 export const Z = {
   base: 0,
   raised: 10, // sticky table headers, card hover lift

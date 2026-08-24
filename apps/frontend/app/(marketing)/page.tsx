@@ -6,12 +6,7 @@ import { ThemeToggle } from '@/components/common/theme-toggle'
 import { KitFields, KitSheet } from '../kit-client'
 import { kilograms, kilometres, percent, rupiahPerKg } from '@/lib/format'
 
-/**
- * Foundations preview. Temporary: this route is replaced by the landing page at
- * build step 8. It exists so the token system and the five primitives can be
- * reviewed at 390x844 in both themes, which the mobile-first mandate in
- * DESIGN.md 1.3 requires before any breakpoint prefix gets written.
- */
+// Temporary foundations preview, replaced by the landing page.
 export default function Page() {
   return (
     <main className="mx-auto max-w-[1400px] px-4 py-8 md:px-6 lg:px-8">

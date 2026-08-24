@@ -4,19 +4,11 @@ import { SourceList } from '@/components/fish/source-list'
 import type { KnowledgeCard } from '@/lib/api/fish'
 import { normaliseDashes } from '@/lib/format'
 
-/**
- * KnowledgeCard, the verified surface. DESIGN.md 8.4.
- *
- * The 2px left edge and the shield mark appear nowhere else. MarketSignals
- * is a sibling on the lot page, never a child of this tree: mixing them
- * would let unverified buyer feedback wear the verified chrome.
- *
- * Taxonomy status and every limitations entry are required chrome. Omitting
- * either to make the card look authoritative is the overclaim PRD 26 forbids.
- */
+// The verified surface. MarketSignals must stay a sibling, never a child:
+// unverified feedback must not wear the verified chrome.
 export interface KnowledgeCardViewProps {
   card: KnowledgeCard
-  /** Normalized CV label. Needed so MIXED_TAXONOMY on tuna can name the genus. */
+  /** Normalized CV label, so MIXED_TAXONOMY on tuna can name the genus. */
   label: string
 }
 
@@ -96,7 +88,7 @@ function ChipList({ heading, items }: { heading: string; items: string[] }) {
   )
 }
 
-/** Render-boundary sanitiser: dash ban plus RAG heading leak. DESIGN.md 8.4. */
+/** Strips long dashes and leaked markdown headings from generated text. */
 function display(text: string): string {
   return normaliseDashes(text.replace(/^#{1,6}\s+/gm, ''))
 }

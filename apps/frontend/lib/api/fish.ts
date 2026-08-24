@@ -56,8 +56,7 @@ export function identifyFish(file: File, signal?: AbortSignal) {
   const body = new FormData()
   // Field name must be `file`: it matches the FastAPI File(...) parameter.
   body.append('file', file)
-  // No Content-Type header on purpose. Setting it by hand omits the multipart
-  // boundary and the request becomes unparseable.
+  // No Content-Type header: setting it by hand omits the multipart boundary.
   return apiFetch<IdentificationResult>('/api/v1/fish/identify', {
     method: 'POST', body, signal,
   })
@@ -77,7 +76,7 @@ export function verifySpecies(predictionId: string, verifiedSpeciesId: string) {
 }
 
 export function getKnowledge(predictionId: string) {
-  // Longer budget: this path runs retrieval plus an LLM call.
+  // Longer budget: this path runs retrieval plus generation.
   return apiFetch<KnowledgeResponse>(
     `/api/v1/predictions/${encodeURIComponent(predictionId)}/knowledge`,
     { timeoutMs: 70_000 }
