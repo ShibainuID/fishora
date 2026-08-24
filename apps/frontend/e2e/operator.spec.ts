@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test'
 
+async function probe(url: string) {
+  return fetch(url).catch(() => null)
+}
+
 test('operator chrome is four steps, not a track, with a safe-area action bar', async ({
   page,
 }) => {
@@ -15,8 +19,18 @@ test('operator chrome is four steps, not a track, with a safe-area action bar', 
 })
 
 test('identifies a catch against the live API when it is up', async ({ page }) => {
-  const health = await fetch('http://localhost:8000/health').catch(() => null)
-  test.skip(!health?.ok, 'live API is not running')
+  const health = await probe('http://localhost:8000/health')
+  test.skip(!health?.ok, 'main API is not reachable at http://localhost:8000/health')
+
+  // Reachability of both services first, then the data state they need.
+  const cv = await probe('http://localhost:8001/health')
+  test.skip(!cv?.ok, 'CV service is not reachable at http://localhost:8001/health, so identify returns 503')
+
+  const body = (await health!.json().catch(() => null)) as { taxonomy_seeded?: boolean } | null
+  test.skip(
+    body?.taxonomy_seeded !== true,
+    'taxonomy is not seeded, so every identification fails on species resolution'
+  )
 
   await page.goto('/operator')
   const jpeg = Buffer.from(
