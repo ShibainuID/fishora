@@ -8,7 +8,11 @@ from pydantic import BaseModel, Field
 from apps.main_api.contracts import BidRecord, LotRecord
 from apps.main_api.errors import Forbidden
 from apps.main_api.services.geo import DEFAULT_SERVICEABILITY_RADIUS_KM
-from apps.main_api.services.lots import LotService
+from apps.main_api.services.lots import (
+    MAX_AUCTION_HOURS,
+    MIN_AUCTION_HOURS,
+    LotService,
+)
 from apps.main_api.services.session import require_role
 
 router = APIRouter(prefix="/api/v1/lots")
@@ -21,6 +25,7 @@ class PublishLotRequest(BaseModel):
     starting_price_per_kg: Decimal = Field(gt=0)
     size_category: Literal["S", "M", "L"]
     landing_point_id: str
+    auction_hours: int | None = Field(default=None, ge=MIN_AUCTION_HOURS, le=MAX_AUCTION_HOURS)
 
 
 class LotResponse(BaseModel):
@@ -124,6 +129,7 @@ def publish_lot(payload: PublishLotRequest, request: Request):
         starting_price_per_kg=payload.starting_price_per_kg,
         size_category=payload.size_category,
         landing_point_id=payload.landing_point_id,
+        auction_hours=payload.auction_hours,
     )
     return _lot_response(service, lot)
 
@@ -137,13 +143,16 @@ def list_lots(
     min_quantity: Decimal | None = None,
     max_quantity: Decimal | None = None,
     status: str | None = None,
+    mine: bool = Query(default=False),
     buyer_lat: float | None = Query(default=None),
     buyer_lon: float | None = Query(default=None),
     serviceability_radius_km: float | None = Query(default=None),
 ):
     service = _service(request)
+    operator_id = require_role(request, "operator").id if mine else None
     lots = service.list_lots(
         species_id=species_id,
+        operator_id=operator_id,
         min_price=min_price,
         max_price=max_price,
         min_quantity=min_quantity,

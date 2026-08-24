@@ -13,6 +13,10 @@ from apps.main_api.contracts import BidRecord, LotRecord
 from apps.main_api.errors import InvalidLot, LotNotFound, PredictionNotFound, PredictionNotVerified
 
 DEFAULT_AUCTION_HOURS = 4
+# A lot that never closes cannot be allocated, and one that closes instantly
+# cannot be bid on, so the window is bounded rather than free-form.
+MIN_AUCTION_HOURS = 1
+MAX_AUCTION_HOURS = 72
 _POSITIVE_SIZES = {"S", "M", "L"}
 
 
@@ -41,8 +45,14 @@ class LotService:
         starting_price_per_kg: Decimal,
         size_category: str,
         landing_point_id: str,
+        auction_hours: int | None = None,
         now: datetime | None = None,
     ) -> LotRecord:
+        hours = self._auction_hours if auction_hours is None else int(auction_hours)
+        if not MIN_AUCTION_HOURS <= hours <= MAX_AUCTION_HOURS:
+            raise ValueError(
+                f"auction_hours must be between {MIN_AUCTION_HOURS} and {MAX_AUCTION_HOURS}"
+            )
         record = self._prediction_repo.get(prediction_id)
         if record is None:
             raise PredictionNotFound(prediction_id)
@@ -70,7 +80,7 @@ class LotService:
             starting_price_per_kg=starting_price_per_kg,
             status="active",
             auction_starts_at=starts,
-            auction_ends_at=starts + timedelta(hours=self._auction_hours),
+            auction_ends_at=starts + timedelta(hours=hours),
             public_slug=f"{label}-{lot_id[:8]}",
             knowledge_snapshot=snapshot,
         )
@@ -97,6 +107,7 @@ class LotService:
         min_quantity: Decimal | None = None,
         max_quantity: Decimal | None = None,
         status: str | None = None,
+        operator_id: str | None = None,
         buyer_lat: float | None = None,
         buyer_lon: float | None = None,
         serviceability_radius_km: float | None = None,
@@ -107,6 +118,8 @@ class LotService:
             if species_id and lot.species_id != species_id:
                 continue
             if status and lot.status != status:
+                continue
+            if operator_id and lot.operator_id != operator_id:
                 continue
             if min_price is not None and lot.starting_price_per_kg < min_price:
                 continue

@@ -212,6 +212,7 @@ describe('IdentifyFlow', () => {
         starting_price_per_kg: '68000',
         size_category: 'M',
         landing_point_id: 'lp_muara_angke',
+        auction_hours: 4,
       })
     })
   })
@@ -285,5 +286,28 @@ describe('IdentifyFlow', () => {
     await waitFor(() =>
       expect(screen.getByText(/terjadi kesalahan/i)).toBeInTheDocument()
     )
+  })
+
+  it('sends the chosen auction duration, not just the default', async () => {
+    const user = userEvent.setup()
+    const publishLot = vi.fn().mockResolvedValue({})
+    render(flow({ publishLot }))
+
+    await capture(user)
+    await user.click(screen.getByRole('button', { name: /identifikasi/i }))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /konfirmasi/i })).toBeInTheDocument()
+    )
+    await user.click(screen.getByRole('button', { name: /konfirmasi/i }))
+    await waitFor(() => expect(screen.getByText(/langkah 3 dari 4/i)).toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: /lanjut/i }))
+    await waitFor(() => expect(screen.getByText(/langkah 4 dari 4/i)).toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: '8 jam' }))
+    await user.click(screen.getByRole('button', { name: /terbitkan/i }))
+
+    await waitFor(() => expect(publishLot).toHaveBeenCalledTimes(1))
+    // A duration control that never reaches the API is a lie in the UI.
+    expect(publishLot.mock.calls[0][0].auction_hours).toBe(8)
   })
 })

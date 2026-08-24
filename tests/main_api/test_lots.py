@@ -86,3 +86,61 @@ def test_published_lot_has_server_id_and_active_status():
     assert lot.id
     assert lot.status == "active"
     assert lot.auction_ends_at - lot.auction_starts_at == timedelta(hours=4)
+
+
+def test_publish_honours_a_requested_auction_duration(prediction_repo, species_repo):
+    """The operator picks 2h/4h/8h/24h in the UI. If the request cannot carry it,
+    every lot silently runs for the default and the control is a lie."""
+    from decimal import Decimal
+    from datetime import timedelta
+
+    from apps.main_api.contracts import PredictionRecord
+    from apps.main_api.services.lots import LotService
+    from tests.main_api.fakes import FakeLotRepository, FakePredictionRepository
+
+    predictions = FakePredictionRepository({
+        "pred_ok": PredictionRecord(
+            id="pred_ok", image_reference="images/ok.jpg",
+            predicted_species_id="species_tenggiri", confidence=0.9,
+            top_candidates=[], model_version="v1",
+            verification_status="confirmed", verified_species_id="species_tenggiri",
+        )
+    })
+    service = LotService(prediction_repo=predictions, lot_repo=FakeLotRepository())
+
+    lot = service.publish(
+        prediction_id="pred_ok", operator_id="op_rian",
+        quantity_kg=Decimal("24"), starting_price_per_kg=Decimal("68000"),
+        size_category="L", landing_point_id="lp_muara_angke",
+        auction_hours=8,
+    )
+    assert lot.auction_ends_at - lot.auction_starts_at == timedelta(hours=8)
+
+
+def test_publish_rejects_an_out_of_range_auction_duration(prediction_repo, species_repo):
+    from decimal import Decimal
+
+    import pytest
+
+    from apps.main_api.contracts import PredictionRecord
+    from apps.main_api.services.lots import LotService
+    from tests.main_api.fakes import FakeLotRepository, FakePredictionRepository
+
+    predictions = FakePredictionRepository({
+        "pred_ok": PredictionRecord(
+            id="pred_ok", image_reference="images/ok.jpg",
+            predicted_species_id="species_tenggiri", confidence=0.9,
+            top_candidates=[], model_version="v1",
+            verification_status="confirmed", verified_species_id="species_tenggiri",
+        )
+    })
+    service = LotService(prediction_repo=predictions, lot_repo=FakeLotRepository())
+
+    for hours in (0, -4, 999):
+        with pytest.raises(ValueError):
+            service.publish(
+                prediction_id="pred_ok", operator_id="op_rian",
+                quantity_kg=Decimal("24"), starting_price_per_kg=Decimal("68000"),
+                size_category="L", landing_point_id="lp_muara_angke",
+                auction_hours=hours,
+            )

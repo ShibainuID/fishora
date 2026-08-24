@@ -85,6 +85,7 @@ export function publishLot(payload: {
   starting_price_per_kg: string
   size_category: 'S' | 'M' | 'L'
   landing_point_id: string
+  auction_hours?: number
 }) {
   return apiFetch<Lot>('/api/v1/lots', {
     method: 'POST',

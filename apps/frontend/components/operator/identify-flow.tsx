@@ -36,13 +36,14 @@ type PublishLotPayload = {
   starting_price_per_kg: string
   size_category: 'S' | 'M' | 'L'
   landing_point_id: string
+  auction_hours?: number
 }
 
 const DURATIONS = [
-  { id: '2h', label: '2 jam' },
-  { id: '4h', label: '4 jam' },
-  { id: '8h', label: '8 jam' },
-  { id: '24h', label: '24 jam' },
+  { id: '2h', label: '2 jam', hours: 2 },
+  { id: '4h', label: '4 jam', hours: 4 },
+  { id: '8h', label: '8 jam', hours: 8 },
+  { id: '24h', label: '24 jam', hours: 24 },
 ] as const
 const SIZES = ['S', 'M', 'L'] as const
 
@@ -239,6 +240,7 @@ export function IdentifyFlow({
         starting_price_per_kg: pricePerKg,
         size_category: size,
         landing_point_id: LANDING_POINT_IDS[landingPoint as (typeof LANDING_POINTS)[number]],
+        auction_hours: DURATIONS.find((option) => option.id === duration)?.hours ?? 4,
       })
       router.push('/operator/lots')
     } catch (cause) {
