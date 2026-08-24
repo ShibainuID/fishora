@@ -351,12 +351,13 @@ def run_graph(job_id: str, species_id: str, prediction_id: str, knowledge_repo, 
         final = result.get("final_card")
         err = result.get("error")
         if final is not None and err is None:
-            data = final.model_dump() if hasattr(final, "model_dump") else final
+            data = final.model_dump(mode="json") if hasattr(final, "model_dump") else final
             job_repo.update(job_id, status="completed", final_card=data, expert_outputs=result.get("expert_outputs"), critic_feedback=result.get("critic_feedback"))
         else:
-            job_repo.update(job_id, status="failed", error=err or "orchestrator failed", expert_outputs=result.get("expert_outputs"))
-    except Exception as exc:
+            # generic error, hide raw detail in response but keep expert_outputs for debug
+            job_repo.update(job_id, status="failed", error="knowledge generation failed", expert_outputs=result.get("expert_outputs"))
+    except Exception:
         try:
-            job_repo.update(job_id, status="failed", error=str(exc))
+            job_repo.update(job_id, status="failed", error="knowledge generation failed")
         except Exception:
             pass
