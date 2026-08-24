@@ -77,6 +77,18 @@ class PredictionRecord:
     verified_species_id: str | None = None
 
 
+@dataclass
+class KnowledgeJobRecord:
+    id: str
+    prediction_id: str
+    species_id: str
+    status: Literal["processing", "completed", "failed"]
+    expert_outputs: dict | None = None
+    critic_feedback: str | None = None
+    final_card: dict | None = None
+    error: str | None = None
+
+
 @dataclass(frozen=True)
 class TaxonomySeed:
     raw_folder: str

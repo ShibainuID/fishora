@@ -28,3 +28,6 @@ class MainSettings(BaseSettings):
     opencode_go_api_key: SecretStr = Field(default=SecretStr(""), validation_alias=AliasChoices("OPENCODE_GO_API_KEY", "opencode_go_api_key"))
     opencode_go_model: str = Field(default="gpt-5.6-luna", validation_alias=AliasChoices("FISHORA_OPENCODE_GO_MODEL", "opencode_go_model"))
     opencode_go_timeout_seconds: float = Field(default=60.0, validation_alias=AliasChoices("FISHORA_OPENCODE_GO_TIMEOUT_SECONDS", "opencode_go_timeout_seconds"))
+    sub2api_base_url: str = Field(default="http://localhost:8080/v1", validation_alias=AliasChoices("FISHORA_SUB2API_BASE_URL", "sub2api_base_url"))
+    sub2api_api_key: SecretStr = Field(default=SecretStr(""), validation_alias=AliasChoices("FISHORA_SUB2API_API_KEY", "sub2api_api_key"))
+    llm_medium_model: str = Field(default="gpt-4o-mini", validation_alias=AliasChoices("FISHORA_LLM_MEDIUM_MODEL", "llm_medium_model"))
