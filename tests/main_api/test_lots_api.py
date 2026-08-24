@@ -159,3 +159,25 @@ def test_list_lots_filters_species_price_quantity_status():
     bulky = client.get("/api/v1/lots", params={"min_quantity": "20"})
     assert {row["id"] for row in bulky.json()} == {"lot_a", "lot_c"}
     assert cheap.json()[0]["serviceability_radius_km"] == 100.0
+
+
+def test_mine_scopes_the_list_to_the_signed_in_operator():
+    """Without this, "Lot saya" is really every operator's lots."""
+    lots = FakeLotRepository({
+        "lot_1": _lot(),
+        "lot_2": _lot(id="lot_2", operator_id="op_other", public_slug="tenggiri-lot2"),
+    })
+    client, _ = _client(lots)
+    _login(client, "rian")
+
+    everything = client.get("/api/v1/lots")
+    assert {row["id"] for row in everything.json()} == {"lot_1", "lot_2"}
+
+    mine = client.get("/api/v1/lots?mine=1")
+    assert mine.status_code == 200
+    assert {row["id"] for row in mine.json()} == {"lot_1"}
+
+
+def test_mine_requires_an_operator_session():
+    client, _ = _client(FakeLotRepository({"lot_1": _lot()}))
+    assert client.get("/api/v1/lots?mine=1").status_code == 401

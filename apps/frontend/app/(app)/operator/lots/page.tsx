@@ -1,10 +1,11 @@
 import { OperatorLots } from '@/components/operator/operator-lots'
-import { listLots, type Lot } from '@/lib/api/commerce'
+import type { Lot } from '@/lib/api/commerce'
+import { listMyLotsAsServer } from '@/lib/api/server'
 
 export default async function OperatorLotsPage() {
   let lots: Lot[] = []
   try {
-    lots = await listLots()
+    lots = await listMyLotsAsServer('mine=1')
   } catch {
     lots = []
   }
