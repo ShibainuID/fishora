@@ -16,7 +16,12 @@ from tests.main_api.fakes import (
 )
 
 
-NOW = datetime(2026, 8, 24, 10, 0, tzinfo=timezone.utc)
+# The auction window is relative to the current clock, not a fixed date. A
+# pinned window silently expires: these tests passed when written and began
+# failing the moment real time passed the hardcoded end.
+def _window() -> tuple[datetime, datetime]:
+    now = datetime.now(timezone.utc)
+    return now - timedelta(hours=1), now + timedelta(hours=3)
 
 
 def _verified() -> PredictionRecord:
@@ -33,6 +38,7 @@ def _verified() -> PredictionRecord:
 
 
 def _lot(**overrides) -> LotRecord:
+    starts_at, ends_at = _window()
     row = dict(
         id="lot_1",
         prediction_id="pred_ok",
@@ -43,8 +49,8 @@ def _lot(**overrides) -> LotRecord:
         size_category="L",
         starting_price_per_kg=Decimal("68000"),
         status="active",
-        auction_starts_at=NOW,
-        auction_ends_at=NOW + timedelta(hours=4),
+        auction_starts_at=starts_at,
+        auction_ends_at=ends_at,
         public_slug="tenggiri-lot1",
     )
     row.update(overrides)
