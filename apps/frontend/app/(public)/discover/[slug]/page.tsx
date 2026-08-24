@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import { KnowledgeCardView } from '@/components/fish/knowledge-card'
@@ -61,7 +62,7 @@ export default async function DiscoverPage({
         <p className="text-body-sm mt-8 text-ink-muted">Asal: PPI Muara Angke, {month}</p>
         <KnowledgeCardView card={data.card} label={label} />
         <p className="text-body-sm mt-10 text-ink-muted">
-          <a href="/" className="underline">Fishora</a>
+          <Link href="/" className="underline">Fishora</Link>
         </p>
       </main>
   )
