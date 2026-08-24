@@ -22,6 +22,8 @@ export default async function DiscoverPage({
   const label = data.species_id.replace('species_', '')
   const names = isSpeciesLabel(label) ? SPECIES[label] : { commonName: data.card.common_name, scientificName: data.card.scientific_name }
   const month = 'Agustus 2026' // mock: landing month only, no coordinates
+  // No store listing exists, so the app link lands on the site root unless overridden.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || '/'
 
   return (
     <main className="mx-auto max-w-[420px] px-4 py-8">
@@ -61,9 +63,18 @@ export default async function DiscoverPage({
         </ul>
         <p className="text-body-sm mt-8 text-ink-muted">Asal: PPI Muara Angke, {month}</p>
         <KnowledgeCardView card={data.card} label={label} />
-        <p className="text-body-sm mt-10 text-ink-muted">
-          <Link href="/" className="underline">Fishora</Link>
-        </p>
+        <section className="mt-10 border-t border-line pt-6">
+          <h2 className="text-h3 text-ink">Lanjutkan di Fishora</h2>
+          <p className="text-body-sm mt-2 text-ink-muted">
+            Kenali ikan lain, cara memasaknya, dan asal tangkapannya.
+          </p>
+          <Link
+            href={appUrl}
+            className="text-body-sm mt-3 flex min-h-11 items-center text-ink underline"
+          >
+            Buka Fishora
+          </Link>
+        </section>
       </main>
   )
 }
