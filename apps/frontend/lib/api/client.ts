@@ -12,14 +12,18 @@ export interface ApiFetchOptions extends RequestInit {
 
 export async function apiFetch<T>(
   path: string,
-  { timeoutMs = DEFAULT_TIMEOUT_MS, ...init }: ApiFetchOptions = {}
+  { timeoutMs = DEFAULT_TIMEOUT_MS, signal, ...init }: ApiFetchOptions = {}
 ): Promise<T> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
+  const combined =
+    signal && typeof AbortSignal.any === 'function'
+      ? AbortSignal.any([signal, controller.signal])
+      : controller.signal
 
   let response: Response
   try {
-    response = await fetch(`${BASE}${path}`, { ...init, signal: controller.signal })
+    response = await fetch(`${BASE}${path}`, { ...init, signal: combined })
   } catch (cause) {
     // An aborted request is a timeout; anything else at this layer is the
     // network being gone. Neither is a server error, and conflating them
