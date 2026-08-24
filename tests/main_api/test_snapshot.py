@@ -96,3 +96,37 @@ def test_unknown_discover_slug_is_404(evidence):
     client, _ = _client(FakeRetriever(evidence), FakeOpenCodeClient("{}"))
     response = client.get("/api/v1/discover/does-not-exist")
     assert response.status_code == 404
+
+
+def test_discover_still_identifies_a_lot_published_without_a_snapshot(evidence):
+    """A QR card printed for such a lot must not lead to a dead page."""
+    lots = FakeLotRepository()
+    client, app = _client(FakeRetriever(evidence), FakeOpenCodeClient("{}"), lots)
+    client.post("/api/v1/auth/login", json={"username": "rian", "password": "demo"})
+    # Publication survives generation being down, so a lot can legitimately
+    # reach the marketplace with no card attached.
+    app.state.deps.knowledge_service = None
+    published = client.post("/api/v1/lots", json={
+        "prediction_id": "pred_ok",
+        "quantity_kg": "24",
+        "starting_price_per_kg": "68000",
+        "size_category": "L",
+        "landing_point_id": "lp_muara_angke",
+    })
+    assert published.status_code == 200
+    body = published.json()
+    assert lots.get(body["id"]).knowledge_snapshot is None
+
+    response = client.get(f"/api/v1/discover/{body['public_slug']}")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["species_id"] == "species_tenggiri"
+    # What is known is shown; what is not is said plainly rather than implied by
+    # empty fields.
+    assert payload["card"]["common_name"]
+    assert payload["card"]["limitations"]
+    assert payload["card"]["physical_characteristics"] is None
+    blob = json.dumps(payload)
+    for leak in COMMERCIAL_LEAKS:
+        assert leak not in blob

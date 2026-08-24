@@ -18,11 +18,46 @@ def discover(public_slug: str, request: Request):
     deps = request.app.state.deps
     lot = LotService(prediction_repo=deps.prediction_repo, lot_repo=deps.lot_repo).get_by_slug(public_slug)
     if not lot.knowledge_snapshot:
-        from apps.main_api.errors import LotNotFound
-
-        raise LotNotFound(public_slug)
+        # A lot can reach the marketplace with no card when generation was down
+        # at publication. The operator may already have printed a QR for it, so
+        # 404 here turns a physical card into a dead end. Fall back to the
+        # species identity, which is stored and true, and say outright that the
+        # rest is missing rather than implying it with empty fields.
+        return DiscoverResponse(
+            public_slug=lot.public_slug,
+            species_id=lot.species_id,
+            card=_identity_only_card(request, lot.species_id),
+        )
     return DiscoverResponse(
         public_slug=lot.public_slug,
         species_id=lot.species_id,
         card=KnowledgeCard.model_validate(lot.knowledge_snapshot),
+    )
+
+
+CARD_PENDING = (
+    "Kartu pengetahuan untuk lot ini belum tersedia. Nama dan taksonomi di bawah "
+    "berasal dari basis data spesies, bukan dari penelusuran sumber."
+)
+
+
+def _identity_only_card(request: Request, species_id: str) -> KnowledgeCard:
+    species = request.app.state.deps.species_repo.get_by_id(species_id)
+    if species is None:
+        from apps.main_api.errors import UnsupportedSpecies
+
+        raise UnsupportedSpecies(species_id)
+    return KnowledgeCard(
+        common_name=species.common_name_id,
+        scientific_name=species.scientific_name,
+        taxonomy_status=species.taxonomy_status,
+        physical_characteristics=None,
+        taste=None,
+        texture=None,
+        processing_methods=[],
+        commercial_uses=[],
+        similar_or_substitute_species=[],
+        potential_buyer_segments=[],
+        limitations=[CARD_PENDING],
+        sources=[],
     )

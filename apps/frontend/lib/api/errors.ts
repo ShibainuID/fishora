@@ -35,6 +35,11 @@ const MESSAGES: Record<ApiErrorKind, string> = {
   server: 'Terjadi kesalahan. Coba lagi.',
 }
 
+/** The user-facing copy for a kind, for callers that build an error locally. */
+export function messageFor(kind: ApiErrorKind): string {
+  return MESSAGES[kind]
+}
+
 /** Only these get a Retry button. */
 const RETRYABLE: ReadonlySet<ApiErrorKind> = new Set([
   'offline', 'timeout', 'cv_unavailable', 'generation_unavailable', 'server',

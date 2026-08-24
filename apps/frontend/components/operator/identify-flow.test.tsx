@@ -326,4 +326,23 @@ describe('IdentifyFlow', () => {
       expect(screen.getByText(/format gambar tidak didukung/i)).toBeInTheDocument()
     )
   })
+
+  it('does not blame the image when the upload itself fails', async () => {
+    const user = userEvent.setup()
+    render(
+      flow({
+        identifyCatch: vi.fn().mockRejectedValue(new Error('network down')),
+      })
+    )
+
+    await capture(user)
+    await user.click(screen.getByRole('button', { name: /identifikasi/i }))
+
+    // The photo decoded fine, so telling the operator to retake it sends them
+    // round a loop that cannot succeed. The transport is what failed.
+    // getAllBy: the standing connectivity banner carries the same sentence, so
+    // a getBy here matches two nodes and throws.
+    await waitFor(() => expect(screen.getAllByText(/tidak ada koneksi/i).length).toBeGreaterThan(0))
+    expect(screen.queryByText(/format gambar tidak didukung/i)).not.toBeInTheDocument()
+  })
 })

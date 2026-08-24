@@ -69,7 +69,16 @@ class LotService:
         label = record.verified_species_id.removeprefix("species_")
         snapshot = None
         if self._knowledge_service is not None:
-            snapshot = self._knowledge_service.get_for_prediction(prediction_id).card.model_dump(mode="json")
+            # Best effort. The catch is landed and the auction has to open; a
+            # knowledge card that cannot be generated is a degraded listing, not
+            # a reason to refuse publication. The lot page and the discover page
+            # both already render without a snapshot.
+            try:
+                snapshot = self._knowledge_service.get_for_prediction(
+                    prediction_id
+                ).card.model_dump(mode="json")
+            except Exception:
+                snapshot = None
         lot = LotRecord(
             id=lot_id,
             prediction_id=record.id,

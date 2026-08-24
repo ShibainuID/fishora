@@ -88,3 +88,21 @@ test('no fixed element ignores the safe area on phones', async ({ page }, testIn
     expect(offenders, `${route}: ${offenders.join(' | ')}`).toEqual([])
   }
 })
+
+test('a sheet is hidden when closed and actually paints when open', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'phone', 'the filter sheet is the phone affordance')
+  await page.goto('/marketplace')
+
+  const sheet = page.getByRole('dialog', { name: /filter/i })
+  // Closed: a bare `flex` on the dialog would override the browser rule that
+  // keeps a closed dialog hidden, leaving the panel over the whole page.
+  await expect(sheet).toBeHidden()
+
+  await page.getByRole('button', { name: /filter/i }).first().click()
+
+  // Open: the fix for the above must not overshoot into a `hidden` that wins the
+  // cascade, which would render the sheet permanently unreachable instead.
+  await expect(sheet).toBeVisible()
+  const box = await sheet.boundingBox()
+  expect(box?.height ?? 0).toBeGreaterThan(0)
+})

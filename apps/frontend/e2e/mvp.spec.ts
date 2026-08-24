@@ -1,10 +1,13 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { expect, test, type Page } from '@playwright/test'
 
 const API = 'http://localhost:8000'
-const JPEG = Buffer.from(
-  '/9j/4AAQSkZJRgABAQAAAQABAAD/2wAAAAD/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAEH/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPwB//9k=',
-  'base64'
-)
+// A real photograph-shaped JPEG, read from disk. An inline 1x1 is a valid file
+// that Chrome still refuses to decode, which surfaces as "unsupported format"
+// and stops the walkthrough at identification. 1600px wide also exercises the
+// downscale path rather than its early return.
+const JPEG = readFileSync(join(__dirname, 'fixtures', 'catch.jpg'))
 
 async function signIn(page: Page, username: string, password: string) {
   await page.goto('/account')
@@ -71,7 +74,8 @@ test('PRD 27 eleven-step walkthrough against a live backend when it is up', asyn
       description: 'CV unavailable: species declared manually (PRD 8.1 human-in-the-loop path)',
     })
     await page.getByRole('button', { name: /pilih spesies manual/i }).click()
-    await page.getByRole('button', { name: 'tenggiri', exact: true }).click()
+    // The picker lists the common name, not the normalized label.
+    await page.getByRole('button', { name: 'Tenggiri', exact: true }).click()
   })
 
   await test.step('4. Knowledge / Lanjut', async () => {
@@ -120,16 +124,19 @@ test('PRD 27 eleven-step walkthrough against a live backend when it is up', asyn
   })
 
   const discoverPath = await test.step('10. Buat QR / copy discover URL', async () => {
-    const copy = page.getByRole('button', { name: 'Salin URL' })
-    if (!(await copy.isVisible())) {
-      await page.getByRole('button', { name: 'Buat QR' }).first().click()
-    }
+    // Allocating opens the QR sheet on its own, asynchronously. Probing first
+    // and clicking Buat QR when the probe reads empty just races that open and
+    // lands the click on a sheet already covering the page. Wait for it.
+    // Every lot row mounts its own sheet, so match the open one, not the name.
+    const sheet = page.locator('dialog[open][aria-label="Fishora QR"]')
+    await expect(sheet).toBeVisible()
+    const copy = sheet.getByRole('button', { name: 'Salin URL' })
     await expect(copy).toBeVisible()
-    const href = await page.getByLabel('URL').inputValue()
+    const href = await sheet.getByLabel('URL').inputValue()
     expect(href).toMatch(/\/discover\//)
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
     await copy.click()
-    await expect(page.getByRole('button', { name: /Salin URL|Disalin/ })).toBeVisible()
+    await expect(sheet.getByRole('button', { name: /Salin URL|Disalin/ })).toBeVisible()
     return new URL(href).pathname
   })
 

@@ -8,7 +8,7 @@ import { KnowledgeCardView } from '@/components/fish/knowledge-card'
 import { PredictionCard } from '@/components/fish/prediction-card'
 import type { ActionFailure, ActionResult } from '@/lib/api/action-result'
 import { publishLot as defaultPublishLot, type Lot } from '@/lib/api/commerce'
-import { ApiError } from '@/lib/api/errors'
+import { ApiError, messageFor } from '@/lib/api/errors'
 import type {
   IdentificationResult,
   KnowledgeResponse,
@@ -155,8 +155,25 @@ export function IdentifyFlow({
     if (!image) return
     setBusy(true)
     setIdentifyError(null)
+    // Decode and upload are reported separately. Folding them together tells an
+    // operator to retake the photo when the real problem is that the service is
+    // unreachable, which sends them round a loop that cannot succeed.
+    let scaled: Blob
     try {
-      const scaled = await downscaleImage(image)
+      scaled = await downscaleImage(image)
+    } catch {
+      setIdentifyError({
+        ok: false,
+        kind: 'image_invalid',
+        userMessage: 'Format gambar tidak didukung. Gunakan JPG atau PNG.',
+        retryable: true,
+        status: 0,
+      })
+      setBusy(false)
+      return
+    }
+
+    try {
       const body = new FormData()
       body.append('file', scaled)
       const result = await identifyCatch(body)
@@ -168,13 +185,13 @@ export function IdentifyFlow({
       setLabel(result.data.prediction.normalized_label)
       setStep(2)
     } catch {
-      // A capture the browser cannot decode, or a transport failure the action
-      // could not classify. Without this the operator taps Identify and nothing
-      // happens at all: no advance, no error, no way to know why.
+      // A transport failure the action could not classify. Without this the
+      // operator taps Identify and nothing happens at all: no advance, no
+      // error, no way to know why.
       setIdentifyError({
         ok: false,
-        kind: 'image_invalid',
-        userMessage: 'Format gambar tidak didukung. Gunakan JPG atau PNG.',
+        kind: 'offline',
+        userMessage: messageFor('offline'),
         retryable: true,
         status: 0,
       })

@@ -144,3 +144,26 @@ def test_publish_rejects_an_out_of_range_auction_duration(prediction_repo, speci
                 size_category="L", landing_point_id="lp_muara_angke",
                 auction_hours=hours,
             )
+
+
+class _BrokenKnowledgeService:
+    """Stands in for generation being down: no API key, or the LLM unreachable."""
+
+    def get_for_prediction(self, prediction_id: str):
+        raise RuntimeError("generation unavailable")
+
+
+def test_publish_survives_an_unavailable_knowledge_service():
+    service = LotService(
+        prediction_repo=FakePredictionRepository({"pred_ok": _verified()}),
+        lot_repo=FakeLotRepository(),
+        knowledge_service=_BrokenKnowledgeService(),
+    )
+
+    lot = _publish(service)
+
+    # The catch is landed and the auction has to open. Letting a knowledge
+    # failure take publication down blocks the fisherman's actual business on a
+    # service whose output the lot page already treats as optional.
+    assert lot.status == "active"
+    assert lot.knowledge_snapshot is None
