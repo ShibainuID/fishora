@@ -1,6 +1,7 @@
 import { List } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/common/button'
-import { PredictionCard } from '@/components/fish/prediction-card'
+import { IdentificationDemo } from '@/components/marketing/identification-demo'
+import type { PredictionCard } from '@/components/fish/prediction-card'
 import { LotCard } from '@/components/lot/lot-card'
 import { MatchReasons } from '@/components/lot/match-reasons'
 import { FlowPan } from '@/components/marketing/flow-pan'
@@ -105,7 +106,7 @@ export function LandingPage() {
           Nothing publishes until an operator confirms the species on the landing floor.
         </p>
         <div className="mt-8">
-          <PredictionCard result={DEMO_ID} onConfirm={() => {}} />
+          <IdentificationDemo result={DEMO_ID} />
         </div>
       </section>
 

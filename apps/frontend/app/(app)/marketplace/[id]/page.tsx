@@ -40,28 +40,3 @@ export default async function LotPage({
     />
   )
 }
-
-export default async function LotPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const { id } = await params
-  const lot = await getLot(id)
-  let card = CARD
-  try {
-    const discovered = await getDiscover(lot.public_slug)
-    card = discovered.card
-  } catch {
-    // Snapshot is optional on a live lot that has not finished generation.
-  }
-  return (
-    <LotDetail
-      lot={lot}
-      card={card}
-      reasons={REASONS}
-      signals={[{ businessType: 'Rumah Makan Cendana', useCase: 'Digoreng' }]}
-      photoUrl="/fish/placeholder.jpg"
-    />
-  )
-}

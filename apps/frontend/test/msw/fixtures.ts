@@ -1,5 +1,8 @@
 import type { components } from '@/lib/api/schema'
 import { SUPPORTED_LABELS } from '@/lib/species'
+// The app narrows taxonomy_status to a union; the generated schema leaves it a
+// plain string. Components consume the narrowed type, so fixtures must too.
+import type { KnowledgeCard as AppKnowledgeCard } from '@/lib/api/fish'
 
 export type Lot = components['schemas']['LotResponse']
 export type Bid = components['schemas']['BidResponse']
@@ -75,7 +78,7 @@ export const BIDS: Bid[] = [
   },
 ]
 
-export const CARD: KnowledgeCard = {
+export const CARD: AppKnowledgeCard = {
   common_name: 'Tenggiri',
   scientific_name: 'Scomberomorus commerson',
   taxonomy_status: 'VERIFIED_TAXONOMY',

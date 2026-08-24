@@ -1,10 +1,17 @@
 import { apiFetch } from './client'
 import type { components } from './schema'
+import type { KnowledgeCard } from './fish'
 
 export type Lot = components['schemas']['LotResponse']
 export type Bid = components['schemas']['BidResponse']
 export type MatchReason = components['schemas']['MatchReasonResponse']
-export type DiscoverResponse = components['schemas']['DiscoverResponse']
+// The generated schema types taxonomy_status as a plain string because the
+// FastAPI model does. Components switch on the narrowed union, so the narrowing
+// happens once here rather than at every call site.
+export type DiscoverResponse = Omit<
+  components['schemas']['DiscoverResponse'],
+  'card'
+> & { card: KnowledgeCard }
 export type PreferenceRequest = components['schemas']['PreferenceRequest']
 
 export function listLots(query = '') {

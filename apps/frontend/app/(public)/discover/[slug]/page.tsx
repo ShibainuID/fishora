@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation'
-import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import { KnowledgeCardView } from '@/components/fish/knowledge-card'
 import { getDiscover } from '@/lib/api/commerce'

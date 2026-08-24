@@ -1,8 +1,8 @@
 import { OperatorLots } from '@/components/operator/operator-lots'
-import { listLots } from '@/lib/api/commerce'
+import { listLots, type Lot } from '@/lib/api/commerce'
 
 export default async function OperatorLotsPage() {
-  let lots = []
+  let lots: Lot[] = []
   try {
     lots = await listLots()
   } catch {

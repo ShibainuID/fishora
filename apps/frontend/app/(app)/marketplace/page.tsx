@@ -1,5 +1,5 @@
 import { MarketplaceView } from '@/components/marketplace/marketplace-view'
-import { listLots } from '@/lib/api/commerce'
+import { listLots, type Lot } from '@/lib/api/commerce'
 
 export default async function MarketplacePage({
   searchParams,
@@ -16,7 +16,7 @@ export default async function MarketplacePage({
   if (typeof params.max_qty === 'string') query.set('max_quantity', params.max_qty)
   query.set('status', 'active')
 
-  let lots = []
+  let lots: Lot[] = []
   try {
     lots = await listLots(query.toString())
   } catch {
