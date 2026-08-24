@@ -64,6 +64,16 @@ function file() {
 function flow(overrides: Partial<Parameters<typeof IdentifyFlow>[0]> = {}) {
   return (
     <IdentifyFlow
+      declareSpecies={vi.fn().mockResolvedValue({
+        ok: true,
+        data: {
+          prediction_id: 'manual-1',
+          model_version: 'manual-entry',
+          verified_species_id: 'species_nila',
+          normalized_label: 'nila',
+          verification_status: 'confirmed',
+        },
+      })}
       identifyCatch={vi.fn().mockResolvedValue({ ok: true, data: highConfidence })}
       confirmSpecies={vi.fn().mockResolvedValue({
         ok: true,
@@ -204,5 +214,76 @@ describe('IdentifyFlow', () => {
         landing_point_id: 'lp_muara_angke',
       })
     })
+  })
+  it('turns a manual species pick into a verified prediction before publish', async () => {
+    const user = userEvent.setup()
+    const declareSpecies = vi.fn().mockResolvedValue({
+      ok: true,
+      data: {
+        prediction_id: 'manual-1',
+        model_version: 'manual-entry',
+        verified_species_id: 'species_nila',
+        normalized_label: 'nila',
+        verification_status: 'confirmed',
+      },
+    })
+    render(
+      flow({
+        declareSpecies,
+        identifyCatch: vi.fn().mockResolvedValue({
+          ok: false,
+          kind: 'cv_unavailable',
+          userMessage: 'Layanan identifikasi sedang tidak tersedia.',
+          retryable: true,
+          status: 503,
+        }),
+      })
+    )
+    await capture(user)
+    await user.click(screen.getByRole('button', { name: /identifikasi/i }))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /pilih spesies manual/i })).toBeInTheDocument()
+    )
+    await user.click(screen.getByRole('button', { name: /pilih spesies manual/i }))
+    await user.click(screen.getByRole('button', { name: /^nila$/i }))
+
+    // The publish gate needs a verified prediction id. Without this call the
+    // operator reaches step 4 and the publish button does nothing at all.
+    await waitFor(() => expect(declareSpecies).toHaveBeenCalledTimes(1))
+    const [, speciesId] = declareSpecies.mock.calls[0]
+    expect(speciesId).toBe('species_nila')
+  })
+
+  it('surfaces a manual declaration failure instead of stranding the operator', async () => {
+    const user = userEvent.setup()
+    render(
+      flow({
+        declareSpecies: vi.fn().mockResolvedValue({
+          ok: false,
+          kind: 'server',
+          userMessage: 'Terjadi kesalahan. Coba lagi.',
+          retryable: true,
+          status: 500,
+        }),
+        identifyCatch: vi.fn().mockResolvedValue({
+          ok: false,
+          kind: 'cv_unavailable',
+          userMessage: 'Layanan identifikasi sedang tidak tersedia.',
+          retryable: true,
+          status: 503,
+        }),
+      })
+    )
+    await capture(user)
+    await user.click(screen.getByRole('button', { name: /identifikasi/i }))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /pilih spesies manual/i })).toBeInTheDocument()
+    )
+    await user.click(screen.getByRole('button', { name: /pilih spesies manual/i }))
+    await user.click(screen.getByRole('button', { name: /^nila$/i }))
+
+    await waitFor(() =>
+      expect(screen.getByText(/terjadi kesalahan/i)).toBeInTheDocument()
+    )
   })
 })

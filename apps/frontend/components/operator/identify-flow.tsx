@@ -9,7 +9,11 @@ import { PredictionCard } from '@/components/fish/prediction-card'
 import type { ActionFailure, ActionResult } from '@/lib/api/action-result'
 import { publishLot as defaultPublishLot, type Lot } from '@/lib/api/commerce'
 import { ApiError } from '@/lib/api/errors'
-import type { IdentificationResult, KnowledgeResponse } from '@/lib/api/fish'
+import type {
+  IdentificationResult,
+  KnowledgeResponse,
+  ManualEntryResult,
+} from '@/lib/api/fish'
 import { downscaleImage } from '@/lib/image'
 import { SPECIES, SUPPORTED_LABELS, type SpeciesLabel } from '@/lib/species'
 import { Z } from '@/lib/z'
@@ -59,6 +63,10 @@ export interface IdentifyFlowProps {
     }>
   >
   loadKnowledge: (predictionId: string) => Promise<ActionResult<KnowledgeResponse>>
+  declareSpecies: (
+    formData: FormData,
+    speciesId: string
+  ) => Promise<ActionResult<ManualEntryResult>>
   publishLot?: (payload: PublishLotPayload) => Promise<Lot | unknown>
 }
 
@@ -67,6 +75,7 @@ export function IdentifyFlow({
   identifyCatch,
   confirmSpecies,
   loadKnowledge,
+  declareSpecies,
   publishLot = defaultPublishLot,
 }: IdentifyFlowProps) {
   const router = useRouter()
@@ -182,13 +191,41 @@ export function IdentifyFlow({
     }
   }
 
-  function pickManual(species: SpeciesLabel) {
-    setLabel(species)
-    setKnowledge(null)
-    setKnowledgePending(true)
+  async function pickManual(species: SpeciesLabel) {
+    if (!image) return
     setManualOpen(false)
-    setIdentifyError(null)
-    setStep(3)
+    setBusy(true)
+    try {
+      const body = new FormData()
+      body.append('file', await downscaleImage(image))
+      const declared = await declareSpecies(body, `species_${species}`)
+      if (!declared.ok) {
+        setIdentifyError(declared)
+        return
+      }
+      setPrediction({
+        prediction_id: declared.data.prediction_id,
+        model_version: declared.data.model_version,
+        status: 'confident_prediction',
+        prediction: {
+          species_id: declared.data.verified_species_id,
+          normalized_label: declared.data.normalized_label,
+          confidence: 0,
+        },
+        top_candidates: [],
+        threshold: 0,
+        verification_status: 'pending',
+      })
+      setLabel(species)
+      setIdentifyError(null)
+
+      const card = await loadKnowledge(declared.data.prediction_id)
+      setKnowledge(card.ok ? card.data : null)
+      setKnowledgePending(!card.ok)
+      setStep(3)
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function runPublish() {

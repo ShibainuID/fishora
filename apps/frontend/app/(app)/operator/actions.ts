@@ -3,11 +3,13 @@
 import { ApiError } from '@/lib/api/client'
 import type { ActionResult } from '@/lib/api/action-result'
 import {
+  declareSpeciesManually,
   getKnowledge,
   identifyFish,
   verifySpecies,
   type IdentificationResult,
   type KnowledgeResponse,
+  type ManualEntryResult,
 } from '@/lib/api/fish'
 
 function fail(error: unknown): ActionResult<never> {
@@ -64,6 +66,27 @@ export async function loadKnowledge(
 ): Promise<ActionResult<KnowledgeResponse>> {
   try {
     return { ok: true, data: await getKnowledge(predictionId) }
+  } catch (error) {
+    return fail(error)
+  }
+}
+
+export async function declareSpecies(
+  formData: FormData,
+  speciesId: string
+): Promise<ActionResult<ManualEntryResult>> {
+  const file = formData.get('file')
+  if (!(file instanceof File)) {
+    return {
+      ok: false,
+      kind: 'image_invalid',
+      userMessage: 'Format gambar tidak didukung. Gunakan JPG atau PNG.',
+      retryable: false,
+      status: 400,
+    }
+  }
+  try {
+    return { ok: true, data: await declareSpeciesManually(file, speciesId) }
   } catch (error) {
     return fail(error)
   }

@@ -1,5 +1,5 @@
 import { IdentifyFlow } from '@/components/operator/identify-flow'
-import { confirmSpecies, identifyCatch, loadKnowledge } from './actions'
+import { confirmSpecies, declareSpecies, identifyCatch, loadKnowledge } from './actions'
 
 export default function OperatorPage() {
   return (
@@ -7,6 +7,7 @@ export default function OperatorPage() {
       identifyCatch={identifyCatch}
       confirmSpecies={confirmSpecies}
       loadKnowledge={loadKnowledge}
+      declareSpecies={declareSpecies}
     />
   )
 }

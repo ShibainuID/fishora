@@ -1,12 +1,13 @@
 from dataclasses import asdict
 from typing import Literal
 
-from fastapi import APIRouter, File, Request, UploadFile
+from fastapi import APIRouter, File, Form, Request, UploadFile
 from pydantic import BaseModel, Field
 
 from apps.main_api.config import MainSettings
 from apps.main_api.services.generation import KnowledgeResponse
 from apps.main_api.services.identification import IdentificationService
+from apps.main_api.services.manual_entry import ManualEntryService
 from apps.main_api.services.knowledge import KnowledgeService
 from apps.main_api.services.verification import VerificationService
 
@@ -37,6 +38,14 @@ class IdentificationResponse(BaseModel):
     top_candidates: list[SpeciesCandidate]
     threshold: float
     verification_status: Literal["pending"]
+
+
+class ManualEntryResponse(BaseModel):
+    prediction_id: str
+    model_version: str
+    verified_species_id: str
+    normalized_label: str
+    verification_status: Literal["confirmed", "corrected"]
 
 
 class VerificationResponse(BaseModel):
@@ -84,6 +93,35 @@ async def verify(payload: VerifyRequest, request: Request):
         prediction_id=result.prediction_id,
         predicted_species_id=result.predicted_species_id,
         verified_species_id=result.verified_species_id,
+        verification_status=result.verification_status,
+    )
+
+
+@router.post("/manual", response_model=ManualEntryResponse)
+async def manual(
+    request: Request,
+    file: UploadFile = File(...),
+    species_id: str = Form(...),
+):
+    """Operator names the species themselves. Used when identification is down."""
+    deps = request.app.state.deps
+    settings = request.app.state.settings
+    result = ManualEntryService(
+        species_repo=deps.species_repo,
+        prediction_repo=deps.prediction_repo,
+        image_store=deps.image_store,
+        max_image_bytes=settings.cv_max_image_bytes if settings is not None else DEFAULT_MAX_IMAGE_BYTES,
+    ).declare(
+        await file.read(),
+        filename=file.filename or "image",
+        content_type=file.content_type,
+        species_id=species_id,
+    )
+    return ManualEntryResponse(
+        prediction_id=result.prediction_id,
+        model_version=result.model_version,
+        verified_species_id=result.verified_species_id,
+        normalized_label=result.normalized_label,
         verification_status=result.verification_status,
     )
 

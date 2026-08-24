@@ -75,6 +75,22 @@ export function verifySpecies(predictionId: string, verifiedSpeciesId: string) {
   })
 }
 
+export interface ManualEntryResult {
+  prediction_id: string
+  model_version: string
+  verified_species_id: string
+  normalized_label: string
+  verification_status: 'confirmed' | 'corrected'
+}
+
+/** Operator names the species themselves. Used when identification is down. */
+export function declareSpeciesManually(file: File, speciesId: string) {
+  const body = new FormData()
+  body.append('file', file)
+  body.append('species_id', speciesId)
+  return apiFetch<ManualEntryResult>('/api/v1/fish/manual', { method: 'POST', body })
+}
+
 export function getKnowledge(predictionId: string) {
   // Longer budget: this path runs retrieval plus generation.
   return apiFetch<KnowledgeResponse>(
