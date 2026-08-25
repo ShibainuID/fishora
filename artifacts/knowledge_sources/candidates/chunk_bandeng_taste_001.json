@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_bandeng_taste_001",
+  "chunk": {
+    "id": "chunk_bandeng_taste_001",
+    "species_label": "bandeng",
+    "source_id": "foodresearch_7s3_12",
+    "category": "taste_texture",
+    "content": "Pressure-steamed milkfish had the hardest texture among the cooking methods tested; this describes the pressure-steamed product, not uncooked milkfish.",
+    "source_quote": "Pressure steamed milkfish had the highest a* and b* values and produced the hardest texture.",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "foodresearch_7s3_12",
+    "title": "Product characteristics, amino acid and fatty acid profiles of milkfish (Chanos chanos) with different cooking methods",
+    "source_type": "journal_article",
+    "url": "https://doi.org/10.26656/fr.2017.7(S3).12",
+    "publisher": "Food Research",
+    "reviewed_at": null,
+    "verification_status": "candidate"
+  }
+}

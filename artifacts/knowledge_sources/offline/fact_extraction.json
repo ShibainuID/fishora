@@ -180,6 +180,78 @@
       "publisher": "FishBase",
       "reviewed_at": null,
       "verification_status": "candidate"
+    },
+    {
+      "id": "foodresearch_7s3_12",
+      "title": "Product characteristics, amino acid and fatty acid profiles of milkfish (Chanos chanos) with different cooking methods",
+      "source_type": "journal_article",
+      "url": "https://doi.org/10.26656/fr.2017.7(S3).12",
+      "publisher": "Food Research",
+      "reviewed_at": null,
+      "verification_status": "candidate"
+    },
+    {
+      "id": "jipsp_6_12_7801",
+      "title": "Karakteristik Nilai Gizi dan Mutu Sensori Sosis Ikan Gulamah (Nibea albiflora) dengan Penambahan Daging Ayam",
+      "source_type": "journal_article",
+      "url": "https://doi.org/10.20956/jipsp.v6i12.7801",
+      "publisher": "Jurnal IPTEKS Pemanfaatan Sumberdaya Perikanan, Universitas Hasanuddin",
+      "reviewed_at": null,
+      "verification_status": "candidate"
+    },
+    {
+      "id": "fao_y5728e",
+      "title": "Tilapias as Alien Aquatics in Asia and the Pacific: A Review",
+      "source_type": "fisheries_technical_paper",
+      "url": "https://www.fao.org/4/y5728e/y5728e05.htm",
+      "publisher": "Food and Agriculture Organization of the United Nations",
+      "reviewed_at": null,
+      "verification_status": "candidate"
+    },
+    {
+      "id": "noaa_pacific_yellowfin",
+      "title": "Pacific Yellowfin Tuna",
+      "source_type": "government_species_profile",
+      "url": "https://www.fisheries.noaa.gov/species/pacific-yellowfin-tuna",
+      "publisher": "NOAA Fisheries",
+      "reviewed_at": null,
+      "verification_status": "candidate"
+    },
+    {
+      "id": "fishbase_thunnus_alalunga",
+      "title": "Thunnus alalunga, Albacore",
+      "source_type": "species_summary",
+      "url": "https://www.fishbase.se/summary/Thunnus-alalunga.html",
+      "publisher": "FishBase",
+      "reviewed_at": null,
+      "verification_status": "candidate"
+    },
+    {
+      "id": "fishbase_thunnus_albacares",
+      "title": "Thunnus albacares, Yellowfin tuna",
+      "source_type": "species_summary",
+      "url": "https://www.fishbase.se/summary/Thunnus-albacares.html",
+      "publisher": "FishBase",
+      "reviewed_at": null,
+      "verification_status": "candidate"
+    },
+    {
+      "id": "manfish_2_3_489",
+      "title": "Studi Potensi Ikan Gulamah (Johnius trachycephalus) Sebagai Bahan Baku Surimi dan Produk Olahan Berbasis Daging Ikan",
+      "source_type": "journal_article",
+      "url": "https://doi.org/10.31573/manfish.v2i3.489",
+      "publisher": "Manfish Journal, Politeknik Negeri Pontianak",
+      "reviewed_at": null,
+      "verification_status": "candidate"
+    },
+    {
+      "id": "jps_8_2_936",
+      "title": "Isolasi Gelatin dari Tulang Ikan Gulamah (Johnius trachycephalus) dan Aplikasinya Pada Permen Jelly",
+      "source_type": "journal_article",
+      "url": "https://doi.org/10.36490/journal-jps.com.v8i2.936",
+      "publisher": "Journal of Pharmaceutical and Sciences",
+      "reviewed_at": null,
+      "verification_status": "candidate"
     }
   ],
   "records": [
@@ -510,6 +582,166 @@
       "category": "identity",
       "content": "LIMITATION: the label 'gembolo' is unresolved; the FishBase common-name search for 'Gembolo' returns no matching entry, so no scientific identity can be assigned and identity or culinary claims require expert confirmation.",
       "source_quote": "List of Common Names for 'Gembolo' using Taxamatch[n=0] ... No results found.",
+      "stage": "fact_extraction",
+      "verification_status": "candidate"
+    },
+    {
+      "claim_id": "claim_bandeng_taste_001",
+      "source_id": "foodresearch_7s3_12",
+      "species_label": "bandeng",
+      "category": "taste_texture",
+      "content": "Pressure-steamed milkfish had the hardest texture among the cooking methods tested; this describes the pressure-steamed product, not uncooked milkfish.",
+      "source_quote": "Pressure steamed milkfish had the highest a* and b* values and produced the hardest texture.",
+      "stage": "fact_extraction",
+      "verification_status": "candidate"
+    },
+    {
+      "claim_id": "claim_senangin_processing_001",
+      "source_id": "fishbase_eleutheronema_tetradactylum",
+      "species_label": "senangin",
+      "category": "processing_methods",
+      "content": "Eleutheronema tetradactylum is marketed fresh, frozen, dried, or salted.",
+      "source_quote": "Marketed fresh, frozen and dried or salted (Ref. 9987).",
+      "stage": "fact_extraction",
+      "verification_status": "candidate"
+    },
+    {
+      "claim_id": "claim_gulamah_physical_001",
+      "source_id": "fishbase_johnius_trachycephalus",
+      "species_label": "gulamah",
+      "category": "physical_characteristics",
+      "content": "Johnius trachycephalus has 9-10 dorsal spines, 24-27 dorsal soft rays, two anal spines, and 6-7 anal soft rays.",
+      "source_quote": "Dorsal spines (total): 9 - 10; Dorsal soft rays (total): 24-27; Anal spines: 2; Anal soft rays: 6 - 7.",
+      "stage": "fact_extraction",
+      "verification_status": "candidate"
+    },
+    {
+      "claim_id": "claim_gulamah_commercial_001",
+      "source_id": "manfish_2_3_489",
+      "species_label": "gulamah",
+      "category": "commercial_uses",
+      "content": "Johnius trachycephalus has been studied as potential raw material for surimi and processed fish-meat products; this establishes investigated potential, not industrial adoption.",
+      "source_quote": "Studi Potensi Ikan Gulamah (Johnius trachycephalus) Sebagai Bahan Baku Surimi dan Produk Olahan Berbasis Daging Ikan",
+      "stage": "fact_extraction",
+      "verification_status": "candidate"
+    },
+    {
+      "claim_id": "claim_gulamah_commercial_002",
+      "source_id": "jps_8_2_936",
+      "species_label": "gulamah",
+      "category": "commercial_uses",
+      "content": "Gelatin isolated from Johnius trachycephalus bones has been studied for jelly-candy application; this establishes an experimental use.",
+      "source_quote": "Isolasi Gelatin dari Tulang Ikan Gulamah (Johnius trachycephalus) dan Aplikasinya Pada Permen Jelly",
+      "stage": "fact_extraction",
+      "verification_status": "candidate"
+    },
+    {
+      "claim_id": "claim_gelama_bunga_taste_001",
+      "source_id": "jipsp_6_12_7801",
+      "species_label": "gelama_bunga",
+      "category": "taste_texture",
+      "content": "Sausage made from 100% Nibea albiflora received a reported texture score of 5.00 and taste score of 5.40; this describes the processed sausage.",
+      "source_quote": "Sosis ikan gulamah 100% menghasilkan kenampakan (5,17%), aroma dan tekstur (5,00%), dan rasa (5,40%) dengan protein sebesar (6,67%)",
+      "stage": "fact_extraction",
+      "verification_status": "candidate"
+    },
+    {
+      "claim_id": "claim_gelama_bunga_processing_001",
+      "source_id": "jipsp_6_12_7801",
+      "species_label": "gelama_bunga",
+      "category": "processing_methods",
+      "content": "Nibea albiflora was processed into a 100% fish sausage and a formulation with 30% chicken meat for sensory and proximate testing.",
+      "source_quote": "Pada penelitian ini dilakukan 2 perlakuan yakni sosis ikan 100% dan sosis ikan dengan penambahan daging ayam 30% kemudian dilakukan uji mutu sensori menggunakan uji kesukaan skala 1-7 dan uji proksimat.",
+      "stage": "fact_extraction",
+      "verification_status": "candidate"
+    },
+    {
+      "claim_id": "claim_mujair_physical_001",
+      "source_id": "fao_y5728e",
+      "species_label": "mujair",
+      "category": "physical_characteristics",
+      "content": "The Gascoyne-Lyons Oreochromis mossambicus population was reported as highly stunted, maturing at a mean standard length of 9 cm versus about 18 cm in other populations; this is population-specific.",
+      "source_quote": "The available evidence suggests that the O. mossambicus population in the Gascoyne-Lyons system (24°S; 166°E) is highly stunted, reaching maturity at a mean standard length of 9 cm as opposed to populations from other locations which reach maturity around 18 cm (Blühdörn and Arthington, 1990).",
+      "stage": "fact_extraction",
+      "verification_status": "candidate"
+    },
+    {
+      "claim_id": "claim_mujair_commercial_001",
+      "source_id": "fao_y5728e",
+      "species_label": "mujair",
+      "category": "commercial_uses",
+      "content": "Oreochromis mossambicus supports an important artisanal floodplain fishery in Papua New Guinea's Sepik River and accounts for about half of estimated annual landings.",
+      "source_quote": "Oreochromis mossambicus supports an important floodplain, artisanal fishery in the Sepik River, and accounts for about 50 percent of the landings, estimated to be about 3 000 - 5 000 tonnes/year (Coates, 1987b).",
+      "stage": "fact_extraction",
+      "verification_status": "candidate"
+    },
+    {
+      "claim_id": "claim_nila_processing_001",
+      "source_id": "fao_en_niletilapia",
+      "species_label": "nila",
+      "category": "processing_methods",
+      "content": "Nile tilapia can be processed into skinless fillets; FAO reports a 33 percent skinless-fillet yield for fish with a condition factor of 3.11.",
+      "source_quote": "Nile tilapia with a condition factor of 3.11 will dress at 86 percent with head, 66 percent without head, and 33 percent for a skinless fillet.",
+      "stage": "fact_extraction",
+      "verification_status": "candidate"
+    },
+    {
+      "claim_id": "claim_tuna_physical_001",
+      "source_id": "noaa_pacific_yellowfin",
+      "species_label": "tuna",
+      "category": "physical_characteristics",
+      "content": "Pacific yellowfin tuna (Thunnus albacares), one species within Fishora's genus-level tuna label, is torpedo-shaped, metallic dark blue above, yellow-to-silver below, with bright yellow dorsal and anal fins and finlets.",
+      "source_quote": "Yellowfin tuna are torpedo-shaped. They are metallic dark blue on the back and upper sides and change from yellow to silver on the belly. True to their name, their dorsal and anal fins and finlets are bright yellow.",
+      "stage": "fact_extraction",
+      "verification_status": "candidate"
+    },
+    {
+      "claim_id": "claim_tuna_taste_001",
+      "source_id": "noaa_pacific_yellowfin",
+      "species_label": "tuna",
+      "category": "taste_texture",
+      "content": "Pacific yellowfin tuna (Thunnus albacares), one species within Fishora's genus-level tuna label, has a mild, meaty flavor and firm, moist meat with large flakes.",
+      "source_quote": "Yellowfin tuna has a mild, meaty flavor. It’s more flavorful than albacore, but leaner than bluefin. The meat is firm and moist, with large flakes.",
+      "stage": "fact_extraction",
+      "verification_status": "candidate"
+    },
+    {
+      "claim_id": "claim_tuna_processing_001",
+      "source_id": "fishbase_thunnus_alalunga",
+      "species_label": "tuna",
+      "category": "processing_methods",
+      "content": "Albacore (Thunnus alalunga), one species within Fishora's genus-level tuna label, is marketed fresh, smoked, deep-frozen, or canned.",
+      "source_quote": "Highly appreciated and marketed fresh, smoked, deep frozen or canned.",
+      "stage": "fact_extraction",
+      "verification_status": "candidate"
+    },
+    {
+      "claim_id": "claim_tuna_processing_002",
+      "source_id": "fishbase_thunnus_albacares",
+      "species_label": "tuna",
+      "category": "processing_methods",
+      "content": "Yellowfin tuna (Thunnus albacares), one species within Fishora's genus-level tuna label, is marketed fresh, frozen, canned, and smoked, and is valued for sashimi.",
+      "source_quote": "Marketed mainly fresh, frozen, canned (Ref. 9684), but also smoked (Ref. 9987). Highly valued for sashimi (Ref. 26938).",
+      "stage": "fact_extraction",
+      "verification_status": "candidate"
+    },
+    {
+      "claim_id": "claim_tenggiri_physical_001",
+      "source_id": "fishbase_scomberomorus_commerson",
+      "species_label": "tenggiri",
+      "category": "physical_characteristics",
+      "content": "Scomberomorus commerson, one candidate species within the ambiguous tenggiri label, has 15-18 dorsal spines.",
+      "source_quote": "Dorsal spines (total): 15 - 18",
+      "stage": "fact_extraction",
+      "verification_status": "candidate"
+    },
+    {
+      "claim_id": "claim_tenggiri_commercial_001",
+      "source_id": "fishbase_scomberomorus_commerson",
+      "species_label": "tenggiri",
+      "category": "commercial_uses",
+      "content": "Scomberomorus commerson, one candidate species within the ambiguous tenggiri label, is marketed mainly fresh and also dried-salted, frozen, smoked, and canned.",
+      "source_quote": "Marketed mainly fresh and also dried-salted, frozen, smoked and canned.",
       "stage": "fact_extraction",
       "verification_status": "candidate"
     }

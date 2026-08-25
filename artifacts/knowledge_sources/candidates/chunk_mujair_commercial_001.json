@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_mujair_commercial_001",
+  "chunk": {
+    "id": "chunk_mujair_commercial_001",
+    "species_label": "mujair",
+    "source_id": "fao_y5728e",
+    "category": "commercial_uses",
+    "content": "Oreochromis mossambicus supports an important artisanal floodplain fishery in Papua New Guinea's Sepik River and accounts for about half of estimated annual landings.",
+    "source_quote": "Oreochromis mossambicus supports an important floodplain, artisanal fishery in the Sepik River, and accounts for about 50 percent of the landings, estimated to be about 3 000 - 5 000 tonnes/year (Coates, 1987b).",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "fao_y5728e",
+    "title": "Tilapias as Alien Aquatics in Asia and the Pacific: A Review",
+    "source_type": "fisheries_technical_paper",
+    "url": "https://www.fao.org/4/y5728e/y5728e05.htm",
+    "publisher": "Food and Agriculture Organization of the United Nations",
+    "reviewed_at": null,
+    "verification_status": "candidate"
+  }
+}

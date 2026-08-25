@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_gelama_bunga_processing_001",
+  "chunk": {
+    "id": "chunk_gelama_bunga_processing_001",
+    "species_label": "gelama_bunga",
+    "source_id": "jipsp_6_12_7801",
+    "category": "processing_methods",
+    "content": "Nibea albiflora was processed into a 100% fish sausage and a formulation with 30% chicken meat for sensory and proximate testing.",
+    "source_quote": "Pada penelitian ini dilakukan 2 perlakuan yakni sosis ikan 100% dan sosis ikan dengan penambahan daging ayam 30% kemudian dilakukan uji mutu sensori menggunakan uji kesukaan skala 1-7 dan uji proksimat.",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "jipsp_6_12_7801",
+    "title": "Karakteristik Nilai Gizi dan Mutu Sensori Sosis Ikan Gulamah (Nibea albiflora) dengan Penambahan Daging Ayam",
+    "source_type": "journal_article",
+    "url": "https://doi.org/10.20956/jipsp.v6i12.7801",
+    "publisher": "Jurnal IPTEKS Pemanfaatan Sumberdaya Perikanan, Universitas Hasanuddin",
+    "reviewed_at": null,
+    "verification_status": "candidate"
+  }
+}

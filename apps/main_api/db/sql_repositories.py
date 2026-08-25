@@ -103,10 +103,20 @@ class SqlKnowledgeJobRepository:
         self._session_factory = session_factory
 
     def create(self, job_id: str, prediction_id: str, species_id: str):
-        from datetime import datetime, timezone
-
         row = KnowledgeJob(id=job_id, prediction_id=prediction_id, species_id=species_id, status="processing")
         with self._session_factory() as session:
+            existing = session.get(KnowledgeJob, job_id)
+            if existing is not None:
+                existing.prediction_id = prediction_id
+                existing.species_id = species_id
+                existing.status = "processing"
+                existing.expert_outputs = None
+                existing.critic_feedback = None
+                existing.final_card = None
+                existing.error = None
+                existing.completed_at = None
+                session.commit()
+                return self._to_record(existing)
             session.add(row)
             session.commit()
         return self._to_record(row)

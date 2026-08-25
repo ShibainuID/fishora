@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_tuna_processing_002",
+  "chunk": {
+    "id": "chunk_tuna_processing_002",
+    "species_label": "tuna",
+    "source_id": "fishbase_thunnus_albacares",
+    "category": "processing_methods",
+    "content": "Yellowfin tuna (Thunnus albacares), one species within Fishora's genus-level tuna label, is marketed fresh, frozen, canned, and smoked, and is valued for sashimi.",
+    "source_quote": "Marketed mainly fresh, frozen, canned (Ref. 9684), but also smoked (Ref. 9987). Highly valued for sashimi (Ref. 26938).",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "fishbase_thunnus_albacares",
+    "title": "Thunnus albacares, Yellowfin tuna",
+    "source_type": "species_summary",
+    "url": "https://www.fishbase.se/summary/Thunnus-albacares.html",
+    "publisher": "FishBase",
+    "reviewed_at": null,
+    "verification_status": "candidate"
+  }
+}

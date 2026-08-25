@@ -8,6 +8,7 @@ from apps.main_api.contracts import (
     BidRecord,
     BuyerPreferenceRecord,
     KnowledgeChunkWrite,
+    KnowledgeJobRecord,
     KnowledgeSourceWrite,
     LandingPointRecord,
     LotRecord,
@@ -91,10 +92,10 @@ class PredictionRepository(Protocol):
 
 
 class KnowledgeJobRepository(Protocol):
-    def create(self, job_id: str, prediction_id: str, species_id: str) -> object: ...
-    def get(self, job_id: str) -> object | None: ...
-    def update(self, job_id: str, status: str, **fields) -> object: ...
-    def list_by_prediction(self, prediction_id: str) -> list[object]: ...
+    def create(self, job_id: str, prediction_id: str, species_id: str) -> KnowledgeJobRecord: ...
+    def get(self, job_id: str) -> KnowledgeJobRecord | None: ...
+    def update(self, job_id: str, status: str | None = None, **fields) -> KnowledgeJobRecord | None: ...
+    def list_by_prediction(self, prediction_id: str) -> list[KnowledgeJobRecord]: ...
 
 
 @dataclass
@@ -122,4 +123,4 @@ class AppDependencies:
     landing_point_repo: object | None = None
     session_service: object | None = None
     review_repo: object | None = None  # ReviewRepository
-    job_repo: object | None = None  # KnowledgeJobRepository
+    job_repo: KnowledgeJobRepository | None = None
