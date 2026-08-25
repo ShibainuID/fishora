@@ -110,7 +110,7 @@ The unpacked export must match the expected location
 Then install the extra packages and start the CV service:
 
 ```bash
-"$PY" -m pip install torch timm
+"$PY" -m pip install torch torchvision timm
 FISHORA_CV_DEVICE=cpu "$PY" -m uvicorn apps.cv_service.main:app --host 0.0.0.0 --port 8001
 ```
 
@@ -124,8 +124,7 @@ operator always confirms explicitly. That is the intended human-in-the-loop gate
 Generated cards need three things, in this order:
 
 1. `OPENCODE_GO_API_KEY` in `.env`.
-2. The embedding stack: `"$PY" -m pip install numpy sentence-transformers langchain-huggingface torch`.
-3. The E5 weights in the local Hugging Face cache. The embedder is constructed with
+2. The E5 weights in the local Hugging Face cache. The embedder is constructed with
    `local_files_only=True` so a request never triggers a download, which means fetching it once, on
    purpose:
 
@@ -291,10 +290,11 @@ everything still starts, and identification and verification work normally; only
 generation fails, with a `502`.
 
 The key is not sufficient on its own. Retrieval runs before generation, so a knowledge card also
-needs the embedding stack installed (`numpy`, `sentence-transformers`, `langchain-huggingface`, and
-`torch`, all core dependencies) **and** the E5 weights already in the local Hugging Face cache. The
-embedder is constructed with `local_files_only=True` so a request never triggers a download, which
-means the model has to be fetched once, deliberately:
+needs the embedding stack (`sentence-transformers` and `langchain-huggingface`, core dependencies of
+`pip install -e .`, plus torch and numpy, which sentence-transformers pulls in) **and** the E5
+weights already in the local Hugging Face cache. The embedder is constructed with
+`local_files_only=True` so a request never triggers a download, which means the model has to be
+fetched once, deliberately:
 
 ```bash
 "$PY" -c "from huggingface_hub import snapshot_download; snapshot_download('intfloat/multilingual-e5-base')"
