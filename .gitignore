@@ -6,3 +6,17 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .env
+
+# Tests and test tooling. Kept on disk and runnable locally, not tracked.
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+/tests/
+/apps/frontend/e2e/
+/apps/frontend/test/
+/apps/frontend/playwright.config.ts
+/apps/frontend/vitest.config.ts
+/apps/frontend/vitest.setup.ts
+/apps/frontend/test-results/
+/apps/frontend/playwright-report/

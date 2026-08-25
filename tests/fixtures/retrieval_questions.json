@@ -1,8 +1,0 @@
-[
-  {"id": "identity", "question": "Apa identitas dan nama umum ikan ini?", "category": "identity"},
-  {"id": "physical_characteristics", "question": "Apa ciri fisik ikan ini?", "category": "physical_characteristics"},
-  {"id": "taste_texture", "question": "Bagaimana rasa dan teksturnya?", "category": "taste_texture"},
-  {"id": "processing_methods", "question": "Bagaimana ikan ini dapat diolah?", "category": "processing_methods"},
-  {"id": "commercial_uses", "question": "Apa saja penggunaan komersialnya?", "category": "commercial_uses"},
-  {"id": "substitutes", "question": "Ikan apa yang serupa atau dapat menjadi pengganti?", "category": "substitutes"}
-]
