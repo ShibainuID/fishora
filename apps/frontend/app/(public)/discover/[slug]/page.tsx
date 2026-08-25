@@ -1,9 +1,9 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import Image from 'next/image'
 import { KnowledgeCardView } from '@/components/fish/knowledge-card'
 import { getDiscover } from '@/lib/api/commerce'
 import { SPECIES, isSpeciesLabel } from '@/lib/species'
+import { SpeciesArt } from '@/components/fish/species-art'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,14 +27,9 @@ export default async function DiscoverPage({
 
   return (
     <main className="mx-auto max-w-[420px] px-4 py-8">
-        <Image
-          src="/globe.svg"
-          alt={names.commonName}
-          width={420}
-          height={280}
-          priority
-          className="aspect-[3/2] w-full rounded-2xl object-cover"
-        />
+        {/* No catch photography exists yet. The Next starter globe stood here,
+            which showed a shopper an unrelated icon for the fish in their hand. */}
+        <SpeciesArt label={label} className="aspect-[3/2] w-full rounded-2xl" />
         <h1 className="text-display-2 mt-6 text-ink">{names.commonName}</h1>
         {names.scientificName && (
           <p className="text-body mt-1 text-ink-muted italic leading-[1.12] pb-1">{names.scientificName}</p>

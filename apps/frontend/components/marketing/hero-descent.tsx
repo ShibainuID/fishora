@@ -59,12 +59,12 @@ function HeroTrack() {
   const contrast = useTransform(scrollYProgress, [0.15, 0.7], [1, 1.08])
   const grade = useMotionTemplate`saturate(${saturate}) contrast(${contrast})`
 
-  const tint = useTransform(scrollYProgress, [0.2, 0.75], [0, 0.9])
+  const tint = useTransform(scrollYProgress, [0.25, 1], [0, 0.92])
   const lampFade = useTransform(scrollYProgress, [0, 0.55], [1, 0])
   const lampRise = useTransform(scrollYProgress, [0, 1], ['0vh', '-24vh'])
 
   return (
-    <div ref={ref} className="relative h-[320vh]">
+    <div ref={ref} className="relative h-[240vh]">
       <div className="sticky top-0 min-h-dvh overflow-hidden bg-abyss-950">
         {/* The grade sits inside the sticky element: a filter on an ancestor of
             a sticky node drops it out of its sticky context on iOS Safari. */}

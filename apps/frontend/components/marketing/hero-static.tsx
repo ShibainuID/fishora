@@ -4,7 +4,7 @@ export function HeroStatic() {
     // its own CTAs below the fold by exactly the nav height (60px, 68px at lg).
     <section
       data-block="hero"
-      className="flex min-h-[calc(100dvh-60px)] flex-col justify-end gap-4 px-4 pt-16 pb-8 lg:min-h-[calc(100dvh-68px)]"
+      className="mx-auto flex min-h-[calc(100dvh-60px)] w-full max-w-[1200px] flex-col justify-end gap-4 px-4 pt-16 pb-8 lg:min-h-[calc(100dvh-68px)] lg:px-8"
     >
       <h1 className="text-display-2 max-w-[16ch] lg:max-w-[22ch]">Discover the value beneath the ocean</h1>
       <p className="text-body max-w-[36ch]">

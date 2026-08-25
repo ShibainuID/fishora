@@ -31,7 +31,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         className="sticky top-0 flex h-14 items-center justify-between border-b border-line bg-surface px-4 pt-[env(safe-area-inset-top)]"
         style={{ zIndex: Z.nav }}
       >
-        <p className="text-h3 text-ink">Fishora</p>
+        {/* The wordmark is the way back to the marketing site. As plain text it
+            left the two halves of the product with no link between them. */}
+        {/* min-h-11: it is a tap target now, not a label. */}
+        <Link href="/" className="text-h3 flex min-h-11 items-center text-ink">
+          Fishora
+        </Link>
+
+        {/* The tab bar below is phone-only, so without this the app has no
+            navigation at all above 1024px. */}
+        <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary">
+          {tabs.map((tab) => {
+            const active = pathname === tab.href.split('?')[0]
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                aria-current={active ? 'page' : undefined}
+                className={[
+                  'text-body-sm flex min-h-11 items-center rounded-full px-3',
+                  active ? 'text-ink' : 'text-ink-muted hover:text-ink',
+                ].join(' ')}
+              >
+                {tab.label}
+              </Link>
+            )
+          })}
+        </nav>
+
         <div className="flex items-center gap-3">
           <p className="text-body-sm text-ink-muted">{role}</p>
           <ThemeToggle />
@@ -41,7 +68,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <nav
         className="fixed inset-x-0 bottom-0 flex border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden"
         style={{ zIndex: Z.nav }}
-        aria-label="Primary"
+        aria-label="Primary, phone"
       >
         {tabs.map((tab) => {
           const Icon = tab.icon

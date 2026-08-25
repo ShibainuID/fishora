@@ -1,12 +1,12 @@
-import { List } from '@phosphor-icons/react/dist/ssr'
-import { Button } from '@/components/common/button'
+import Link from 'next/link'
 import { IdentificationDemo } from '@/components/marketing/identification-demo'
 import type { PredictionCard } from '@/components/fish/prediction-card'
 import { LotCard } from '@/components/lot/lot-card'
 import { MatchReasons } from '@/components/lot/match-reasons'
-import { FlowPan } from '@/components/marketing/flow-pan'
 import { FlowStrip } from '@/components/marketing/flow-strip'
 import { HeroDescent } from '@/components/marketing/hero-descent'
+import { LandingNav } from '@/components/marketing/landing-nav'
+import { SpeciesArt } from '@/components/fish/species-art'
 import type { components } from '@/lib/api/schema'
 
 type Lot = components['schemas']['LotResponse']
@@ -50,122 +50,235 @@ const DEMO_ID: Parameters<typeof PredictionCard>[0]['result'] = {
   verification_status: 'pending',
 }
 
+/** One container for the page. Without it every line sat 16px from the left edge of a 1440px screen. */
+const SHELL = 'mx-auto w-full max-w-[1200px] px-4 lg:px-8'
+
+/** DESIGN.md 3.6: landing sections breathe more than app surfaces. */
+const SECTION = 'py-20 md:py-28 lg:py-40'
+
 export function LandingPage() {
   return (
     <div className="bg-abyss-950 text-abyss-50">
-      <header className="sticky top-0 flex h-[60px] items-center gap-3 px-4 lg:h-[68px]">
-        <p className="text-[1.0625rem] font-semibold tracking-[-0.02em]">
-          Fishora<span className="text-accent">.</span>
-        </p>
-        <nav className="ml-auto hidden items-center gap-6 lg:flex" aria-label="Primary">
-          <a className="min-h-11 px-2" href="#platform">Platform</a>
-          <a className="min-h-11 px-2" href="#buyers">Buyers</a>
-          <a className="min-h-11 px-2" href="#operators">Operators</a>
-          <a className="min-h-11 px-2" href="#knowledge">Knowledge</a>
-        </nav>
-        <a href="#access" className="ml-auto lg:ml-6">
-          <Button size="sm" type="button">Request access</Button>
-        </a>
-        <button type="button" className="grid size-11 place-items-center lg:hidden" aria-label="Open menu">
-          <List size={22} />
-        </button>
-      </header>
+      <LandingNav />
 
-      <HeroDescent />
+      <main>
+        <HeroDescent />
 
-      <section data-block="gap" className="px-4 py-16">
-        <p className="text-display-2 max-w-[18ch]">
-          Indonesian boats land hundreds of species. Buyers order a handful.
-        </p>
-        <dl className="mt-12 flex flex-col gap-8 md:flex-row md:gap-16">
-          <div className="border-t border-abyss-800 pt-4">
-            <dt className="text-num-xl text-accent">100 km</dt>
-            <dd className="text-body-sm mt-2">serviceability radius, MVP</dd>
+        <section data-block="gap" id="platform" className={SECTION}>
+          <div className={SHELL}>
+            <h2 className="text-display-2 max-w-[18ch]">
+              Indonesian boats land hundreds of species. Buyers order a handful.
+            </h2>
+            <dl className="mt-12 flex flex-col gap-8 md:flex-row md:gap-16">
+              <Figure value="100 km" caption="serviceability radius, MVP" />
+              <Figure value="5 to 10" caption="species in the MVP model" />
+              <Figure value="under 90s" caption="from photo to published lot" />
+            </dl>
           </div>
-          <div className="border-t border-abyss-800 pt-4">
-            <dt className="text-num-xl text-accent">5 to 10</dt>
-            <dd className="text-body-sm mt-2">species in the MVP model</dd>
+        </section>
+
+        <section data-block="flow" className={SECTION}>
+          <p className={`text-eyebrow text-ink-faint ${SHELL}`}>THE FLOW</p>
+          <h2 className={`text-h1 mt-2 max-w-[20ch] ${SHELL}`}>
+            Eight steps from a boat to a buyer.
+          </h2>
+          {/* Full bleed on purpose: the strip runs edge to edge past the shell. */}
+          <div className="mt-10">
+            <FlowStrip />
           </div>
-          <div className="border-t border-abyss-800 pt-4">
-            <dt className="text-num-xl text-accent">under 90s</dt>
-            <dd className="text-body-sm mt-2">from photo to published lot</dd>
+        </section>
+
+        <section data-block="identify" id="operators" className={SECTION}>
+          <div className={`${SHELL} lg:grid lg:grid-cols-12 lg:items-center lg:gap-8`}>
+            {/* Copy leads in the DOM on both viewports; only the visual order swaps. */}
+            <div className="lg:order-2 lg:col-span-5">
+              <h2 className="text-h1">The model proposes. A person decides.</h2>
+              <p className="text-body mt-3 max-w-[34ch] text-abyss-200">
+                Nothing publishes until an operator confirms the species on the landing floor.
+              </p>
+            </div>
+            <div className="mt-8 lg:order-1 lg:col-span-6 lg:mt-0">
+              <IdentificationDemo result={DEMO_ID} />
+            </div>
           </div>
-        </dl>
-      </section>
+        </section>
 
-      <section data-block="flow" className="py-16">
-        <p className="text-eyebrow px-4 text-ink-faint">THE FLOW</p>
-        <FlowPan>
-          <FlowStrip />
-        </FlowPan>
-      </section>
+        <section data-block="match" id="buyers" className={SECTION}>
+          <div className={SHELL}>
+            <p className="text-eyebrow text-ink-faint">WHY IT MATCHED</p>
+            <h2 className="text-h1 mt-2">Need, then supply, then the reason.</h2>
+            <div className="mt-10 grid gap-6 lg:grid-cols-2 lg:items-start">
+              <LotCard lot={DEMO_LOT} matchPercent={0.94} />
+              <MatchReasons reasons={DEMO_REASONS} />
+            </div>
+          </div>
+        </section>
 
-      <section data-block="identify" id="operators" className="px-4 py-16">
-        <h2 className="text-h1">The model proposes. A person decides.</h2>
-        <p className="text-body mt-3 max-w-[25ch]">
-          Nothing publishes until an operator confirms the species on the landing floor.
+        <section data-block="knowledge" id="knowledge" className={SECTION}>
+          <div className={SHELL}>
+            <h2 className="text-h1 max-w-[20ch]">What a shopper can learn from a QR.</h2>
+
+            {/* Exactly five cells for the five things a knowledge card answers.
+                A three-column grid left a hole at the end, because five items do
+                not fill six cells. */}
+            <div className="mt-10 grid gap-4 md:grid-cols-3">
+              <Cell className="md:col-span-2 md:row-span-2">
+                <SpeciesArt label="tenggiri" className="aspect-[16/10] w-full" />
+                <CellBody title="Taste and texture">
+                  Gurih and not especially oily. Firm, with a fine grain.
+                </CellBody>
+              </Cell>
+
+              <Cell>
+                <SpeciesArt label="kembung" className="aspect-[16/9] w-full" />
+                <CellBody title="Cooking">Digoreng, dibakar, dikukus.</CellBody>
+              </Cell>
+
+              <Cell className="bg-abyss-850">
+                <CellBody title="Commercial uses">Fillet. Steak. Rumah makan.</CellBody>
+              </Cell>
+
+              <Cell className="bg-gradient-to-b from-abyss-900 to-abyss-800">
+                <CellBody title="Substitutes">Kembung. Tuna.</CellBody>
+              </Cell>
+
+              <Cell className="md:col-span-2">
+                <CellBody title="Sources">
+                  <span className="text-num-sm">1 verified source</span>
+                </CellBody>
+              </Cell>
+            </div>
+          </div>
+        </section>
+
+        <section data-block="close" id="access" className={`${SECTION} border-t border-abyss-900`}>
+          <div className={SHELL}>
+            <h2 className="text-display-2 max-w-[20ch]">
+              Every catch already carries its value. Fishora makes it legible.
+            </h2>
+            <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/account"
+                className="text-body-sm inline-flex min-h-11 items-center justify-center rounded-full bg-accent px-6 font-medium text-accent-ink"
+              >
+                Request access
+              </Link>
+              <Link
+                href="/marketplace"
+                className="text-body-sm inline-flex min-h-11 items-center justify-center rounded-full border border-line-strong px-6 font-medium text-ink"
+              >
+                Open the marketplace
+              </Link>
+            </div>
+          </div>
+        </section>
+
+      </main>
+
+      <SiteFooter />
+    </div>
+  )
+}
+
+function Figure({ value, caption }: { value: string; caption: string }) {
+  return (
+    <div className="border-t border-abyss-800 pt-4">
+      <dt className="text-num-xl text-accent">{value}</dt>
+      <dd className="text-body-sm mt-2 text-abyss-200">{caption}</dd>
+    </div>
+  )
+}
+
+function Cell({ className = '', children }: { className?: string; children: React.ReactNode }) {
+  return (
+    <article className={`flex flex-col overflow-hidden rounded-2xl border border-abyss-800 ${className}`}>
+      {children}
+    </article>
+  )
+}
+
+function CellBody({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="flex-1 p-5">
+      <p className="text-label text-abyss-200">{title}</p>
+      <p className="text-body mt-2 text-abyss-100">{children}</p>
+    </div>
+  )
+}
+
+const FOOTER_PRODUCT = [
+  { href: '/marketplace', label: 'Marketplace' },
+  { href: '/preferences', label: 'Buyer preferences' },
+  { href: '/operator', label: 'Operator app' },
+  { href: '/account', label: 'Sign in' },
+]
+
+const FOOTER_PAGE = [
+  { href: '#platform', label: 'The gap' },
+  { href: '#flow', label: 'The flow' },
+  { href: '#operators', label: 'Identification' },
+  { href: '#knowledge', label: 'Knowledge cards' },
+]
+
+function SiteFooter() {
+  return (
+    <footer className="border-t border-abyss-900 py-16">
+      <div className={`${SHELL} grid gap-10 md:grid-cols-3`}>
+        <div>
+          <p className="text-h3">
+            Fishora<span className="text-accent">.</span>
+          </p>
+          <p className="text-body-sm mt-3 max-w-[32ch] text-abyss-200">
+            Species identification, verified knowledge, and a B2B auction for the catch that has just
+            landed.
+          </p>
+        </div>
+
+        <FooterColumn title="Product" links={FOOTER_PRODUCT} internal />
+        <FooterColumn title="This page" links={FOOTER_PAGE} />
+      </div>
+
+      <div className={`${SHELL} mt-12 flex flex-col gap-2 border-t border-abyss-900 pt-8`}>
+        <p className="text-body-sm text-abyss-200">
+          <a className="inline-flex min-h-11 items-center" href="mailto:halo@fishora.id">
+            halo@fishora.id
+          </a>
         </p>
-        <div className="mt-8">
-          <IdentificationDemo result={DEMO_ID} />
-        </div>
-      </section>
+        <p className="text-body-sm text-ink-faint">Jakarta, Indonesia</p>
+      </div>
+    </footer>
+  )
+}
 
-      <section data-block="match" id="buyers" className="px-4 py-16">
-        <p className="text-eyebrow text-ink-faint">WHY IT MATCHED</p>
-        <h2 className="text-h1 mt-2">Need, then supply, then the reason.</h2>
-        <div className="mt-8 flex flex-col gap-6">
-          <LotCard lot={DEMO_LOT} photoUrl="/globe.svg" matchPercent={0.94} />
-          <MatchReasons reasons={DEMO_REASONS} />
-        </div>
-      </section>
-
-      <section data-block="knowledge" id="knowledge" className="py-16">
-        <h2 className="text-h1 px-4">What a shopper can learn from a QR.</h2>
-        <div className="-mx-0 mt-8 flex flex-col gap-4 md:grid md:grid-cols-3">
-          <article className="aspect-[4/3] bg-abyss-800 px-4 py-6">
-            <p className="text-body">Taste: gurih. Texture: padat.</p>
-          </article>
-          <article className="bg-abyss-850 px-4 py-6">
-            <p className="text-body">Digoreng, dibakar, dikukus.</p>
-          </article>
-          <article className="bg-abyss-800 px-4 py-6">
-            <p className="text-body">Fillet. Steak. Rumah makan.</p>
-          </article>
-          <article className="bg-gradient-to-b from-abyss-900 to-abyss-800 px-4 py-6">
-            <p className="text-body">Kembung. Tuna.</p>
-          </article>
-          <article className="border border-abyss-800 px-4 py-6">
-            <p className="text-num-sm">1 verified source</p>
-          </article>
-        </div>
-      </section>
-
-      <section data-block="built" className="relative mt-8 min-h-[44vh] bg-abyss-800 px-4 py-12">
-        <div className="absolute inset-0 bg-abyss-950/60" />
-        <div className="relative">
-          <p className="text-body-sm">Built for the people who move fish after it lands.</p>
-          <ul className="mt-6 flex flex-col gap-2">
-            {['supermarket', 'seafood retailer', 'restaurant', 'catering', 'hotel', 'processor', 'distributor'].map((row) => (
-              <li key={row} className="text-h3">{row}</li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      <section data-block="close" id="access" className="px-4 py-24">
-        <p className="text-display-2 max-w-[18ch]">
-          Discover the value beneath the ocean.
-        </p>
-        <div className="mt-8">
-          <Button block size="lg" type="button">Request access</Button>
-        </div>
-      </section>
-
-      <footer className="flex flex-col gap-8 px-4 py-16 md:flex-row">
-        <p className="text-h3">Fishora</p>
-        <a className="min-h-11" href="#flow">See the flow</a>
-        <p className="text-body-sm">Jakarta</p>
-      </footer>
+function FooterColumn({
+  title,
+  links,
+  internal,
+}: {
+  title: string
+  links: { href: string; label: string }[]
+  internal?: boolean
+}) {
+  return (
+    <div>
+      <p className="text-label text-abyss-200">{title}</p>
+      <ul className="mt-3 flex flex-col">
+        {links.map((link) => (
+          <li key={link.href}>
+            {/* 44px rows: a footer of small links at gap-2 is the most common
+                tap-accuracy failure on a marketing site. */}
+            {internal ? (
+              <Link className="text-body-sm flex min-h-11 items-center text-abyss-100" href={link.href}>
+                {link.label}
+              </Link>
+            ) : (
+              <a className="text-body-sm flex min-h-11 items-center text-abyss-100" href={link.href}>
+                {link.label}
+              </a>
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

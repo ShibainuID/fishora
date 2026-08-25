@@ -299,6 +299,48 @@
   }
 }
 
+/* In-page anchors glide rather than jump. The reduced-motion backstop at the
+   bottom of this file forces `scroll-behavior: auto`, so this stays opt-out. */
+html {
+  scroll-behavior: smooth;
+}
+
+/* An anchored section would otherwise land underneath the sticky nav. */
+[id] {
+  scroll-margin-top: 76px;
+}
+
+/* The flow strip advances on its own. Half the track is a duplicate of the
+   first half, so -50% lands exactly where the loop began and the seam is
+   invisible. Transform only, so it never touches layout. */
+@keyframes marquee-track {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  animation: marquee-track 48s linear infinite;
+}
+
+/* No auto-advance when motion is not wanted. The global backstop below would
+   otherwise collapse the animation to its end state, which parks the track on
+   the duplicated half. Falling back to a real scroll container keeps all eight
+   steps reachable instead of stranding the reader on a frozen strip. */
+@media (prefers-reduced-motion: reduce) {
+  .marquee {
+    overflow-x: auto;
+  }
+
+  .marquee-track {
+    animation: none;
+    transform: none;
+  }
+}
+
 /* Reduced motion backstop. */
 @media (prefers-reduced-motion: reduce) {
   *,
