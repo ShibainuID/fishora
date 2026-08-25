@@ -4,6 +4,18 @@ from pydantic import AliasChoices, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+# Both spellings, since tools disagree on which they resolve.
+DEFAULT_CORS_ALLOW_ORIGINS = (
+    "http://localhost:3000,http://127.0.0.1:3000,"
+    "http://localhost:3111,http://127.0.0.1:3111"
+)
+
+
+def parse_origins(value: str) -> list[str]:
+    """Split a comma-separated origin list. Blank denies every origin."""
+    return [origin.strip() for origin in value.split(",") if origin.strip()]
+
+
 class MainSettings(BaseSettings):
     """Application settings.
 
@@ -24,7 +36,16 @@ class MainSettings(BaseSettings):
     embedding_dimension: int = Field(default=768, validation_alias=AliasChoices("FISHORA_EMBEDDING_DIMENSION", "embedding_dimension"))
     embedding_device: str = Field(default="cpu", validation_alias=AliasChoices("FISHORA_EMBEDDING_DEVICE", "embedding_device"))
     opencode_go_base_url: str = Field(default="https://opencode.ai/zen/go/v1", validation_alias=AliasChoices("FISHORA_OPENCODE_GO_BASE_URL", "opencode_go_base_url"))
-    # ponytail: blank key allowed here; the production OpenCode client constructor enforces it.
+    # Blank key allowed; the production OpenCode client constructor enforces it.
     opencode_go_api_key: SecretStr = Field(default=SecretStr(""), validation_alias=AliasChoices("OPENCODE_GO_API_KEY", "opencode_go_api_key"))
     opencode_go_model: str = Field(default="gpt-5.6-luna", validation_alias=AliasChoices("FISHORA_OPENCODE_GO_MODEL", "opencode_go_model"))
     opencode_go_timeout_seconds: float = Field(default=60.0, validation_alias=AliasChoices("FISHORA_OPENCODE_GO_TIMEOUT_SECONDS", "opencode_go_timeout_seconds"))
+    # A plain string: pydantic-settings would JSON-parse a list[str] field.
+    cors_allow_origins: str = Field(
+        default=DEFAULT_CORS_ALLOW_ORIGINS,
+        validation_alias=AliasChoices("FISHORA_CORS_ALLOW_ORIGINS", "cors_allow_origins"),
+    )
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return parse_origins(self.cors_allow_origins)

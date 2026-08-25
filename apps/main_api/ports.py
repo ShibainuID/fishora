@@ -5,9 +5,13 @@ from sqlalchemy.orm import Session
 
 from apps.contracts import CVPredictionEnvelope
 from apps.main_api.contracts import (
+    BidRecord,
+    BuyerPreferenceRecord,
     KnowledgeChunkWrite,
     KnowledgeJobRecord,
     KnowledgeSourceWrite,
+    LandingPointRecord,
+    LotRecord,
     PredictionRecord,
     RetrievedChunk,
     SpeciesRecord,
@@ -26,6 +30,7 @@ class ImageStore(Protocol):
 class SpeciesRepository(Protocol):
     def get_by_normalized_label(self, label: str) -> SpeciesRecord | None: ...
     def get_by_id(self, species_id: str) -> SpeciesRecord | None: ...
+    def list_all(self) -> list[SpeciesRecord]: ...
 
 
 class Tokenizer(Protocol):
@@ -114,4 +119,9 @@ class AppDependencies:
     knowledge_repo: KnowledgeRepository | None = None
     retriever: object | None = None  # VerifiedRetriever
     generator: object | None = None  # KnowledgeGenerator
+    lot_repo: object | None = None  # LotRepository
+    preference_repo: object | None = None  # PreferenceRepository
+    landing_point_repo: object | None = None
+    session_service: object | None = None
+    review_repo: object | None = None  # ReviewRepository
     job_repo: KnowledgeJobRepository | None = None

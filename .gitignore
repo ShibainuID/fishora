@@ -6,3 +6,33 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .env
+
+# Tests and test tooling. Kept on disk and runnable locally, not tracked.
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+/tests/
+/apps/frontend/e2e/
+/apps/frontend/test/
+/apps/frontend/playwright.config.ts
+/apps/frontend/vitest.config.ts
+/apps/frontend/vitest.setup.ts
+/apps/frontend/test-results/
+/apps/frontend/playwright-report/
+
+# Uploaded catch photographs (FISHORA_IMAGE_STORAGE_DIR). Operator content, and
+# in production real photographs from a landing point. Never tracked.
+/data/
+
+# Handoff and planning notes. Kept on disk, not tracked.
+/handoff.md
+/apps/frontend/HANDOFF.md
+/docs/plans/
+
+# Agent instruction files. next dev regenerates these on every run.
+/apps/frontend/AGENTS.md
+/apps/frontend/CLAUDE.md
+
+# create-next-app boilerplate; the root README is the real setup guide.
+/apps/frontend/README.md

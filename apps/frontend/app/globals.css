@@ -1,0 +1,486 @@
+@import "tailwindcss";
+
+/* Three-state theming, which the stock media-only variant cannot express. */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(
+        :root:not([data-theme="light"]),
+        :root:not([data-theme="light"]) *
+      ) {
+      @slot;
+    }
+  }
+}
+
+/* Design tokens. See DESIGN.md section 3. */
+
+@theme {
+  /* Neutral ramp. */
+  --color-abyss-950: #05090c;
+  --color-abyss-900: #0a1116;
+  --color-abyss-850: #0f1a21;
+  --color-abyss-800: #142530;
+  --color-abyss-700: #1d3340;
+  --color-abyss-600: #2b4655;
+  --color-abyss-500: #3f5f70;
+  /* 400 is 3.97:1 on the light ground; 450 reaches 4.83:1 for small text. */
+  --color-abyss-450: #56737f;
+  --color-abyss-400: #62808f;
+  --color-abyss-300: #8ea5b1;
+  --color-abyss-200: #bccbd3;
+  --color-abyss-100: #dde5e9;
+  --color-abyss-50: #eef2f4;
+  --color-abyss-25: #f7f9fa;
+
+  /* Single accent. White on 600 is only 3.93:1, so light mode fills with 700. */
+  --color-lamp-700: #a3620d;
+  --color-lamp-600: #b96f10;
+  --color-lamp-500: #d98613;
+  --color-lamp-400: #f0a02c;
+  --color-lamp-300: #f7bd6b;
+  --color-lamp-100: #fbe6c6;
+
+  /* Per-theme: one hex cannot clear AA on both an off-white and an abyss. */
+  --color-state-live: var(--state-live);
+  --color-state-warn: var(--state-warn);
+  --color-state-error: var(--state-error);
+  --color-line-input: var(--border-input);
+
+  /* Components reference only these. */
+  --color-bg: var(--bg);
+  --color-bg-sunken: var(--bg-sunken);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-ink: var(--text);
+  --color-ink-muted: var(--text-muted);
+  --color-ink-faint: var(--text-faint);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-text);
+  --color-focus: var(--focus);
+  --color-verified: var(--verified-edge);
+  --color-state-closed: var(--text-faint);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* Four radius values, no others. */
+  --radius-input: 0.75rem;
+  --radius-card: 1rem;
+
+  /* Elevation, tinted to the neutral hue. */
+  --shadow-e1: 0 1px 2px rgb(var(--shadow-tint) / 0.06),
+    0 1px 1px rgb(var(--shadow-tint) / 0.04);
+  --shadow-e2: 0 4px 12px rgb(var(--shadow-tint) / 0.08),
+    0 1px 2px rgb(var(--shadow-tint) / 0.06);
+  --shadow-e3: 0 16px 40px rgb(var(--shadow-tint) / 0.14),
+    0 2px 6px rgb(var(--shadow-tint) / 0.08);
+
+  /* Motion. */
+  --ease-out-quint: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-quart: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* Light theme, the default. */
+:root {
+  --bg: var(--color-abyss-25);
+  --bg-sunken: var(--color-abyss-50);
+  --surface: #fdfefe;
+  --surface-raised: #ffffff;
+  --border: var(--color-abyss-100);
+  --border-strong: var(--color-abyss-200);
+  /* Control outlines owe 3:1 under WCAG 1.4.11; the hairline above does not. */
+  --border-input: var(--color-abyss-400);
+  --text: var(--color-abyss-900);
+  --text-muted: var(--color-abyss-500);
+  --text-faint: var(--color-abyss-450);
+  --accent: var(--color-lamp-700);
+  --accent-text: #ffffff;
+  --focus: var(--color-lamp-700);
+  --verified-edge: var(--color-abyss-600);
+  --state-live: #1c7a52;
+  --state-warn: #8a5d0a;
+  --state-error: #b3352e;
+  --shadow-tint: 26 55 70;
+  color-scheme: light;
+}
+
+/* Dark theme. */
+:root[data-theme="dark"],
+.theme-abyss {
+  --bg: var(--color-abyss-950);
+  --bg-sunken: #030608;
+  --surface: var(--color-abyss-900);
+  --surface-raised: var(--color-abyss-850);
+  --border: var(--color-abyss-800);
+  --border-strong: var(--color-abyss-700);
+  /* 500 is 2.79:1 on the dark surface, under 3:1. 450 reaches 3.72:1. */
+  --border-input: var(--color-abyss-450);
+  --text: var(--color-abyss-50);
+  --text-muted: var(--color-abyss-300);
+  --text-faint: var(--color-abyss-400);
+  --accent: var(--color-lamp-400);
+  --accent-text: var(--color-abyss-950);
+  --focus: var(--color-lamp-300);
+  --verified-edge: var(--color-abyss-600);
+  --state-live: #2f9e6f;
+  --state-warn: #c98a1a;
+  /* #b3352e is only 3.4:1 on the abyss. */
+  --state-error: #d9615a;
+  --shadow-tint: 2 8 12;
+  color-scheme: dark;
+}
+
+/* System preference, unless an explicit light choice overrides it. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: var(--color-abyss-950);
+    --bg-sunken: #030608;
+    --surface: var(--color-abyss-900);
+    --surface-raised: var(--color-abyss-850);
+    --border: var(--color-abyss-800);
+    --border-strong: var(--color-abyss-700);
+    --text: var(--color-abyss-50);
+    --text-muted: var(--color-abyss-300);
+    --text-faint: var(--color-abyss-400);
+    --accent: var(--color-lamp-400);
+    --accent-text: var(--color-abyss-950);
+    --focus: var(--color-lamp-300);
+    --verified-edge: var(--color-abyss-600);
+    --shadow-tint: 2 8 12;
+    color-scheme: dark;
+  }
+}
+
+/* Type scale. */
+@utility text-display-1 {
+  font-size: clamp(2.75rem, 6vw, 4.5rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+}
+@utility text-display-2 {
+  font-size: clamp(2.25rem, 4.5vw, 3.5rem);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+}
+@utility text-h1 {
+  font-size: 1.875rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+@utility text-h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+@utility text-h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+@utility text-body {
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.6;
+}
+@utility text-body-sm {
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.55;
+}
+@utility text-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+@utility text-eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+
+/* Quantities are always mono and tabular. */
+@utility num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+@utility text-num-xl {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 2rem;
+  font-weight: 500;
+  line-height: 1.1;
+}
+@utility text-num-lg {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+@utility text-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}
+@utility text-num-sm {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+/* Base. */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    /* No horizontal page scroll. */
+    overflow-x: hidden;
+  }
+
+  /* One focus treatment everywhere. */
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  /* 16px floor: anything smaller triggers iOS zoom on focus. */
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+    font-size: max(1rem, 100%);
+  }
+
+  ::placeholder {
+    color: var(--text-faint);
+  }
+}
+
+/* Skeleton shimmer: one transform sweep. */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* In-page anchors glide rather than jump. The reduced-motion backstop at the
+   bottom of this file forces `scroll-behavior: auto`, so this stays opt-out. */
+html {
+  scroll-behavior: smooth;
+}
+
+/* An anchored section would otherwise land underneath the sticky nav. */
+[id] {
+  scroll-margin-top: 76px;
+}
+
+/* The flow strip advances on its own. Half the track is a duplicate of the
+   first half, so -50% lands exactly where the loop began and the seam is
+   invisible. Transform only, so it never touches layout. */
+@keyframes marquee-track {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  animation: marquee-track 48s linear infinite;
+}
+
+/* No auto-advance when motion is not wanted. The global backstop below would
+   otherwise collapse the animation to its end state, which parks the track on
+   the duplicated half. Falling back to a real scroll container keeps all eight
+   steps reachable instead of stranding the reader on a frozen strip. */
+@media (prefers-reduced-motion: reduce) {
+  .marquee {
+    overflow-x: auto;
+  }
+
+  .marquee-track {
+    animation: none;
+    transform: none;
+  }
+}
+
+/* The hero copy rises on load.
+   Time-based, not scroll-driven: the hero is already in view when the page
+   opens, so a `view()` timeline would be complete before anyone saw it.
+   Scoped inside `no-preference` rather than relying on the reduced-motion
+   backstop at the bottom of this file: that collapses duration but not delay,
+   which would leave each line hidden for its delay and then snap in. */
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero-rise {
+    animation: hero-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: var(--rise-delay, 0s);
+  }
+}
+
+/* Scroll reveal for the landing sections.
+   CSS rather than Motion's whileInView: that renders the initial hidden state
+   on the server, so with JavaScript off the page would ship sections at
+   opacity 0 and never reveal them. A scroll-driven animation needs no script,
+   and where `view()` is unsupported nothing applies and the content is simply
+   already visible. Transform and opacity only, so it stays on the compositor. */
+@keyframes reveal-in {
+  from {
+    opacity: 0;
+    transform: translateY(1.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .reveal,
+    .reveal-stagger > * {
+      animation: reveal-in linear both;
+      animation-timeline: view();
+      /* Starts at `cover 0%`, the instant the element touches the viewport
+         edge. A later start leaves it on screen rendering nothing, which reads
+         as an image that failed to load rather than as an entrance. `cover`
+         rather than `entry` because an entry range is only as long as the
+         element is tall, so a short row would reveal over ~100px and pop. */
+      animation-range: cover 0% cover 16%;
+    }
+
+    /* The stagger is in the finish, not the start. A later start leaves a cell
+       on screen at zero opacity, which is what made one read as an image that
+       had failed to load; it showed up first where the grid stacks to one
+       column and the lower cells enter last. Everything begins fading the
+       moment it touches the viewport, and simply takes longer to arrive. */
+    .reveal-stagger > *:nth-child(2) {
+      animation-range: cover 0% cover 20%;
+    }
+
+    .reveal-stagger > *:nth-child(3) {
+      animation-range: cover 0% cover 24%;
+    }
+
+    .reveal-stagger > *:nth-child(4) {
+      animation-range: cover 0% cover 28%;
+    }
+
+    .reveal-stagger > *:nth-child(5) {
+      animation-range: cover 0% cover 32%;
+    }
+  }
+}
+
+/* Fades a backdrop image out in every direction.
+   An overlay gradient darkens the photograph but cannot hide where the element
+   itself begins, which showed as a vertical seam down the middle of the
+   section. A radial mask removes the edges instead of covering them, so the
+   image has no straight border on any side to read as a line. */
+.fade-radial {
+  /* Centred high: the subject's face sits near the top of a portrait box, and a
+     centre at mid-height puts it in the part of the mask that has already faded
+     out. Lower and wider from `md`, where the box is landscape. */
+  --fade-at: 52% 30%;
+  --fade: radial-gradient(
+    circle at var(--fade-at),
+    #000 30%,
+    rgb(0 0 0 / 0.6) 56%,
+    transparent 80%
+  );
+  mask-image: var(--fade);
+  -webkit-mask-image: var(--fade);
+}
+
+@media (min-width: 48rem) {
+  .fade-radial {
+    --fade-at: 52% 46%;
+  }
+}
+
+/* Printing the Fishora card.
+   The card lives inside a modal <dialog>, so the whole app is in the print
+   tree. Hiding by visibility rather than display keeps the card's own layout
+   intact while everything around it stops painting, and the dialog has to be
+   unpinned from the top layer or the print lands one page of backdrop. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .qr-print-card,
+  .qr-print-card * {
+    visibility: visible;
+  }
+
+  dialog[open] {
+    position: static;
+    display: block;
+    max-width: none;
+    background: transparent;
+  }
+
+  dialog[open]::backdrop {
+    display: none;
+  }
+
+  .qr-print-card {
+    position: fixed;
+    top: 0;
+    left: 0;
+    /* The ratio is the point of the card, so height follows width rather than
+       stretching to the sheet. */
+    width: 100mm;
+    height: auto;
+    box-shadow: none;
+    /* Without this the photograph and the scrim drop out and the card prints
+       as bare text. */
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  @page {
+    margin: 12mm;
+  }
+}
+
+/* Reduced motion backstop. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -467,8 +467,11 @@ def approve_candidates(
             ),
         )
         data = approved.model_dump_json(indent=2)
-        _safe_record_path(approved_dir, chunk_id).write_text(data, encoding="utf-8")
-        file_hashes[chunk_id] = hashlib.sha256(data.encode("utf-8")).hexdigest()
+        payload_bytes = data.encode("utf-8")
+        # write_bytes, not write_text: text mode translates newlines on Windows,
+        # and the signature below is over these exact bytes.
+        _safe_record_path(approved_dir, chunk_id).write_bytes(payload_bytes)
+        file_hashes[chunk_id] = hashlib.sha256(payload_bytes).hexdigest()
 
     manifest = ApprovalManifest(
         reviewer=reviewer,

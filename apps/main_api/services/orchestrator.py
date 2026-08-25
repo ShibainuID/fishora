@@ -2,27 +2,31 @@
 
 Ponytail: no hard dependency on langgraph library. The graph is plain
 Python + asyncio fan-out, but exposes a LangGraph-compatible `make_graph`
-that falls back to a simple dict-based executor if langgraph is absent.
-This keeps 1 venv + DB without adding a heavy graph engine for 7 nodes.
+that falls back to a dict-based executor if langgraph is absent. Either way
+the four experts really overlap (asyncio.gather over worker threads, since
+the LLM calls block on I/O) -- see tests/main_api/test_orchestrator.py.
+
+Grounding is fail-closed and centralised: the critic grades every claim
+against the specific chunk it cites, the writer keeps only ``supported``
+claims, and the card itself is built by ``KnowledgeGenerator`` so this path
+inherits the same citation and empty-evidence invariants as the sync one.
 """
 
 from __future__ import annotations
 
 import asyncio
 import json
-from typing import TypedDict
+import re
+from typing import Annotated, Literal, TypedDict
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from apps.main_api.contracts import RetrievedChunk, SpeciesRecord
-from apps.main_api.services.embeddings import E5_DIMENSION, E5_MODEL_NAME
+from apps.main_api.errors import InvalidGeneratedKnowledge
 from apps.main_api.services.generation import (
     GeneratedKnowledgeCard,
     KnowledgeCard,
-    SourceMetadata,
-    SYSTEM_PROMPT,
-    TAXONOMY_GUARDRAILS,
-    _relational_identity,
+    KnowledgeGenerator,
 )
 from apps.main_api.services.retrieval import CATEGORY_ORDER, VerifiedRetriever
 
@@ -36,6 +40,24 @@ except Exception:
     END = "END"  # type: ignore
     _HAS_LANGGRAPH = False
 
+EXPERT_NAMES = ("physical", "taste", "commercial", "substitute")
+
+
+class ClaimStatus(BaseModel):
+    """Per-claim grounding verdict. ``chunk_ids`` are the specific verified
+    chunks that carry the claim; the writer accepts only ``supported``."""
+
+    field: str
+    status: Literal["supported", "unsupported", "no_evidence"]
+    chunk_ids: list[str]
+    reason: str
+
+
+def merge_expert_outputs(left: dict | None, right: dict | None) -> dict:
+    """Fan-out reducer: four experts write the same state key concurrently, and
+    without a reducer langgraph rejects that and a plain dict loses updates."""
+    return {**(left or {}), **(right or {})}
+
 
 class FishoraState(TypedDict, total=False):
     job_id: str
@@ -44,7 +66,8 @@ class FishoraState(TypedDict, total=False):
     species: SpeciesRecord
     broad_evidence: list[RetrievedChunk]
     refined_evidence: list[RetrievedChunk]
-    expert_outputs: dict
+    expert_outputs: Annotated[dict, merge_expert_outputs]
+    claim_statuses: list[ClaimStatus]
     critic_feedback: str | None
     final_card: KnowledgeCard | dict | None
     error: str | None
@@ -97,206 +120,299 @@ def hybrid_researcher(state: FishoraState, knowledge_repo, embedder, llm_medium=
 # ---- Expert nodes (luna) -----------------------------------------------
 
 _EXPERT_PROMPTS = {
-    "physical": "Tulis physical_characteristics dari bukti kategori physical_characteristics dan identity. Jika tidak ada, null. Jawab JSON {\"physical_characteristics\": str|null, \"sources\": [{\"source_id\": str}]}",
-    "taste": "Tulis taste dan texture dari bukti taste_texture. Jika tidak ada, null. JSON {\"taste\": str|null, \"texture\": str|null, \"sources\": [{\"source_id\": str}]}",
-    "commercial": "Tulis processing_methods dan commercial_uses dari bukti processing_methods dan commercial_uses. JSON {\"processing_methods\": [], \"commercial_uses\": [], \"sources\": [{\"source_id\": str}]}",
-    "substitute": "Tulis similar_or_substitute_species dan potential_buyer_segments dari bukti substitutes dan commercial_uses. JSON {\"similar_or_substitute_species\": [], \"potential_buyer_segments\": [], \"sources\": [{\"source_id\": str}]}",
+    "physical": "Tulis physical_characteristics dari bukti kategori physical_characteristics dan identity. Jika tidak ada, null. Jawab JSON {\"physical_characteristics\": str|null, \"sources\": [{\"source_id\": str, \"chunk_id\": str}]}",
+    "taste": "Tulis taste dan texture dari bukti taste_texture. Jika tidak ada, null. JSON {\"taste\": str|null, \"texture\": str|null, \"sources\": [{\"source_id\": str, \"chunk_id\": str}]}",
+    "commercial": "Tulis processing_methods dan commercial_uses dari bukti processing_methods dan commercial_uses. JSON {\"processing_methods\": [], \"commercial_uses\": [], \"sources\": [{\"source_id\": str, \"chunk_id\": str}]}",
+    "substitute": "Tulis similar_or_substitute_species dan potential_buyer_segments dari bukti substitutes dan commercial_uses. JSON {\"similar_or_substitute_species\": [], \"potential_buyer_segments\": [], \"sources\": [{\"source_id\": str, \"chunk_id\": str}]}",
 }
+
+_EXPERT_CATEGORIES = {
+    "physical": {"physical_characteristics", "identity"},
+    "taste": {"taste_texture"},
+    "commercial": {"processing_methods", "commercial_uses"},
+    "substitute": {"substitutes", "commercial_uses"},
+}
+
+# Which card fields each expert is allowed to claim; drives per-claim grading.
+_EXPERT_CLAIM_FIELDS = {
+    "physical": ("physical_characteristics",),
+    "taste": ("taste", "texture"),
+    "commercial": ("processing_methods", "commercial_uses"),
+    "substitute": ("similar_or_substitute_species", "potential_buyer_segments"),
+}
+_CLAIM_OWNER = {
+    field: expert for expert, fields in _EXPERT_CLAIM_FIELDS.items() for field in fields
+}
+
+_EMPTY_EXPERT_CLAIMS = {
+    "physical": {"physical_characteristics": None},
+    "taste": {"taste": None, "texture": None},
+    "commercial": {"processing_methods": [], "commercial_uses": []},
+    "substitute": {"similar_or_substitute_species": [], "potential_buyer_segments": []},
+}
+
+
+def _bind_citations(raw_sources, subset: list[RetrievedChunk]) -> list[dict]:
+    """Tie every citation to one specific retrieved chunk (HANDOFF 9 P0.1).
+
+    A bare source_id is resolved only when the source contributes exactly one
+    chunk to this expert's evidence, so the chunk is determined, not guessed.
+    """
+    by_chunk = {chunk.chunk_id: chunk for chunk in subset}
+    chunks_by_source: dict[str, list[str]] = {}
+    for chunk in subset:
+        chunks_by_source.setdefault(chunk.source_id, []).append(chunk.chunk_id)
+    bound: list[dict] = []
+    seen: set[str] = set()
+    for entry in raw_sources or []:
+        if not isinstance(entry, dict):
+            continue
+        chunk_id = entry.get("chunk_id")
+        if chunk_id not in by_chunk:
+            candidates = chunks_by_source.get(entry.get("source_id"), [])
+            chunk_id = candidates[0] if len(candidates) == 1 else None
+        if chunk_id is None or chunk_id in seen:
+            continue
+        bound.append({"source_id": by_chunk[chunk_id].source_id, "chunk_id": chunk_id})
+        seen.add(chunk_id)
+    return bound[:3]
 
 
 def _expert_node(category: str, state: FishoraState, llm_luna) -> dict:
     evidence = state.get("refined_evidence", [])
     if llm_luna is None:
-        # No LLM available (tests / empty OpenCode Go key) -> return empty placeholders without error
-        if category == "physical":
-            return {"physical_characteristics": None, "sources": []}
-        if category == "taste":
-            return {"taste": None, "texture": None, "sources": []}
-        if category == "commercial":
-            return {"processing_methods": [], "commercial_uses": [], "sources": []}
-        return {"similar_or_substitute_species": [], "potential_buyer_segments": [], "sources": []}
-    cat_map = {
-        "physical": {"physical_characteristics", "identity"},
-        "taste": {"taste_texture"},
-        "commercial": {"processing_methods", "commercial_uses"},
-        "substitute": {"substitutes", "commercial_uses"},
-    }
-    subset = [c for c in evidence if c.category in cat_map[category]] or evidence[:2]
-    payload = "\n".join(f"[{c.source_id}:{c.category}] {c.content[:300]}" for c in subset)
+        # No LLM available (tests / empty OpenCode Go key): claim nothing rather
+        # than error, and let the writer decide whether that is fatal.
+        return {**_EMPTY_EXPERT_CLAIMS[category], "sources": []}
+    # No cross-category fallback: giving an expert evidence outside its own
+    # categories is exactly how off-topic claims get a plausible citation.
+    subset = [c for c in evidence if c.category in _EXPERT_CATEGORIES[category]]
+    payload = "\n".join(
+        f"[chunk_id: {c.chunk_id}] [source_id: {c.source_id}] [{c.category}] {c.content[:300]}"
+        for c in subset
+    )
     prompt = _EXPERT_PROMPTS[category] + f"\nBukti:\n{payload}"
     try:
         raw = llm_luna.invoke(prompt)
         if hasattr(raw, "content"):
             raw = raw.content
         data = json.loads(str(raw)) if isinstance(raw, str) else raw
-        sources = data.get("sources", [])
-        by_source = {c.source_id for c in evidence}
-        sources = [s for s in sources if s.get("source_id") in by_source][:3]
-        data["sources"] = sources
+        data["sources"] = _bind_citations(data.get("sources"), subset)
     except Exception:
-        data = {"error": "expert generation failed", "sources": []}
-        if category == "physical":
-            data["physical_characteristics"] = None
-        elif category == "taste":
-            data["taste"] = None
-            data["texture"] = None
-        elif category == "commercial":
-            data["processing_methods"] = []
-            data["commercial_uses"] = []
-        else:
-            data["similar_or_substitute_species"] = []
-            data["potential_buyer_segments"] = []
+        data = {**_EMPTY_EXPERT_CLAIMS[category], "error": "expert generation failed", "sources": []}
     return data
 
 
 def physical_expert(state: FishoraState, llm_luna) -> dict:
-    return {"expert_outputs": {**state.get("expert_outputs", {}), "physical": _expert_node("physical", state, llm_luna)}}
+    return {"expert_outputs": {"physical": _expert_node("physical", state, llm_luna)}}
 
 
 def taste_expert(state: FishoraState, llm_luna) -> dict:
-    return {"expert_outputs": {**state.get("expert_outputs", {}), "taste": _expert_node("taste", state, llm_luna)}}
+    return {"expert_outputs": {"taste": _expert_node("taste", state, llm_luna)}}
 
 
 def commercial_expert(state: FishoraState, llm_luna) -> dict:
-    return {"expert_outputs": {**state.get("expert_outputs", {}), "commercial": _expert_node("commercial", state, llm_luna)}}
+    return {"expert_outputs": {"commercial": _expert_node("commercial", state, llm_luna)}}
 
 
 def substitute_expert(state: FishoraState, llm_luna) -> dict:
-    return {"expert_outputs": {**state.get("expert_outputs", {}), "substitute": _expert_node("substitute", state, llm_luna)}}
+    return {"expert_outputs": {"substitute": _expert_node("substitute", state, llm_luna)}}
 
 
 # ---- Critic (medium) ---------------------------------------------------
 
+# Function words carry no grounding signal, so overlap on them would let any
+# citation pass the content check.
+_STOPWORDS = frozenset({
+    "adalah", "akan", "atau", "bagi", "banyak", "bisa", "dalam", "dapat",
+    "dari", "dengan", "hingga", "ikan", "itu", "juga", "karena", "kemudian",
+    "lain", "lebih", "namun", "oleh", "pada", "paling", "sangat", "sebagai",
+    "serta", "setelah", "sudah", "telah", "terhadap", "tetapi", "tidak",
+    "untuk", "yang",
+})
+
+
+def _tokens(text: str) -> set[str]:
+    return {token for token in re.findall(r"[0-9a-z]{4,}", text.lower())} - _STOPWORDS
+
+
+def _claim_text(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    return " ".join(str(item) for item in value)
+
+
+def _is_verified(chunk: RetrievedChunk | None) -> bool:
+    return (
+        chunk is not None
+        and chunk.chunk_verification_status == "verified"
+        and chunk.source_verification_status == "verified"
+    )
+
+
+def _grade_claim(field: str, value, citations, by_chunk: dict) -> ClaimStatus:
+    """Grade one claim: it must be tied to a verified retrieved chunk whose
+    content actually shares vocabulary with the claim."""
+    text = _claim_text(value).strip()
+    if not text:
+        return ClaimStatus(field=field, status="no_evidence", chunk_ids=[], reason="tidak ada klaim")
+    cited = [c["chunk_id"] for c in citations if _is_verified(by_chunk.get(c.get("chunk_id")))]
+    if not cited:
+        return ClaimStatus(
+            field=field, status="unsupported", chunk_ids=[],
+            reason="klaim tidak terikat pada chunk terverifikasi",
+        )
+    claim_tokens = _tokens(text)
+    grounded = [cid for cid in cited if claim_tokens & _tokens(by_chunk[cid].content)]
+    if not grounded:
+        return ClaimStatus(
+            field=field, status="unsupported", chunk_ids=[],
+            reason="isi chunk yang disitasi tidak menyebut klaim",
+        )
+    return ClaimStatus(
+        field=field, status="supported", chunk_ids=grounded,
+        reason="didukung isi chunk terverifikasi",
+    )
+
+
+def _llm_downgrade(statuses: list[ClaimStatus], by_chunk: dict, llm_medium) -> list[ClaimStatus]:
+    """One bounded adjudication pass. It may only downgrade: an LLM outage or a
+    malformed answer must never turn an ungrounded claim into a supported one."""
+    supported = [s for s in statuses if s.status == "supported"]
+    if not supported:
+        return statuses
+    claims = {
+        s.field: [by_chunk[cid].content[:300] for cid in s.chunk_ids] for s in supported
+    }
+    prompt = (
+        "Untuk setiap field, tentukan apakah kutipan bukti mendukung klaim. "
+        "Jawab JSON {field: \"supported\"|\"unsupported\"}.\n"
+        f"Klaim dan bukti: {json.dumps(claims, ensure_ascii=False)}"
+    )
+    try:
+        raw = llm_medium.invoke(prompt)
+        if hasattr(raw, "content"):
+            raw = raw.content
+        verdicts = json.loads(str(raw)) if isinstance(raw, str) else raw
+    except Exception:
+        return statuses
+    if not isinstance(verdicts, dict):
+        return statuses
+    return [
+        s.model_copy(update={"chunk_ids": [], "status": "unsupported", "reason": "ditolak critic LLM"})
+        if s.status == "supported" and verdicts.get(s.field) == "unsupported"
+        else s
+        for s in statuses
+    ]
+
+
 def critic_node(state: FishoraState, llm_medium=None) -> dict:
     evidence = state.get("refined_evidence", [])
-    by_source = {c.source_id for c in evidence}
+    by_chunk = {chunk.chunk_id: chunk for chunk in evidence}
     outputs = state.get("expert_outputs", {})
-    invalid = []
-    for cat, data in outputs.items():
-        for s in data.get("sources", []):
-            sid = s.get("source_id")
-            if sid not in by_source:
-                invalid.append(f"{cat}:{sid}")
-    feedback = f"invalid citations: {invalid}" if invalid else "all citations valid"
-    # optional LLM refinement
-    if llm_medium is not None and invalid:
-        try:
-            prompt = f"Cek sitasi berikut, mana yang halu? evidence ids {sorted(by_source)}, expert {outputs}. Jawab singkat."
-            raw = llm_medium.invoke(prompt)
-            if hasattr(raw, "content"):
-                raw = raw.content
-            feedback = str(raw)[:500]
-        except Exception:
-            pass
-    return {"critic_feedback": feedback}
+    statuses: list[ClaimStatus] = []
+    for expert, fields in _EXPERT_CLAIM_FIELDS.items():
+        data = outputs.get(expert) or {}
+        citations = [c for c in data.get("sources", []) if isinstance(c, dict)]
+        for field in fields:
+            statuses.append(_grade_claim(field, data.get(field), citations, by_chunk))
+    if llm_medium is not None:
+        statuses = _llm_downgrade(statuses, by_chunk, llm_medium)
+    feedback = "; ".join(f"{s.field}={s.status}" for s in statuses)
+    return {"claim_statuses": statuses, "critic_feedback": feedback}
 
 
 # ---- Writer (luna) ------------------------------------------------------
 
+def _supported_claims(outputs: dict, statuses: list[ClaimStatus]) -> dict:
+    """Only ``supported`` claims survive into the card (HANDOFF 9 P0.3)."""
+    claims: dict = {}
+    for status in statuses:
+        if status.status != "supported":
+            continue
+        owner = _CLAIM_OWNER.get(status.field)
+        value = (outputs.get(owner) or {}).get(status.field)
+        if value not in (None, [], ""):
+            claims[status.field] = value
+    return claims
+
+
+def _polish(claims: dict, llm_luna) -> dict:
+    """Language pass over supported claims only: the writer LLM may reword a
+    claim but can never add a field the critic did not mark supported."""
+    if not claims:
+        return claims
+    prompt = (
+        "Perbaiki bahasa Indonesia pada nilai berikut tanpa menambah fakta baru "
+        "dan tanpa menambah field. Jawab JSON dengan key yang sama.\n"
+        f"{json.dumps(claims, ensure_ascii=False)}"
+    )
+    try:
+        raw = llm_luna.invoke(prompt)
+        if hasattr(raw, "content"):
+            raw = raw.content
+        data = json.loads(str(raw)) if isinstance(raw, str) else raw
+    except Exception:
+        return claims
+    if not isinstance(data, dict):
+        return claims
+    for field, value in data.items():
+        if field in claims and isinstance(value, type(claims[field])):
+            claims[field] = value
+    return claims
+
+
 def writer_node(state: FishoraState, llm_luna, species: SpeciesRecord | None = None) -> dict:
-    evidence = state.get("refined_evidence", [])
-    outputs = state.get("expert_outputs", {})
-    # merge expert fragments into a single GeneratedKnowledgeCard-like dict
-    merged = {
-        "physical_characteristics": outputs.get("physical", {}).get("physical_characteristics"),
-        "taste": outputs.get("taste", {}).get("taste"),
-        "texture": outputs.get("taste", {}).get("texture"),
-        "processing_methods": outputs.get("commercial", {}).get("processing_methods", []),
-        "commercial_uses": outputs.get("commercial", {}).get("commercial_uses", []),
-        "similar_or_substitute_species": outputs.get("substitute", {}).get("similar_or_substitute_species", []),
-        "potential_buyer_segments": outputs.get("substitute", {}).get("potential_buyer_segments", []),
-        "limitations": [],
-        "sources": [],
-    }
-    # collect sources from all experts, dedup, keep verified only
-    # filter only verified chunks/sources (reviewer #7)
-    verified_evidence = [c for c in evidence if c.chunk_verification_status == "verified" and c.source_verification_status == "verified"]
-    # use verified subset for citation check, but keep original for fallback empty check
-    filter_evidence = verified_evidence if verified_evidence else evidence
-    by_source = {c.source_id: c for c in filter_evidence}
-    seen = set()
-    for cat in ["physical", "taste", "commercial", "substitute"]:
-        for s in outputs.get(cat, {}).get("sources", []):
-            sid = s.get("source_id")
-            if sid in by_source and sid not in seen:
-                merged["sources"].append({"source_id": sid})
-                seen.add(sid)
-    # reviewer #4: if evidence exists but llm missing and no sources, fail instead of silent empty completed
-    if filter_evidence and not merged["sources"] and llm_luna is None:
-        return {"error": "knowledge generation failed: no llm configured but evidence exists", "final_card": None}
-    # if writer LLM provided, let it refine the merge
-    if llm_luna is not None and filter_evidence:
-        try:
-            payload = json.dumps(merged, ensure_ascii=False)
-            prompt = (
-                "Gabungkan output expert menjadi kartu pengetahuan. Perbaiki bahasa Indonesia, jangan tambah fakta baru. "
-                f"Bukti ids {list(by_source.keys())}. Output expert: {payload}. Jawab JSON sesuai skema GeneratedKnowledgeCard."
-            )
-            raw = llm_luna.invoke(prompt)
-            if hasattr(raw, "content"):
-                raw = raw.content
-            data = json.loads(str(raw)) if isinstance(raw, str) else raw
-            # keep only valid sources
-            data["sources"] = [s for s in data.get("sources", []) if s.get("source_id") in by_source]
-            merged.update({k: v for k, v in data.items() if k in merged})
-        except Exception:
-            pass
-    # enforce relational identity + guardrails + server enrichment (mirror generation.py)
     sp = species or state.get("species")
     if sp is None:
-        # fallback if no species record
-        return {"final_card": merged}
-    common_name, scientific_name, taxonomy_status, guardrails = _relational_identity(sp)
-    # build final KnowledgeCard
-    # collect source metadata
-    sources_meta = []
-    for s in merged.get("sources", []):
-        sid = s["source_id"]
-        chunk = by_source.get(sid)
-        if chunk:
-            sources_meta.append(
-                SourceMetadata(
-                    source_id=sid,
-                    title=chunk.source_title,
-                    source_type=chunk.source_type,
-                    url=chunk.source_url or "",
-                    publisher=chunk.source_publisher or "",
-                    reviewed_at=chunk.source_reviewed_at,
-                    verification_status="verified",
-                )
-            )
-    # validate via GeneratedKnowledgeCard then build KnowledgeCard
+        return {"error": "knowledge generation failed: no species record", "final_card": None}
+    # Never re-trust a row's verification status from earlier in the graph.
+    evidence = [c for c in state.get("refined_evidence", []) if _is_verified(c)]
+    generator = KnowledgeGenerator()
+    if not evidence:
+        return {"final_card": generator.empty_card(sp)}
+
+    statuses = state.get("claim_statuses") or []
+    by_chunk = {chunk.chunk_id: chunk for chunk in evidence}
+    claims = _supported_claims(state.get("expert_outputs", {}), statuses)
+    if llm_luna is not None:
+        claims = _polish(claims, llm_luna)
+
+    # Cite only the chunks that actually carried a surviving claim.
+    cited: list[str] = []
+    for status in statuses:
+        if status.status != "supported" or status.field not in claims:
+            continue
+        for chunk_id in status.chunk_ids:
+            source_id = by_chunk[chunk_id].source_id
+            if source_id not in cited:
+                cited.append(source_id)
+
     try:
-        gen = GeneratedKnowledgeCard(
-            common_name=common_name,
-            scientific_name=scientific_name,
-            taxonomy_status=taxonomy_status,
-            physical_characteristics=merged.get("physical_characteristics"),
-            taste=merged.get("taste"),
-            texture=merged.get("texture"),
-            processing_methods=merged.get("processing_methods", []),
-            commercial_uses=merged.get("commercial_uses", []),
-            similar_or_substitute_species=merged.get("similar_or_substitute_species", []),
-            potential_buyer_segments=merged.get("potential_buyer_segments", []),
-            limitations=(merged.get("limitations", []) + guardrails),
-            sources=[{"source_id": s.source_id} for s in sources_meta],
+        generated = GeneratedKnowledgeCard(
+            common_name=sp.common_name_id,
+            scientific_name=sp.scientific_name,
+            taxonomy_status=sp.taxonomy_status,
+            physical_characteristics=claims.get("physical_characteristics"),
+            taste=claims.get("taste"),
+            texture=claims.get("texture"),
+            processing_methods=claims.get("processing_methods", []),
+            commercial_uses=claims.get("commercial_uses", []),
+            similar_or_substitute_species=claims.get("similar_or_substitute_species", []),
+            potential_buyer_segments=claims.get("potential_buyer_segments", []),
+            limitations=[],
+            sources=[{"source_id": source_id} for source_id in cited],
         )
     except ValidationError:
         return {"error": "knowledge validation failed", "final_card": None}
-    card = KnowledgeCard(
-        common_name=gen.common_name,
-        scientific_name=gen.scientific_name,
-        taxonomy_status=gen.taxonomy_status,
-        physical_characteristics=gen.physical_characteristics,
-        taste=gen.taste,
-        texture=gen.texture,
-        processing_methods=gen.processing_methods,
-        commercial_uses=gen.commercial_uses,
-        similar_or_substitute_species=gen.similar_or_substitute_species,
-        potential_buyer_segments=gen.potential_buyer_segments,
-        limitations=gen.limitations,
-        sources=sources_meta,
-    )
+    # build_card is the fail-closed gate: evidence with no citation raises here
+    # rather than completing the job with an empty, uncited card.
+    try:
+        card = generator.build_card(sp, evidence, generated)
+    except InvalidGeneratedKnowledge:
+        return {"error": "knowledge generation failed: no grounded claim", "final_card": None}
     return {"final_card": card}
 
 
@@ -305,8 +421,8 @@ def writer_node(state: FishoraState, llm_luna, species: SpeciesRecord | None = N
 def make_graph(knowledge_repo=None, embedder=None, llm_luna=None, llm_medium=None):
     """Return a graph-like object with .invoke(state) and .ainvoke(state).
 
-    If langgraph is installed, build a real StateGraph; otherwise return a
-    simple sequential/parallel executor that mirrors the same node order.
+    If langgraph is installed, build a real StateGraph; otherwise return an
+    executor that mirrors the same node order and the same expert fan-out.
     """
     if _HAS_LANGGRAPH and knowledge_repo is not None:
         graph = StateGraph(FishoraState)
@@ -323,7 +439,7 @@ def make_graph(knowledge_repo=None, embedder=None, llm_luna=None, llm_medium=Non
         graph.add_edge("researcher", "taste")
         graph.add_edge("researcher", "commercial")
         graph.add_edge("researcher", "substitute")
-        for n in ["physical", "taste", "commercial", "substitute"]:
+        for n in EXPERT_NAMES:
             graph.add_edge(n, "critic")
         graph.add_edge("critic", "writer")
         graph.add_edge("writer", END)
@@ -331,19 +447,25 @@ def make_graph(knowledge_repo=None, embedder=None, llm_luna=None, llm_medium=Non
 
     # Fallback simple executor (ponytail: no langgraph dependency)
     class SimpleGraph:
-        def invoke(self, state: FishoraState) -> FishoraState:
+        async def ainvoke(self, state: FishoraState) -> FishoraState:
             s = dict(state)
             s.update(hybrid_researcher(s, knowledge_repo, embedder, llm_medium))
-            # parallel experts via sequential (tests inject fast fakes, so fine)
-            # In production, could use asyncio.gather with threads
-            for fn in [physical_expert, taste_expert, commercial_expert, substitute_expert]:
-                s.update(fn(s, llm_luna))
+            # Expert LLM calls block on network I/O, so real overlap needs
+            # threads; gather also keeps the single merge point for the reducer.
+            results = await asyncio.gather(
+                *(asyncio.to_thread(_expert_node, name, s, llm_luna) for name in EXPERT_NAMES)
+            )
+            s["expert_outputs"] = merge_expert_outputs(
+                s.get("expert_outputs"), dict(zip(EXPERT_NAMES, results))
+            )
             s.update(critic_node(s, llm_medium))
             s.update(writer_node(s, llm_luna, s.get("species")))
             return s
 
-        async def ainvoke(self, state: FishoraState) -> FishoraState:
-            return self.invoke(state)
+        def invoke(self, state: FishoraState) -> FishoraState:
+            # run_graph is sync (BackgroundTasks worker thread), so there is no
+            # loop to reuse here.
+            return asyncio.run(self.ainvoke(state))
 
     return SimpleGraph()
 

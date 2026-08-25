@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from typing import Sequence
 
+from apps.main_api.errors import RetrievalUnavailable
+
 try:  # production dependency; absent only in minimal test environments
     from langchain_huggingface import HuggingFaceEmbeddings
 except ImportError:  # pragma: no cover - exercised only in minimal environments
@@ -54,7 +56,9 @@ class LocalE5Embedder:
 
     def _load(self):
         if HuggingFaceEmbeddings is None:
-            raise RuntimeError(
+            # A domain error, not a bare RuntimeError: unhandled it became a 500
+            # whose body named an internal package to whoever called the API.
+            raise RetrievalUnavailable(
                 "langchain-huggingface is not installed; install the fishora production dependencies"
             )
         if self._model is None:
