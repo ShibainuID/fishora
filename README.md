@@ -148,6 +148,24 @@ one OpenCode Go client configured with `FISHORA_OPENCODE_GO_MODEL=gpt-5.6-luna`.
 everything still starts, and identification and verification work normally; only knowledge card
 generation fails, with a `502`.
 
+The key is not sufficient on its own. Retrieval runs before generation, so a knowledge card also
+needs the embedding stack installed (`numpy`, `sentence-transformers`, `langchain-huggingface`, and
+`torch`, all core dependencies) **and** the E5 weights already in the local Hugging Face cache. The
+embedder is constructed with `local_files_only=True` so a request never triggers a download, which
+means the model has to be fetched once, deliberately:
+
+```bash
+"$PY" -c "from huggingface_hub import snapshot_download; snapshot_download('intfloat/multilingual-e5-base')"
+```
+
+Skip that and the endpoint answers `502 knowledge retrieval is temporarily unavailable`, which is
+the retrieval stack missing rather than anything wrong with your API key.
+
+**Tests that construct `MainSettings` must pass `_env_file=None`.** `MainSettings` sets
+`env_file=".env"`, so on a machine with a real `.env` the file beats `monkeypatch.delenv`, a test
+pinning defaults asserts that developer's values instead, and if the field is the API key pytest
+prints the live secret in its assertion diff.
+
 Never commit `.env` or API keys.
 
 ## Run

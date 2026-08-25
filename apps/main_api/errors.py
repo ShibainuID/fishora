@@ -61,6 +61,14 @@ class OpenCodeUnavailable(Exception):
         self.retrieved_chunk_ids = list(retrieved_chunk_ids)
 
 
+class RetrievalUnavailable(Exception):
+    """Evidence retrieval cannot run at all, e.g. the embedding stack is absent.
+
+    Distinct from OpenCodeUnavailable: nothing was retrieved, so there are no
+    chunk ids to report. Maps to HTTP 502.
+    """
+
+
 class InvalidGeneratedKnowledge(Exception):
     """Generated JSON failed decoding, strict schema validation, or citation
     checks against the retrieved evidence. Maps to HTTP 502 and is safe to

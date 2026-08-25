@@ -20,6 +20,7 @@ from apps.main_api.db.repositories import TAXONOMY_STATUS_BY_LABEL, SqlKnowledge
 from apps.main_api.db.session import session_factory
 from apps.main_api.db.sql_repositories import SqlKnowledgeJobRepository, SqlPredictionRepository, SqlSpeciesRepository
 from apps.main_api.errors import (
+    RetrievalUnavailable,
     BidOutbid,
     CvUnavailable,
     Forbidden,
@@ -218,6 +219,14 @@ def _register_error_handlers(app: FastAPI) -> None:
         return JSONResponse(status_code=502, content={
             "detail": "knowledge generation is temporarily unavailable",
             "retrieved_chunk_ids": exc.retrieved_chunk_ids,
+        })
+
+    @app.exception_handler(RetrievalUnavailable)
+    async def _retrieval_unavailable(request: Request, exc: RetrievalUnavailable):
+        # Generic detail: the message names an internal package, which belongs
+        # in the server log rather than in a client response.
+        return JSONResponse(status_code=502, content={
+            "detail": "knowledge retrieval is temporarily unavailable",
         })
 
     @app.exception_handler(InvalidGeneratedKnowledge)
