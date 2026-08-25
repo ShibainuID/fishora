@@ -101,15 +101,13 @@ async def verify(payload: VerifyRequest, request: Request, background_tasks: Bac
                 knowledge_repo = getattr(deps, "knowledge_repo", None)
                 species_repo = getattr(deps, "species_repo", None)
                 settings = getattr(request.app.state, "settings", None)
-                llm_luna = None
-                llm_medium = None
-                if settings is not None and getattr(settings, "sub2api_api_key", None):
+                llm = None
+                if settings is not None and getattr(settings, "opencode_go_api_key", None):
                     try:
-                        if settings.sub2api_api_key.get_secret_value():
-                            from apps.main_api.services.sub2api_client import make_luna_llm, make_medium_llm
+                        if settings.opencode_go_api_key.get_secret_value():
+                            from apps.main_api.services.generation import make_opencode_go_llm
 
-                            llm_luna = make_luna_llm(settings)
-                            llm_medium = make_medium_llm(settings)
+                            llm = make_opencode_go_llm(settings)
                     except Exception:
                         pass
                 background_tasks.add_task(
@@ -119,8 +117,8 @@ async def verify(payload: VerifyRequest, request: Request, background_tasks: Bac
                     result.prediction_id,
                     knowledge_repo,
                     embedder,
-                    llm_luna,
-                    llm_medium,
+                    llm,
+                    llm,
                     species_repo,
                     job_repo,
                 )

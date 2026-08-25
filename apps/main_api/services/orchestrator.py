@@ -181,7 +181,7 @@ def _bind_citations(raw_sources, subset: list[RetrievedChunk]) -> list[dict]:
 def _expert_node(category: str, state: FishoraState, llm_luna) -> dict:
     evidence = state.get("refined_evidence", [])
     if llm_luna is None:
-        # No LLM available (tests / empty sub2api key): claim nothing rather
+        # No LLM available (tests / empty OpenCode Go key): claim nothing rather
         # than error, and let the writer decide whether that is fatal.
         return {**_EMPTY_EXPERT_CLAIMS[category], "sources": []}
     # No cross-category fallback: giving an expert evidence outside its own

@@ -143,8 +143,8 @@ API key for generated knowledge cards:
 cp .env.example .env
 ```
 
-Generation runs through sub2api, so the key that matters is `FISHORA_SUB2API_API_KEY`; the
-`FISHORA_OPENCODE_GO_*` variables are legacy and commented out in `.env.example`. Without a key
+Set `OPENCODE_GO_API_KEY` in `.env`. The researcher, four domain experts, critic and writer share
+one OpenCode Go client configured with `FISHORA_OPENCODE_GO_MODEL=gpt-5.6-luna`. Without the key
 everything still starts, and identification and verification work normally; only knowledge card
 generation fails, with a `502`.
 
@@ -381,7 +381,7 @@ the eleven-step PRD 27 walkthrough and does exercise the live backend end to end
 | `Missing .venv` | No virtualenv found at `.venv`. The script accepts both `bin/` (POSIX) and `Scripts/` (Windows) layouts |
 | `/health` reports `taxonomy_seeded: false` | The species table is empty. `scripts/seed_taxonomy` needs `artifacts/Dataset/fishora_dataset/metadata/taxonomy.csv` |
 | Identification returns 503 | The CV service is down or was never started (no torch). Use `POST /api/v1/fish/manual` to keep publishing |
-| Knowledge card returns 502 | The LLM transport is unreachable. Generation now goes through sub2api (`FISHORA_SUB2API_BASE_URL`, `FISHORA_SUB2API_API_KEY`); the OpenCode Go variables are legacy. Identification and verification are unaffected |
+| Knowledge card returns 502 | `OPENCODE_GO_API_KEY` is blank or OpenCode Go is unreachable. Identification and verification are unaffected |
 | Knowledge card returns 409 | The prediction is still `pending`. Verify the species first |
 | `EADDRINUSE` on startup | A previous run is still bound. Override the port, or stop the old process |
 | Frontend loads but every request fails | Check the `API base` line the run script prints. It is compiled into the browser bundle, so it must be reachable *from the browser*, never an internal hostname |
