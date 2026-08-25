@@ -40,6 +40,14 @@ const ROLE_LABEL: Record<string, string> = {
 /** Clears the fixed phone tab bar, which otherwise sits over the last rows of every page. */
 const PAGE = 'mx-auto w-full max-w-[1200px] px-4 pb-28 pt-6 lg:px-8 lg:pb-16'
 
+/**
+ * The capture screen is a viewport-height column with its own bottom bar, so
+ * the shell's vertical padding would push it past the fold and give the page a
+ * scrollbar it should never have.
+ */
+const FLUSH = 'mx-auto w-full max-w-[1200px] px-4 lg:px-8'
+const FLUSH_ROUTES = ['/operator']
+
 export function AppShell({
   children,
   session,
@@ -108,7 +116,7 @@ export function AppShell({
         </div>
       </header>
 
-      <main className={PAGE}>{children}</main>
+      <main className={FLUSH_ROUTES.includes(pathname) ? FLUSH : PAGE}>{children}</main>
 
       <nav
         className="fixed inset-x-0 bottom-0 flex border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden"

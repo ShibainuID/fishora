@@ -63,4 +63,13 @@ describe('LoginForm', () => {
 
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/gagal masuk/i))
   })
+
+  it('shows the signed-in state when a session already exists', () => {
+    render(<LoginForm initialSession={RIAN} />)
+    // Coming back to the page while signed in used to show the account picker
+    // again, because the form only ever knew about sessions it created itself.
+    expect(screen.getByText('Rian Setiawan')).toBeInTheDocument()
+    expect(screen.queryByLabelText(/akun demo/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Keluar' })).toBeInTheDocument()
+  })
 })

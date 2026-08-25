@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Button } from '@/components/common/button'
+import { Select } from '@/components/common/select'
 import { login, logout } from '@/lib/api/commerce'
 import { ApiError } from '@/lib/api/errors'
 
@@ -86,24 +87,16 @@ export function LoginForm({ initialSession = null }: { initialSession?: Session 
         void submit()
       }}
     >
-      <div className="flex flex-col gap-2">
-        <label htmlFor="demo-account" className="text-label text-ink-muted">
-          Akun demo
-        </label>
-        <select
-          id="demo-account"
-          value={username}
-          onChange={(event) => setUsername(event.target.value)}
-          className="text-body min-h-11 w-full rounded-[var(--radius-input)] border border-line-input bg-transparent px-3 text-ink outline-none focus-visible:border-ink"
-        >
-          {DEMO_ACCOUNTS.map((account) => (
-            <option key={account.username} value={account.username}>
-              {account.name} ({account.role})
-            </option>
-          ))}
-        </select>
-        <p className="text-body-sm text-ink-muted">{chosen.blurb}</p>
-      </div>
+      <Select
+        label="Akun demo"
+        value={username}
+        onChange={(event) => setUsername(event.target.value)}
+        helper={chosen.blurb}
+        options={DEMO_ACCOUNTS.map((account) => ({
+          value: account.username,
+          label: `${account.name} (${account.role})`,
+        }))}
+      />
 
       {error && (
         <p className="text-body-sm text-state-error" role="alert">

@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useRouter } from 'next/navigation'
+import { Camera, UploadSimple, X } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/common/button'
 import { Field } from '@/components/common/field'
+import { Select } from '@/components/common/select'
 import { KnowledgeCardView } from '@/components/fish/knowledge-card'
 import { PredictionCard } from '@/components/fish/prediction-card'
 import type { ActionFailure, ActionResult } from '@/lib/api/action-result'
@@ -95,6 +97,9 @@ export function IdentifyFlow({
   const cameraRef = useRef<HTMLInputElement>(null)
   const uploadRef = useRef<HTMLInputElement>(null)
   const previewRef = useRef<string | null>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const [live, setLive] = useState(false)
 
   const [step, setStep] = useState<Step>(1)
   // Connectivity is external state. Branching on `typeof navigator` in the
@@ -137,8 +142,53 @@ export function IdentifyFlow({
   useEffect(() => {
     return () => {
       if (previewRef.current) URL.revokeObjectURL(previewRef.current)
+      // A live track keeps the camera indicator lit after the operator leaves.
+      streamRef.current?.getTracks().forEach((track) => track.stop())
     }
   }, [])
+
+  function stopCamera() {
+    streamRef.current?.getTracks().forEach((track) => track.stop())
+    streamRef.current = null
+    if (videoRef.current) videoRef.current.srcObject = null
+    setLive(false)
+  }
+
+  async function startCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        // The rear camera is the one pointed at the catch.
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false,
+      })
+      streamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play()
+      }
+      setLive(true)
+    } catch {
+      // No camera, permission refused, or a page served over plain http from a
+      // LAN address, where getUserMedia is unavailable. The file input still
+      // reaches the phone's own camera app, so the step is never a dead end.
+      cameraRef.current?.click()
+    }
+  }
+
+  async function shoot() {
+    const video = videoRef.current
+    if (!video || !video.videoWidth) return
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    canvas.getContext('2d')?.drawImage(video, 0, 0)
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', 0.9)
+    )
+    if (!blob) return
+    stopCamera()
+    takeFile(new File([blob], 'tangkapan.jpg', { type: 'image/jpeg' }))
+  }
 
   function takeFile(file: File | undefined) {
     if (!file) return
@@ -286,8 +336,8 @@ export function IdentifyFlow({
   }
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-bg">
-      <div className="mx-auto flex w-full max-w-lg flex-1 flex-col px-4 pb-28 pt-4">
+    <div className="flex h-[calc(100dvh-7rem)] flex-col lg:h-[calc(100dvh-3.5rem)]">
+      <div className="mx-auto flex w-full max-w-lg flex-1 flex-col overflow-y-auto pt-4">
         <p className="text-num-sm text-ink-muted">Langkah {step} dari 4</p>
         <div className="mt-2 flex gap-1" aria-hidden>
           {([1, 2, 3, 4] as const).map((n) => (
@@ -309,6 +359,8 @@ export function IdentifyFlow({
 
         {step === 1 && (
           <CaptureStep
+            live={live}
+            videoRef={videoRef}
             preview={preview}
             error={identifyError}
             manualOpen={manualOpen}
@@ -325,7 +377,7 @@ export function IdentifyFlow({
         )}
 
         {step === 3 && (
-          <div className="mt-6 flex flex-col gap-4">
+          <div className="mt-6 flex min-h-0 flex-1 flex-col gap-4">
             {knowledgePending && (
               <p className="text-body-sm rounded-[var(--radius-input)] border border-state-warn px-3 py-3 text-state-warn">
                 Kartu pengetahuan tertunda. Lot tetap dapat diterbitkan.
@@ -362,9 +414,10 @@ export function IdentifyFlow({
       </div>
 
       <div
-        className="fixed inset-x-0 bottom-0 flex gap-2 bg-surface px-4 py-3 pb-[env(safe-area-inset-bottom)]"
+        className="shrink-0 border-t border-line bg-surface"
         style={{ zIndex: Z.actionBar }}
       >
+        <div className="mx-auto flex w-full max-w-lg gap-2 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] lg:px-0 [&>button:first-of-type]:min-w-0 [&>button:first-of-type]:flex-1">
         <input
           ref={cameraRef}
           type="file"
@@ -386,16 +439,21 @@ export function IdentifyFlow({
         />
         {step === 1 && !image && (
           <>
-            <Button size="lg" block onClick={() => cameraRef.current?.click()}>
-              Kamera
-            </Button>
-            <Button
-              size="lg"
-              variant="secondary"
-              onClick={() => uploadRef.current?.click()}
+            {live ? (
+              <Button size="lg" block onClick={shoot}>
+                Ambil foto
+              </Button>
+            ) : (
+              <Button size="lg" block icon={<Camera size={20} />} onClick={startCamera}>
+                Kamera
+              </Button>
+            )}
+            <IconButton
+              label={live ? 'Tutup kamera' : 'Unggah berkas'}
+              onClick={live ? stopCamera : () => uploadRef.current?.click()}
             >
-              Unggah
-            </Button>
+              {live ? <X size={20} /> : <UploadSimple size={20} />}
+            </IconButton>
           </>
         )}
         {step === 1 && image && (
@@ -426,12 +484,37 @@ export function IdentifyFlow({
             Terbitkan
           </Button>
         )}
+        </div>
       </div>
     </div>
   )
 }
 
+function IconButton({
+  label,
+  onClick,
+  children,
+}: {
+  label: string
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      className="grid size-13 shrink-0 place-items-center rounded-full border border-line-strong text-ink transition-colors hover:bg-bg-sunken active:scale-[0.98]"
+    >
+      {children}
+    </button>
+  )
+}
+
 function CaptureStep({
+  live,
+  videoRef,
   preview,
   error,
   manualOpen,
@@ -439,6 +522,8 @@ function CaptureStep({
   onPickManual,
   onRetry,
 }: {
+  live: boolean
+  videoRef: React.RefObject<HTMLVideoElement | null>
   preview: string | null
   error: ActionFailure | null
   manualOpen: boolean
@@ -447,18 +532,37 @@ function CaptureStep({
   onRetry: () => void
 }) {
   return (
-    <div className="mt-6 flex flex-col gap-4">
+    <div className="mt-6 flex min-h-0 flex-1 flex-col gap-4">
       <p className="text-body-sm text-ink-muted">
         Ikan utuh, latar polos, cahaya cukup.
       </p>
-      {preview && (
-        // eslint-disable-next-line @next/next/no-img-element -- blob URL from the capture
-        <img
-          src={preview}
-          alt="Hasil tangkapan"
-          className="aspect-[4/3] w-full rounded-2xl object-cover"
+      {/* One frame for all three states, so the layout never jumps between
+          them. The video stays mounted because its ref has to exist before the
+          stream can be attached to it. */}
+      {/* Fills the space the column has left rather than forcing a fixed
+          aspect, with a floor so it stays usable on a short window. */}
+      <div className="relative min-h-52 w-full flex-1 overflow-hidden rounded-2xl">
+        <video
+          ref={videoRef}
+          playsInline
+          muted
+          className={`size-full object-cover ${live ? '' : 'hidden'}`}
         />
-      )}
+
+        {!live &&
+          (preview ? (
+            // eslint-disable-next-line @next/next/no-img-element -- blob URL from the capture
+            <img src={preview} alt="Hasil tangkapan" className="size-full object-cover" />
+          ) : (
+            <div
+              className="text-body-sm flex size-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-line-strong text-ink-muted"
+              aria-hidden
+            >
+              <Camera size={28} />
+              <p>Belum ada foto</p>
+            </div>
+          ))}
+      </div>
       {error && (
         <div className="flex flex-col gap-3 rounded-[var(--radius-input)] border border-state-error px-3 py-3">
           <p className="text-body-sm text-state-error">{error.userMessage}</p>
@@ -574,23 +678,12 @@ function LotForm({
         prefix="Rp"
         helper="Harga pembuka lelang."
       />
-      <div className="flex flex-col gap-2">
-        <label htmlFor="landing-point" className="text-label text-ink">
-          Titik pendaratan
-        </label>
-        <select
-          id="landing-point"
-          value={landingPoint}
-          onChange={(event) => onLanding(event.target.value)}
-          className="min-h-11 rounded-[var(--radius-input)] border border-line-input bg-surface px-3 text-ink"
-        >
-          {LANDING_POINTS.map((point) => (
-            <option key={point} value={point}>
-              {point}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Select
+        label="Titik pendaratan"
+        value={landingPoint}
+        onChange={(event) => onLanding(event.target.value)}
+        options={LANDING_POINTS.map((point) => ({ value: point, label: point }))}
+      />
       <fieldset>
         <legend className="text-label mb-2 text-ink">Durasi lelang</legend>
         <div className="grid grid-cols-4 gap-2">

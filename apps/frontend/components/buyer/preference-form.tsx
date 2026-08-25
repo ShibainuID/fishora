@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/common/button'
 import { Field } from '@/components/common/field'
+import { Select } from '@/components/common/select'
 import { ApiError } from '@/lib/api/client'
 import { getMe, getRecommendations, listLots, savePreferences } from '@/lib/api/commerce'
 import { Z } from '@/lib/z'
@@ -156,29 +157,16 @@ export function PreferenceForm({
 
   return (
     <form className="mx-auto flex max-w-[640px] flex-col gap-8 pb-28 lg:pb-0" onSubmit={submit}>
-      <div>
-        <label htmlFor="business-type" className="text-h3 text-ink">
-          Jenis usaha
-        </label>
-        <p className="text-body-sm mt-1 text-ink-muted">
-          Menentukan segmen pembeli yang dicocokkan dengan tiap lot.
-        </p>
-        <select
-          id="business-type"
-          value={businessType}
-          onChange={(event) => {
-            setSaved(false)
-            setBusinessType(event.target.value)
-          }}
-          className="text-body mt-3 min-h-11 w-full rounded-[var(--radius-input)] border border-line-input bg-transparent px-3 text-ink outline-none focus-visible:border-ink"
-        >
-          {BUSINESS_TYPES.map((type) => (
-            <option key={type.value} value={type.value}>
-              {type.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Select
+        label="Jenis usaha"
+        helper="Menentukan segmen pembeli yang dicocokkan dengan tiap lot."
+        value={businessType}
+        onChange={(event) => {
+          setSaved(false)
+          setBusinessType(event.target.value)
+        }}
+        options={BUSINESS_TYPES}
+      />
 
       <ChipSet
         legend="Yang dimasak atau dijual"

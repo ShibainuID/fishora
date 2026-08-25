@@ -26,4 +26,26 @@ describe('OperatorLots', () => {
     await user.click(screen.getByRole('button', { name: 'Konfirmasi tutup' }))
     expect(closeLot).toHaveBeenCalled()
   })
+
+  it('offers the QR at every status, beside the status action', async () => {
+    const user = userEvent.setup()
+    render(<OperatorLots lots={[lotFixture({ status: 'active' })]} />)
+
+    // The QR points at the public page for the lot, which an operator has
+    // reason to show a buyer while the auction is still running. It used to
+    // appear only once the lot was allocated.
+    const qr = screen.getByRole('button', { name: 'Buat QR' })
+    const close = screen.getByRole('button', { name: 'Tutup lelang' })
+    expect(qr.parentElement).toBe(close.parentElement)
+
+    await user.click(qr)
+    expect(screen.getByRole('dialog', { name: /QR/i })).toBeInTheDocument()
+  })
+
+  it('names the species and status in words, not raw identifiers', () => {
+    render(<OperatorLots lots={[lotFixture({ status: 'active' })]} />)
+    expect(screen.getByText('Tenggiri')).toBeInTheDocument()
+    expect(screen.queryByText('species_tenggiri')).not.toBeInTheDocument()
+    expect(screen.getByText(/Berlangsung/)).toBeInTheDocument()
+  })
 })

@@ -6,10 +6,18 @@ import { Sheet } from '@/components/common/sheet'
 import { QrSheet } from '@/components/qr/qr-sheet'
 import { allocateLot, closeLot } from '@/lib/api/commerce'
 import { rupiahPerKg } from '@/lib/format'
+import { resolveSpecies } from '@/lib/species'
 import type { components } from '@/lib/api/schema'
 
 type Lot = components['schemas']['LotResponse']
 type Pending = { lot: Lot; kind: 'allocate' | 'close' }
+
+const STATUS_LABEL: Record<string, string> = {
+  draft: 'Draf',
+  active: 'Berlangsung',
+  closed: 'Ditutup',
+  allocated: 'Dialokasikan',
+}
 
 export function OperatorLots({ lots }: { lots: Lot[] }) {
   const [items, setItems] = useState(lots)
@@ -24,23 +32,31 @@ export function OperatorLots({ lots }: { lots: Lot[] }) {
       <ul className="mt-6 flex flex-col gap-4">
         {items.map((lot) => (
           <li key={lot.id} className="rounded-2xl border border-line p-4">
-            <p className="text-h3 text-ink">{lot.species_id.replace('species_', '')}</p>
-            <p className="text-body-sm text-ink-muted">{lot.status}</p>
-            {lot.status === 'active' && (
-              <Button type="button" className="mt-3" onClick={() => setPending({ lot, kind: 'close' })}>
-                Tutup lelang
-              </Button>
-            )}
-            {lot.status === 'closed' && (
-              <Button type="button" className="mt-3" onClick={() => setPending({ lot, kind: 'allocate' })}>
-                Allocate to winning bidder
-              </Button>
-            )}
-            {lot.status === 'allocated' && (
-              <Button type="button" variant="secondary" className="mt-3" onClick={() => setQr(lot)}>
+            <p className="text-h3 text-ink">
+              {resolveSpecies(lot.species_id.replace('species_', '')).commonName}
+            </p>
+            <p className="text-body-sm text-ink-muted">
+              {STATUS_LABEL[lot.status] ?? lot.status} · {lot.quantity_kg} kg ·{' '}
+              {rupiahPerKg(Number(lot.starting_price_per_kg))}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {lot.status === 'active' && (
+                <Button type="button" onClick={() => setPending({ lot, kind: 'close' })}>
+                  Tutup lelang
+                </Button>
+              )}
+              {lot.status === 'closed' && (
+                <Button type="button" onClick={() => setPending({ lot, kind: 'allocate' })}>
+                  Allocate to winning bidder
+                </Button>
+              )}
+              {/* Available at every status, not only once allocated. The QR
+                  points at the public page for the lot, which an operator has
+                  reason to show a buyer while the auction is still running. */}
+              <Button type="button" variant="secondary" onClick={() => setQr(lot)}>
                 Buat QR
               </Button>
-            )}
+            </div>
           </li>
         ))}
       </ul>

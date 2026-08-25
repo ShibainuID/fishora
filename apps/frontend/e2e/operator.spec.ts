@@ -12,8 +12,20 @@ test('operator chrome is four steps, not a track, with a safe-area action bar', 
   expect(await page.locator('[role="progressbar"]').count()).toBe(0)
   const camera = page.getByRole('button', { name: 'Kamera' })
   await expect(camera).toBeVisible()
-  const bar = camera.locator('xpath=ancestor::div[contains(@class,"fixed")]').first()
-  await expect(bar).toBeVisible()
+
+  // The capture screen owns the viewport: the bar is the last row of a
+  // full-height column rather than a fixed overlay, so it has to be on screen
+  // without the page scrolling to reach it.
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollHeight - window.innerHeight
+  )
+  expect(overflow).toBeLessThanOrEqual(2)
+
+  const box = (await camera.boundingBox())!
+  const viewport = page.viewportSize()!
+  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height)
+  // Bottom half of the screen, i.e. actually a bottom bar and not inline copy.
+  expect(box.y).toBeGreaterThan(viewport.height / 2)
   const lang = await page.locator('html').getAttribute('lang')
   expect(lang).toBe('id')
 })

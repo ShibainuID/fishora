@@ -108,11 +108,24 @@ describe('IdentifyFlow', () => {
     expect(document.querySelector('[role="progressbar"]')).toBeNull()
   })
 
-  it('keeps the primary action in a fixed bottom bar with safe-area padding', () => {
+  it('keeps the primary action in a bottom bar with safe-area padding', () => {
     render(flow())
-    const bar = screen.getByRole('button', { name: /kamera/i }).closest('div')
-    expect(bar?.className).toMatch(/fixed/)
-    expect(bar?.className).toMatch(/safe-area-inset-bottom/)
+    // The bar is the last row of a viewport-height column rather than a fixed
+    // overlay, so it sits on the bottom by construction and cannot be covered
+    // by the phone tab bar or cover the content itself.
+    const inner = screen.getByRole('button', { name: /kamera/i }).closest('div')
+    expect(inner?.className).toMatch(/safe-area-inset-bottom/)
+    expect(inner?.className).toMatch(/max-w-lg/)
+    expect(inner?.parentElement?.className).toMatch(/shrink-0/)
+  })
+
+  it('does not let a full-width action push its neighbour off screen', () => {
+    render(flow())
+    // `block` renders `w-full`, which as a flex item is a 100% flex basis and
+    // shoves the sibling past the right edge. The bar has to allow shrinking.
+    const inner = screen.getByRole('button', { name: /kamera/i }).closest('div')
+    expect(inner?.className).toContain('[&>button:first-of-type]:min-w-0')
+    expect(screen.getByRole('button', { name: /unggah/i })).toBeInTheDocument()
   })
 
   it('does not auto-advance on a high-confidence prediction', async () => {
