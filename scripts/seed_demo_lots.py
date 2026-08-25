@@ -45,21 +45,23 @@ TEST_ROW_MARKER = "_race_"
 
 # (label, size, kg, price/kg, landing point, fisher group, hours until close)
 #
-# Only species the frontend holds catch photography for. Seeding one without a
-# photograph puts a stock picture of open water on a card that claims to be a
-# named fish, which tells a buyer nothing about what they would be bidding on.
+# All eleven supported species now have catch photography, so every one can be
+# seeded and the marketplace shows the full commodity range.
 # The spread is deliberate: two species repeat at different sizes and prices so
 # the filters and the sort have something to actually separate, and the closing
 # windows are staggered so the countdowns do not all read the same.
 DEMO_LOTS = [
     ("tenggiri", "L", "120.000", "68000.00", "lp_muara_angke", "KUB Bahari Jaya", 6),
-    ("tenggiri", "M", "80.500", "54000.00", "lp_karangsong", "KUB Mina Sejahtera", 20),
     ("tuna", "L", "240.000", "92000.00", "lp_cilacap", "KUB Samudra Biru", 11),
-    ("tuna", "M", "160.000", "78000.00", "lp_muara_angke", "KUB Bahari Jaya", 28),
     ("kembung", "M", "310.000", "27000.00", "lp_muara_angke", "KUB Bahari Jaya", 3),
     ("kembung", "S", "180.000", "21000.00", "lp_karangsong", None, 30),
+    ("bandeng", "M", "150.000", "32000.00", "lp_karangsong", "KUB Tambak Makmur", 44),
+    ("gelama_bunga", "S", "85.000", "17500.00", "lp_cilacap", None, 22),
     ("gembolo", "M", "140.000", "23000.00", "lp_cilacap", "KUB Mina Sejahtera", 38),
-    ("gembolo", "S", "95.000", "19500.00", "lp_karangsong", None, 15),
+    ("gulamah", "M", "165.000", "24500.00", "lp_muara_angke", "KUB Mina Sejahtera", 17),
+    ("kuniran", "S", "260.000", "18500.00", "lp_muara_angke", None, 26),
+    ("mujair", "M", "130.000", "26000.00", "lp_karangsong", "KUB Tambak Makmur", 34),
+    ("senangin", "L", "95.000", "61000.00", "lp_cilacap", "KUB Samudra Biru", 15),
     # Same species as the allocated lot below, different fisherman and landing
     # point: reviews are keyed to the species, so a review earned on that lot
     # has to surface here too. Without this pair there is nothing to show it on.
@@ -85,10 +87,22 @@ KNOWLEDGE = {
              ["Loin segar", "Beku", "Pengalengan"], ["Ekspor", "Restoran Jepang", "Pengalengan"], ["Tenggiri"], ["Eksportir", "Restoran premium"]),
     "kembung": ("Ikan kecil dengan punggung kehijauan dan sisi keperakan.", "Gurih dengan rasa laut yang kuat.", "Lembut dan sedikit berminyak.",
                 ["Pindang", "Pengasapan", "Goreng"], ["Pasar basah", "Pengolahan pindang", "Warung"], ["Gembolo"], ["Pengolah pindang", "Pedagang pasar"]),
+    "bandeng": ("Tubuh keperakan dengan sirip ekor bercagak dalam.", "Manis dan lembut.", "Halus dengan banyak tulang kecil.",
+                ["Presto", "Otak-otak", "Pengasapan"], ["Pengolahan presto", "Katering", "Oleh-oleh"], ["Nila"], ["Pengolah presto", "Produsen oleh-oleh"]),
+    "gelama_bunga": ("Ikan kecil bersisi keperakan dengan kepala agak besar.", "Ringan dan sedikit manis.", "Lembut dan mudah hancur.",
+                     ["Goreng", "Pindang", "Surimi"], ["Pasar basah", "Pengolahan surimi"], ["Gulamah"], ["Pengolah surimi", "Pedagang pasar"]),
     "gembolo": ("Ikan kecil bersisi keperakan; nama ini dipakai untuk beberapa spesies menurut daerah.", "Ringan dan gurih.", "Lembut.",
                 ["Goreng", "Pindang", "Kerupuk"], ["Pasar basah", "Warung", "Pengolahan kerupuk"], ["Kembung"], ["Pedagang pasar", "Pengolah kerupuk"]),
+    "gulamah": ("Tubuh keperakan dengan mulut agak menghadap ke bawah.", "Netral dan ringan.", "Lembut dan berair.",
+                ["Surimi", "Bakso ikan", "Pindang"], ["Pengolahan surimi", "Bakso"], ["Kuniran"], ["Pengolah surimi"]),
+    "kuniran": ("Ikan kecil kemerahan dengan garis kuning memanjang.", "Ringan dan sedikit manis.", "Lembut.",
+                ["Goreng kering", "Kerupuk", "Surimi"], ["Pengolahan kerupuk", "Pasar basah"], ["Gulamah"], ["Pengolah kerupuk", "Pedagang pasar"]),
+    "mujair": ("Tubuh pipih dengan sirip punggung berduri panjang.", "Ringan dengan sedikit rasa tanah.", "Padat dan berserat.",
+               ["Goreng", "Bakar", "Pepes"], ["Pasar basah", "Warung", "Katering"], ["Nila"], ["Pedagang pasar", "Katering"]),
+    "senangin": ("Empat sungut panjang di bawah kepala.", "Lembut dan bersih.", "Padat dan mudah dilepas dari tulang.",
+                 ["Fillet", "Gulai", "Bakar"], ["Restoran", "Hotel"], ["Tenggiri"], ["Restoran", "Hotel"]),
     "nila": ("Tubuh pipih tinggi dengan garis vertikal gelap.", "Ringan dan bersih.", "Padat dan berserat.",
-             ["Fillet", "Bakar", "Goreng"], ["Restoran", "Katering", "Pasar basah"], ["Kembung"], ["Restoran", "Katering"]),
+             ["Fillet", "Bakar", "Goreng"], ["Restoran", "Katering", "Pasar basah"], ["Mujair"], ["Restoran", "Katering"]),
 }
 
 
