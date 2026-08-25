@@ -235,10 +235,23 @@ cd apps/frontend && pnpm install && pnpm dev --port 3111
 Open `http://localhost:3111`. Sign in at `/account`: the picker offers **Rian Setiawan** (operator)
 and **Dewi Anggraini** (buyer), both with password `demo`, which the form fills for you.
 
-The CV service is deliberately absent from that sequence: it needs PyTorch and a model export.
-Without it, identification returns 503 and the operator flow falls back to picking the species by
-hand, which is a first-class path rather than a workaround. Everything downstream, verification,
-publication, bidding, knowledge snapshots and the QR page, is unaffected.
+To run identification as well, add the CV service. It needs `torch` and `timm` plus the model export
+in `FISHORA_CV_EXPORT_DIR`, and it runs on CPU if that is all you have:
+
+```bash
+"$PY" -m pip install timm
+FISHORA_CV_DEVICE=cpu "$PY" -m uvicorn apps.cv_service.main:app --host 0.0.0.0 --port 8001
+```
+
+CPU inference takes about a second per image, which is fine for a demo. Without the service,
+identification returns 503 and the operator names the species by hand, which is a first-class path
+rather than a workaround. Everything downstream, verification, publication, bidding, knowledge
+snapshots and the QR page, is unaffected either way.
+
+Note that the shipped export has `abstain_threshold: 0.0`, so the API reports
+`low_confidence_human_verification_required` for every prediction however high the score. The
+operator therefore always picks the species explicitly. That is the intended gate, not a fault; see
+the CV confidence note in `apps/frontend/HANDOFF.md` section 9.
 
 `make_synthetic_taxonomy` stamps every row `synthetic-dev-fixture` and refuses to overwrite a file
 that does not look synthetic, so restoring the real dataset later is safe. `seed_demo_lots` writes

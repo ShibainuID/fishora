@@ -137,7 +137,11 @@ export function LandingPage() {
                 not fill six cells. */}
             <div className="reveal-stagger mt-10 grid gap-4 md:grid-cols-3">
               <Cell className="md:col-span-2 md:row-span-2">
-                <SpeciesArt label="tenggiri" className="aspect-[16/10] w-full" />
+                <SpeciesArt
+                  label="tenggiri"
+                  className="aspect-[16/10] w-full"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1279px) 62vw, 750px"
+                />
                 <CellBody title="Taste and texture">
                   Gurih and not especially oily. Firm, with a fine grain.
                 </CellBody>
@@ -147,7 +151,11 @@ export function LandingPage() {
                   The rest are 520x390, which this cell upscales past 2x on a
                   retina screen and renders soft. */}
               <Cell>
-                <SpeciesArt label="tuna" className="aspect-[16/9] w-full" />
+                <SpeciesArt
+                  label="tuna"
+                  className="aspect-[16/9] w-full"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1279px) 31vw, 370px"
+                />
                 <CellBody title="Cooking">Loin segar, dibakar, dikukus.</CellBody>
               </Cell>
 

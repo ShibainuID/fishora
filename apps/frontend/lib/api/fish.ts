@@ -52,6 +52,25 @@ export interface KnowledgeResponse {
   card: KnowledgeCard
 }
 
+/**
+ * The 202 the endpoint returns while the agent graph is still running.
+ *
+ * It is a success status with no card in it. Typing this path as
+ * KnowledgeResponse let a caller read `.card` off it and crash, so the union
+ * makes the compiler demand the check.
+ */
+export interface KnowledgePending {
+  detail: string
+  job_id: string
+  status: 'processing'
+}
+
+export type KnowledgeResult = KnowledgeResponse | KnowledgePending
+
+export function hasCard(result: KnowledgeResult): result is KnowledgeResponse {
+  return 'card' in result && Boolean(result.card)
+}
+
 export function identifyFish(file: File, signal?: AbortSignal) {
   const body = new FormData()
   // Field name must be `file`: it matches the FastAPI File(...) parameter.
@@ -93,7 +112,7 @@ export function declareSpeciesManually(file: File, speciesId: string) {
 
 export function getKnowledge(predictionId: string) {
   // Longer budget: this path runs retrieval plus generation.
-  return apiFetch<KnowledgeResponse>(
+  return apiFetch<KnowledgeResult>(
     `/api/v1/predictions/${encodeURIComponent(predictionId)}/knowledge`,
     { timeoutMs: 70_000 }
   )

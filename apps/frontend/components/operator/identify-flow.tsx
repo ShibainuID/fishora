@@ -15,8 +15,10 @@ import { ApiError, messageFor } from '@/lib/api/errors'
 import type {
   IdentificationResult,
   KnowledgeResponse,
+  KnowledgeResult,
   ManualEntryResult,
 } from '@/lib/api/fish'
+import { hasCard } from '@/lib/api/fish'
 import { downscaleImage } from '@/lib/image'
 import { SPECIES, SUPPORTED_LABELS, type SpeciesLabel } from '@/lib/species'
 import { Z } from '@/lib/z'
@@ -73,7 +75,7 @@ export interface IdentifyFlowProps {
       verification_status: 'confirmed' | 'corrected'
     }>
   >
-  loadKnowledge: (predictionId: string) => Promise<ActionResult<KnowledgeResponse>>
+  loadKnowledge: (predictionId: string) => Promise<ActionResult<KnowledgeResult>>
   declareSpecies: (
     formData: FormData,
     speciesId: string
@@ -256,7 +258,8 @@ export function IdentifyFlow({
         return
       }
       const card = await loadKnowledge(prediction.prediction_id)
-      if (!card.ok) {
+      // A 202 means the agent graph is still running: success, but no card.
+      if (!card.ok || !hasCard(card.data)) {
         setKnowledge(null)
         setKnowledgePending(true)
         setStep(3)
@@ -299,8 +302,14 @@ export function IdentifyFlow({
       setIdentifyError(null)
 
       const card = await loadKnowledge(declared.data.prediction_id)
-      setKnowledge(card.ok ? card.data : null)
-      setKnowledgePending(!card.ok)
+      if (card.ok && hasCard(card.data)) {
+        setKnowledge(card.data)
+        setKnowledgePending(false)
+      } else {
+        // Either an error, or a 202 with the graph still running.
+        setKnowledge(null)
+        setKnowledgePending(true)
+      }
       setStep(3)
     } finally {
       setBusy(false)
@@ -379,7 +388,7 @@ export function IdentifyFlow({
                 Kartu pengetahuan tertunda. Lot tetap dapat diterbitkan.
               </p>
             )}
-            {knowledge && (
+            {knowledge?.card && (
               <KnowledgeCardView card={knowledge.card} label={label} />
             )}
           </div>

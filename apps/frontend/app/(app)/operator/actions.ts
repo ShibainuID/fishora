@@ -8,7 +8,7 @@ import {
   identifyFish,
   verifySpecies,
   type IdentificationResult,
-  type KnowledgeResponse,
+  type KnowledgeResult,
   type ManualEntryResult,
 } from '@/lib/api/fish'
 
@@ -63,7 +63,7 @@ export async function confirmSpecies(
 
 export async function loadKnowledge(
   predictionId: string
-): Promise<ActionResult<KnowledgeResponse>> {
+): Promise<ActionResult<KnowledgeResult>> {
   try {
     return { ok: true, data: await getKnowledge(predictionId) }
   } catch (error) {
