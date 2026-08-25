@@ -13,6 +13,9 @@ def test_embedding_contract_and_secret_fields_are_environment_driven(monkeypatch
     assert settings.opencode_go_model == "gpt-5.6-luna"
     assert settings.opencode_go_api_key.get_secret_value() == "test-key"
     assert "test-key" not in repr(settings)
+    assert "sub2api_base_url" not in MainSettings.model_fields
+    assert "sub2api_api_key" not in MainSettings.model_fields
+    assert "llm_medium_model" not in MainSettings.model_fields
 
 
 def test_opencode_key_not_required_for_settings_construction(monkeypatch):

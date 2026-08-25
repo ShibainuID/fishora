@@ -107,7 +107,7 @@ _EXPERT_PROMPTS = {
 def _expert_node(category: str, state: FishoraState, llm_luna) -> dict:
     evidence = state.get("refined_evidence", [])
     if llm_luna is None:
-        # No LLM available (tests / empty sub2api key) -> return empty placeholders without error
+        # No LLM available (tests / empty OpenCode Go key) -> return empty placeholders without error
         if category == "physical":
             return {"physical_characteristics": None, "sources": []}
         if category == "taste":

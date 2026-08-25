@@ -40,6 +40,8 @@ Configuration defaults are ready for local use. Create `.env` only when you need
 cp .env.example .env
 ```
 
+Set `OPENCODE_GO_API_KEY` in `.env`. The researcher, four domain experts, critic, and writer share one OpenCode Go client configured with `FISHORA_OPENCODE_GO_MODEL=gpt-5.6-luna`.
+
 Never commit `.env` or API keys.
 
 ## Run Locally

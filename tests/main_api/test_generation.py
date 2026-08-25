@@ -156,6 +156,8 @@ def _opencode_settings(api_key="test-key"):
         opencode_go_api_key=SecretStr(api_key),
         opencode_go_model="gpt-5.6-luna",
         opencode_go_timeout_seconds=60.0,
+        sub2api_base_url="http://localhost:8080/v1",
+        sub2api_api_key=SecretStr("must-not-be-used"),
     )
 
 
@@ -242,6 +244,25 @@ def test_opencode_client_uses_langchain_responses_api_once_with_strict_schema(mo
     assert structured.messages[0].content == SYSTEM_PROMPT
     payload = structured.messages[1].content
     assert "common_bandeng" in payload and "source_id: source-1" in payload
+
+
+def test_opencode_llm_factory_uses_only_configured_luna(monkeypatch):
+    stub = _StubChatOpenAI(_StubStructuredModel())
+    monkeypatch.setattr("apps.main_api.services.generation.ChatOpenAI", _stub_chat_factory(stub))
+
+    from apps.main_api.services import generation
+
+    assert hasattr(generation, "make_opencode_go_llm")
+    llm = generation.make_opencode_go_llm(_opencode_settings())
+
+    assert llm is stub
+    assert stub.init_kwargs == {
+        "model": "gpt-5.6-luna",
+        "base_url": "https://opencode.ai/zen/go/v1",
+        "api_key": "test-key",
+        "timeout": 60.0,
+        "use_responses_api": True,
+    }
 
 
 def test_opencode_client_timeout_and_connection_errors_map_to_opencode_unavailable(monkeypatch):
