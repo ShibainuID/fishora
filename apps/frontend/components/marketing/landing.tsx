@@ -72,14 +72,18 @@ export function LandingPage() {
           // Extra head room on phones only: the copy column is the full width
           // there, so without it the heading lands straight over the fisherman's
           // face. At md the photograph sits beside the text and needs none.
-          className={`relative isolate overflow-hidden ${SECTION} pt-72 md:pt-28 lg:pt-40`}
+          // No overflow-hidden here. An overflow-clipped ancestor becomes the
+          // nearest scroll container for `animation-timeline: view()`, and since
+          // it never scrolls the reveal animations inside resolve against a dead
+          // timeline. The backdrop clips itself instead.
+          className={`relative isolate ${SECTION} pt-72 md:pt-28 lg:pt-40`}
         >
           <FishermanBackdrop />
           <div className={`relative ${SHELL}`}>
-            <h2 className="text-display-2 max-w-[18ch]">
+            <h2 className="reveal text-display-2 max-w-[18ch]">
               Indonesian boats land hundreds of species. Buyers order a handful.
             </h2>
-            <dl className="mt-12 flex flex-col gap-8 md:flex-row md:gap-16">
+            <dl className="reveal-stagger mt-12 flex flex-col gap-8 md:flex-row md:gap-16">
               <Figure value="100 km" caption="serviceability radius, MVP" />
               <Figure value="5 to 10" caption="species in the MVP model" />
               <Figure value="under 90s" caption="from photo to published lot" />
@@ -88,8 +92,8 @@ export function LandingPage() {
         </section>
 
         <section data-block="flow" className={SECTION}>
-          <p className={`text-eyebrow text-ink-faint ${SHELL}`}>THE FLOW</p>
-          <h2 className={`text-h1 mt-2 max-w-[20ch] ${SHELL}`}>
+          <p className={`reveal text-eyebrow text-ink-faint ${SHELL}`}>THE FLOW</p>
+          <h2 className={`reveal text-h1 mt-2 max-w-[20ch] ${SHELL}`}>
             Eight steps from a boat to a buyer.
           </h2>
           {/* Full bleed on purpose: the strip runs edge to edge past the shell. */}
@@ -101,13 +105,13 @@ export function LandingPage() {
         <section data-block="identify" id="operators" className={SECTION}>
           <div className={`${SHELL} lg:grid lg:grid-cols-12 lg:items-center lg:gap-8`}>
             {/* Copy leads in the DOM on both viewports; only the visual order swaps. */}
-            <div className="lg:order-2 lg:col-span-5">
+            <div className="reveal lg:order-2 lg:col-span-5">
               <h2 className="text-h1">The model proposes. A person decides.</h2>
               <p className="text-body mt-3 max-w-[34ch] text-abyss-200">
                 Nothing publishes until an operator confirms the species on the landing floor.
               </p>
             </div>
-            <div className="mt-8 lg:order-1 lg:col-span-6 lg:mt-0">
+            <div className="reveal mt-8 lg:order-1 lg:col-span-6 lg:mt-0">
               <IdentificationDemo result={DEMO_ID} />
             </div>
           </div>
@@ -115,9 +119,9 @@ export function LandingPage() {
 
         <section data-block="match" id="buyers" className={SECTION}>
           <div className={SHELL}>
-            <p className="text-eyebrow text-ink-faint">WHY IT MATCHED</p>
-            <h2 className="text-h1 mt-2">Need, then supply, then the reason.</h2>
-            <div className="mt-10 grid gap-6 lg:grid-cols-2 lg:items-start">
+            <p className="reveal text-eyebrow text-ink-faint">WHY IT MATCHED</p>
+            <h2 className="reveal text-h1 mt-2">Need, then supply, then the reason.</h2>
+            <div className="reveal-stagger mt-10 grid gap-6 lg:grid-cols-2 lg:items-start">
               <LotCard lot={DEMO_LOT} matchPercent={0.94} />
               <MatchReasons reasons={DEMO_REASONS} />
             </div>
@@ -126,12 +130,12 @@ export function LandingPage() {
 
         <section data-block="knowledge" id="knowledge" className={SECTION}>
           <div className={SHELL}>
-            <h2 className="text-h1 max-w-[20ch]">What a shopper can learn from a QR.</h2>
+            <h2 className="reveal text-h1 max-w-[20ch]">What a shopper can learn from a QR.</h2>
 
             {/* Exactly five cells for the five things a knowledge card answers.
                 A three-column grid left a hole at the end, because five items do
                 not fill six cells. */}
-            <div className="mt-10 grid gap-4 md:grid-cols-3">
+            <div className="reveal-stagger mt-10 grid gap-4 md:grid-cols-3">
               <Cell className="md:col-span-2 md:row-span-2">
                 <SpeciesArt label="tenggiri" className="aspect-[16/10] w-full" />
                 <CellBody title="Taste and texture">
@@ -163,10 +167,10 @@ export function LandingPage() {
 
         <section data-block="close" id="access" className={`${SECTION} border-t border-abyss-900`}>
           <div className={SHELL}>
-            <h2 className="text-display-2 max-w-[20ch]">
+            <h2 className="reveal text-display-2 max-w-[20ch]">
               Every catch already carries its value. Fishora makes it legible.
             </h2>
-            <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+            <div className="reveal mt-10 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/account"
                 className="text-body-sm inline-flex min-h-11 items-center justify-center rounded-full bg-accent px-6 font-medium text-accent-ink"
@@ -206,7 +210,7 @@ export function LandingPage() {
  */
 function FishermanBackdrop() {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+    <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
       <div className="fade-radial absolute inset-y-0 right-0 w-full md:w-[46rem]">
         <Image
           src="/nelayan.jpeg"

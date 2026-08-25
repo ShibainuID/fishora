@@ -323,6 +323,57 @@ html {
   }
 }
 
+/* Scroll reveal for the landing sections.
+   CSS rather than Motion's whileInView: that renders the initial hidden state
+   on the server, so with JavaScript off the page would ship sections at
+   opacity 0 and never reveal them. A scroll-driven animation needs no script,
+   and where `view()` is unsupported nothing applies and the content is simply
+   already visible. Transform and opacity only, so it stays on the compositor. */
+@keyframes reveal-in {
+  from {
+    opacity: 0;
+    transform: translateY(1.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .reveal,
+    .reveal-stagger > * {
+      animation: reveal-in linear both;
+      animation-timeline: view();
+      /* `cover`, not `entry`. An `entry` range is only as long as the element
+         is tall, so a short row reveals over ~100px of scroll and reads as a
+         pop. `cover` spans the viewport too, giving the reveal real distance,
+         and both endpoints stay early so nothing lingers part-faded. */
+      animation-range: cover 2% cover 22%;
+    }
+
+    /* A stagger, expressed as a later start rather than a delay: progress on a
+       scroll timeline is the scroll position, so a time delay would do nothing.
+       Each still completes within its own entry. */
+    .reveal-stagger > *:nth-child(2) {
+      animation-range: cover 6% cover 26%;
+    }
+
+    .reveal-stagger > *:nth-child(3) {
+      animation-range: cover 10% cover 30%;
+    }
+
+    .reveal-stagger > *:nth-child(4) {
+      animation-range: cover 14% cover 34%;
+    }
+
+    .reveal-stagger > *:nth-child(5) {
+      animation-range: cover 18% cover 38%;
+    }
+  }
+}
+
 /* Fades a backdrop image out in every direction.
    An overlay gradient darkens the photograph but cannot hide where the element
    itself begins, which showed as a vertical seam down the middle of the
