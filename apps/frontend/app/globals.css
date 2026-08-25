@@ -323,6 +323,30 @@ html {
   }
 }
 
+/* The hero copy rises on load.
+   Time-based, not scroll-driven: the hero is already in view when the page
+   opens, so a `view()` timeline would be complete before anyone saw it.
+   Scoped inside `no-preference` rather than relying on the reduced-motion
+   backstop at the bottom of this file: that collapses duration but not delay,
+   which would leave each line hidden for its delay and then snap in. */
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero-rise {
+    animation: hero-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: var(--rise-delay, 0s);
+  }
+}
+
 /* Scroll reveal for the landing sections.
    CSS rather than Motion's whileInView: that renders the initial hidden state
    on the server, so with JavaScript off the page would ship sections at
@@ -346,30 +370,33 @@ html {
     .reveal-stagger > * {
       animation: reveal-in linear both;
       animation-timeline: view();
-      /* `cover`, not `entry`. An `entry` range is only as long as the element
-         is tall, so a short row reveals over ~100px of scroll and reads as a
-         pop. `cover` spans the viewport too, giving the reveal real distance,
-         and both endpoints stay early so nothing lingers part-faded. */
-      animation-range: cover 2% cover 22%;
+      /* Starts at `cover 0%`, the instant the element touches the viewport
+         edge. A later start leaves it on screen rendering nothing, which reads
+         as an image that failed to load rather than as an entrance. `cover`
+         rather than `entry` because an entry range is only as long as the
+         element is tall, so a short row would reveal over ~100px and pop. */
+      animation-range: cover 0% cover 16%;
     }
 
-    /* A stagger, expressed as a later start rather than a delay: progress on a
-       scroll timeline is the scroll position, so a time delay would do nothing.
-       Each still completes within its own entry. */
+    /* The stagger is in the finish, not the start. A later start leaves a cell
+       on screen at zero opacity, which is what made one read as an image that
+       had failed to load; it showed up first where the grid stacks to one
+       column and the lower cells enter last. Everything begins fading the
+       moment it touches the viewport, and simply takes longer to arrive. */
     .reveal-stagger > *:nth-child(2) {
-      animation-range: cover 6% cover 26%;
+      animation-range: cover 0% cover 20%;
     }
 
     .reveal-stagger > *:nth-child(3) {
-      animation-range: cover 10% cover 30%;
+      animation-range: cover 0% cover 24%;
     }
 
     .reveal-stagger > *:nth-child(4) {
-      animation-range: cover 14% cover 34%;
+      animation-range: cover 0% cover 28%;
     }
 
     .reveal-stagger > *:nth-child(5) {
-      animation-range: cover 18% cover 38%;
+      animation-range: cover 0% cover 32%;
     }
   }
 }

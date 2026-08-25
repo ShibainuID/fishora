@@ -143,9 +143,12 @@ export function LandingPage() {
                 </CellBody>
               </Cell>
 
+              {/* Tuna, not kembung: only tenggiri and tuna are 1600px sources.
+                  The rest are 520x390, which this cell upscales past 2x on a
+                  retina screen and renders soft. */}
               <Cell>
-                <SpeciesArt label="kembung" className="aspect-[16/9] w-full" />
-                <CellBody title="Cooking">Digoreng, dibakar, dikukus.</CellBody>
+                <SpeciesArt label="tuna" className="aspect-[16/9] w-full" />
+                <CellBody title="Cooking">Loin segar, dibakar, dikukus.</CellBody>
               </Cell>
 
               <Cell className="bg-abyss-850">

@@ -9,13 +9,15 @@
 export function Logo({
   className = '',
   showWordmark = true,
+  style,
 }: {
   className?: string
   /** The mark alone, for surfaces too tight for the word. */
   showWordmark?: boolean
+  style?: React.CSSProperties
 }) {
   return (
-    <span className={`inline-flex items-center gap-2 ${className}`}>
+    <span className={`inline-flex items-center gap-2 ${className}`} style={style}>
       <span
         aria-hidden
         // Sized in em, so the mark keeps its proportion to the wordmark at
