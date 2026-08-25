@@ -23,7 +23,13 @@ from decimal import Decimal
 from sqlalchemy import delete, select
 
 from apps.main_api.config import MainSettings
-from apps.main_api.db.models import Bid, LandingPoint, Lot, Prediction
+from apps.main_api.db.models import (
+    Bid,
+    CommercialBuyerReview,
+    LandingPoint,
+    Lot,
+    Prediction,
+)
 from apps.main_api.db.session import session_factory
 
 DEMO_PREFIX = "demo_"
@@ -38,6 +44,10 @@ DEMO_BUYER = "buyer_dewi"
 TEST_ROW_MARKER = "_race_"
 
 # (label, size, kg, price/kg, landing point, fisher group, hours until close)
+#
+# Only species the frontend holds catch photography for. Seeding one without a
+# photograph puts a stock picture of open water on a card that claims to be a
+# named fish, which tells a buyer nothing about what they would be bidding on.
 # The spread is deliberate: two species repeat at different sizes and prices so
 # the filters and the sort have something to actually separate, and the closing
 # windows are staggered so the countdowns do not all read the same.
@@ -45,12 +55,11 @@ DEMO_LOTS = [
     ("tenggiri", "L", "120.000", "68000.00", "lp_muara_angke", "KUB Bahari Jaya", 6),
     ("tenggiri", "M", "80.500", "54000.00", "lp_karangsong", "KUB Mina Sejahtera", 20),
     ("tuna", "L", "240.000", "92000.00", "lp_cilacap", "KUB Samudra Biru", 11),
+    ("tuna", "M", "160.000", "78000.00", "lp_muara_angke", "KUB Bahari Jaya", 28),
     ("kembung", "M", "310.000", "27000.00", "lp_muara_angke", "KUB Bahari Jaya", 3),
     ("kembung", "S", "180.000", "21000.00", "lp_karangsong", None, 30),
-    ("bandeng", "M", "150.000", "32000.00", "lp_karangsong", "KUB Tambak Makmur", 44),
-    ("senangin", "L", "95.000", "61000.00", "lp_cilacap", "KUB Samudra Biru", 15),
-    ("kuniran", "S", "260.000", "18500.00", "lp_muara_angke", None, 26),
-    ("gulamah", "M", "140.000", "23000.00", "lp_cilacap", "KUB Mina Sejahtera", 38),
+    ("gembolo", "M", "140.000", "23000.00", "lp_cilacap", "KUB Mina Sejahtera", 38),
+    ("gembolo", "S", "95.000", "19500.00", "lp_karangsong", None, 15),
     # Same species as the allocated lot below, different fisherman and landing
     # point: reviews are keyed to the species, so a review earned on that lot
     # has to surface here too. Without this pair there is nothing to show it on.
@@ -73,19 +82,13 @@ KNOWLEDGE = {
     "tenggiri": ("Tubuh memanjang dengan garis vertikal samar di sisi badan.", "Gurih dan tidak terlalu berminyak.", "Padat dan berserat halus.",
                  ["Fillet", "Pengasapan", "Bakso ikan"], ["Restoran", "Pengolahan bakso", "Katering"], ["Kembung"], ["Pengolah bakso", "Restoran seafood"]),
     "tuna": ("Badan besar berbentuk cerutu, sirip punggung tegas.", "Kaya dan pekat.", "Padat dan liat.",
-             ["Loin segar", "Beku", "Pengalengan"], ["Ekspor", "Restoran Jepang", "Pengalengan"], ["Cakalang"], ["Eksportir", "Restoran premium"]),
+             ["Loin segar", "Beku", "Pengalengan"], ["Ekspor", "Restoran Jepang", "Pengalengan"], ["Tenggiri"], ["Eksportir", "Restoran premium"]),
     "kembung": ("Ikan kecil dengan punggung kehijauan dan sisi keperakan.", "Gurih dengan rasa laut yang kuat.", "Lembut dan sedikit berminyak.",
                 ["Pindang", "Pengasapan", "Goreng"], ["Pasar basah", "Pengolahan pindang", "Warung"], ["Gembolo"], ["Pengolah pindang", "Pedagang pasar"]),
-    "bandeng": ("Tubuh keperakan dengan sirip ekor bercagak dalam.", "Manis dan lembut.", "Halus dengan banyak tulang kecil.",
-                ["Presto", "Otak-otak", "Pengasapan"], ["Pengolahan presto", "Katering", "Oleh-oleh"], ["Nila"], ["Pengolah presto", "Produsen oleh-oleh"]),
-    "senangin": ("Empat sungut panjang di bawah kepala.", "Lembut dan bersih.", "Padat dan mudah dilepas dari tulang.",
-                 ["Fillet", "Gulai", "Bakar"], ["Restoran", "Hotel"], ["Tenggiri"], ["Restoran", "Hotel"]),
-    "kuniran": ("Ikan kecil kemerahan dengan garis kuning memanjang.", "Ringan dan sedikit manis.", "Lembut.",
-                ["Goreng kering", "Kerupuk", "Surimi"], ["Pengolahan kerupuk", "Pasar basah"], ["Gulamah"], ["Pengolah kerupuk", "Pedagang pasar"]),
-    "gulamah": ("Tubuh keperakan dengan mulut agak menghadap ke bawah.", "Netral dan ringan.", "Lembut dan berair.",
-                ["Surimi", "Bakso ikan", "Pindang"], ["Pengolahan surimi", "Bakso"], ["Kuniran"], ["Pengolah surimi"]),
+    "gembolo": ("Ikan kecil bersisi keperakan; nama ini dipakai untuk beberapa spesies menurut daerah.", "Ringan dan gurih.", "Lembut.",
+                ["Goreng", "Pindang", "Kerupuk"], ["Pasar basah", "Warung", "Pengolahan kerupuk"], ["Kembung"], ["Pedagang pasar", "Pengolah kerupuk"]),
     "nila": ("Tubuh pipih tinggi dengan garis vertikal gelap.", "Ringan dan bersih.", "Padat dan berserat.",
-             ["Fillet", "Bakar", "Goreng"], ["Restoran", "Katering", "Pasar basah"], ["Mujair"], ["Restoran", "Katering"]),
+             ["Fillet", "Bakar", "Goreng"], ["Restoran", "Katering", "Pasar basah"], ["Kembung"], ["Restoran", "Katering"]),
 }
 
 
@@ -130,6 +133,29 @@ def _purge_test_rows(session) -> int:
     for model in (Prediction, LandingPoint, FishSpecies):
         stmt = delete(model).where(model.id.contains(TEST_ROW_MARKER))
         removed += session.execute(stmt).rowcount or 0
+    return removed
+
+
+def _clear_demo_rows(session) -> int:
+    """Drop the previous seed so a species dropped from the set cannot linger."""
+    lot_ids = [
+        row[0]
+        for row in session.execute(select(Lot.id).where(Lot.id.startswith(DEMO_PREFIX)))
+    ]
+    removed = 0
+    if lot_ids:
+        # Reviews and bids reference the lot, so they go first.
+        removed += (
+            session.execute(
+                delete(CommercialBuyerReview).where(CommercialBuyerReview.lot_id.in_(lot_ids))
+            ).rowcount
+            or 0
+        )
+        removed += session.execute(delete(Bid).where(Bid.lot_id.in_(lot_ids))).rowcount or 0
+        removed += session.execute(delete(Lot).where(Lot.id.in_(lot_ids))).rowcount or 0
+    # Predictions are deliberately left alone. They are upserted on every run,
+    # and a lot published by hand through the API can reference one, so deleting
+    # them by prefix trips the lots foreign key.
     return removed
 
 
@@ -210,9 +236,27 @@ def main() -> int:
             removed = _purge_test_rows(session)
             print(f"removed {removed} row(s) left by the test suite")
 
+        cleared = _clear_demo_rows(session)
+        print(f"cleared {cleared} row(s) from the previous demo seed")
+
         slugs = [_write_lot(session, now, i, spec) for i, spec in enumerate(DEMO_LOTS, start=1)]
-        slugs.append(
-            _write_lot(session, now, len(DEMO_LOTS) + 1, ALLOCATED_LOT, allocated=True)
+        allocated_index = len(DEMO_LOTS) + 1
+        slugs.append(_write_lot(session, now, allocated_index, ALLOCATED_LOT, allocated=True))
+
+        # A review on the allocated lot. Reviews are keyed to the species, so
+        # this also appears on the other fisherman's lot of the same fish, which
+        # is the whole point of the feature and is invisible with no rows.
+        session.merge(
+            CommercialBuyerReview(
+                id=f"{DEMO_PREFIX}review_1",
+                lot_id=f"{DEMO_PREFIX}lot_{allocated_index}",
+                species_id=_species(session, ALLOCATED_LOT[0]).id,
+                buyer_id=DEMO_BUYER,
+                actual_use="Fillet untuk katering",
+                processing_suitability=4,
+                substitute_acceptance=True,
+                comment="Ukuran seragam, tulang mudah dipisahkan.",
+            )
         )
         session.commit()
 

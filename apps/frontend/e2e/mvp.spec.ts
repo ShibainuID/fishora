@@ -15,9 +15,10 @@ async function signIn(page: Page, username: string, password: string) {
   if (await keluar.isVisible()) {
     await keluar.click()
   }
-  await page.getByLabel('Nama pengguna').fill(username)
-  await page.getByLabel('Kata sandi').fill(password)
-  await page.getByRole('button', { name: 'Masuk' }).click()
+  // The sign-in screen lists the demo accounts rather than asking for
+  // credentials that only exist in a source file.
+  await page.getByLabel('Akun demo').selectOption(username)
+  await page.getByRole('button', { name: /^Masuk sebagai/ }).click()
   await expect(page.getByRole('button', { name: 'Keluar' })).toBeVisible({ timeout: 15_000 })
 }
 

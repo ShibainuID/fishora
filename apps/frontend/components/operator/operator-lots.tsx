@@ -19,7 +19,7 @@ export function OperatorLots({ lots }: { lots: Lot[] }) {
   const allocating = pending?.kind === 'allocate'
 
   return (
-    <main className="px-4 py-6 pb-24">
+    <>
       <h1 className="text-h1 text-ink">Lot saya</h1>
       <ul className="mt-6 flex flex-col gap-4">
         {items.map((lot) => (
@@ -92,6 +92,6 @@ export function OperatorLots({ lots }: { lots: Lot[] }) {
           speciesName={qr.species_id.replace('species_', '')}
         />
       )}
-    </main>
+    </>
   )
 }
