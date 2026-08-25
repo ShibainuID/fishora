@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_tenggiri_physical_001",
+  "chunk": {
+    "id": "chunk_tenggiri_physical_001",
+    "species_label": "tenggiri",
+    "source_id": "fishbase_scomberomorus_commerson",
+    "category": "physical_characteristics",
+    "content": "Scomberomorus commerson, one candidate species within the ambiguous tenggiri label, has 15-18 dorsal spines.",
+    "source_quote": "Dorsal spines (total): 15 - 18",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "fishbase_scomberomorus_commerson",
+    "title": "Scomberomorus commerson, Narrow-barred Spanish mackerel: fisheries, gamefish",
+    "source_type": "species_summary",
+    "url": "https://www.fishbase.se/summary/Scomberomorus-commerson.html",
+    "publisher": "FishBase",
+    "reviewed_at": null,
+    "verification_status": "candidate"
+  }
+}

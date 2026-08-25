@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_gulamah_physical_001",
+  "chunk": {
+    "id": "chunk_gulamah_physical_001",
+    "species_label": "gulamah",
+    "source_id": "fishbase_johnius_trachycephalus",
+    "category": "physical_characteristics",
+    "content": "Johnius trachycephalus has 9-10 dorsal spines, 24-27 dorsal soft rays, two anal spines, and 6-7 anal soft rays.",
+    "source_quote": "Dorsal spines (total): 9 - 10; Dorsal soft rays (total): 24-27; Anal spines: 2; Anal soft rays: 6 - 7.",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "fishbase_johnius_trachycephalus",
+    "title": "Johnius trachycephalus, Leaftail croaker: fisheries",
+    "source_type": "species_summary",
+    "url": "https://www.fishbase.se/summary/Johnius-trachycephalus.html",
+    "publisher": "FishBase",
+    "reviewed_at": null,
+    "verification_status": "candidate"
+  }
+}
