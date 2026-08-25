@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { IdentificationDemo } from '@/components/marketing/identification-demo'
 import type { PredictionCard } from '@/components/fish/prediction-card'
@@ -65,8 +66,16 @@ export function LandingPage() {
       <main>
         <HeroDescent />
 
-        <section data-block="gap" id="platform" className={SECTION}>
-          <div className={SHELL}>
+        <section
+          data-block="gap"
+          id="platform"
+          // Extra head room on phones only: the copy column is the full width
+          // there, so without it the heading lands straight over the fisherman's
+          // face. At md the photograph sits beside the text and needs none.
+          className={`relative isolate overflow-hidden ${SECTION} pt-72 md:pt-28 lg:pt-40`}
+        >
+          <FishermanBackdrop />
+          <div className={`relative ${SHELL}`}>
             <h2 className="text-display-2 max-w-[18ch]">
               Indonesian boats land hundreds of species. Buyers order a handful.
             </h2>
@@ -177,6 +186,42 @@ export function LandingPage() {
       </main>
 
       <SiteFooter />
+    </div>
+  )
+}
+
+/**
+ * The fisherman behind the statement, faded into the abyss.
+ *
+ * The source is a 447px square, so it is held to the right of the section
+ * rather than stretched across a desktop viewport: past roughly 1.6x it starts
+ * to look like an upscale instead of a photograph. On phones the viewport is
+ * near the source width already, so it runs full width there.
+ *
+ * The image is masked radially rather than clipped, so it has no straight edge
+ * on any side. Scrims then handle contrast: a flat overlay dark enough for
+ * `display-2` would bury the photograph, so a vertical fade into the page
+ * ground pairs with a horizontal one under the copy column, which keeps the
+ * text on near solid colour while the figure stays visible beside it.
+ */
+function FishermanBackdrop() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+      <div className="fade-radial absolute inset-y-0 right-0 w-full md:w-[46rem]">
+        <Image
+          src="/nelayan.jpeg"
+          alt=""
+          fill
+          // Below a 240vh hero, so never the LCP element.
+          sizes="(max-width: 768px) 100vw, 46rem"
+          className="object-cover object-[50%_6%]"
+        />
+      </div>
+
+      {/* Into the page ground at both edges, so the band has no seam. */}
+      <div className="absolute inset-0 bg-gradient-to-b from-abyss-950/90 via-abyss-950/20 to-abyss-950" />
+      {/* Under the copy column at md and up. */}
+      <div className="absolute inset-0 bg-abyss-950/60 md:bg-transparent md:bg-gradient-to-r md:from-abyss-950 md:via-abyss-950/80 md:to-abyss-950/15" />
     </div>
   )
 }

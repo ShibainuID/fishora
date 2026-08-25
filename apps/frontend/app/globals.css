@@ -323,6 +323,32 @@ html {
   }
 }
 
+/* Fades a backdrop image out in every direction.
+   An overlay gradient darkens the photograph but cannot hide where the element
+   itself begins, which showed as a vertical seam down the middle of the
+   section. A radial mask removes the edges instead of covering them, so the
+   image has no straight border on any side to read as a line. */
+.fade-radial {
+  /* Centred high: the subject's face sits near the top of a portrait box, and a
+     centre at mid-height puts it in the part of the mask that has already faded
+     out. Lower and wider from `md`, where the box is landscape. */
+  --fade-at: 52% 30%;
+  --fade: radial-gradient(
+    circle at var(--fade-at),
+    #000 30%,
+    rgb(0 0 0 / 0.6) 56%,
+    transparent 80%
+  );
+  mask-image: var(--fade);
+  -webkit-mask-image: var(--fade);
+}
+
+@media (min-width: 48rem) {
+  .fade-radial {
+    --fade-at: 52% 46%;
+  }
+}
+
 /* Printing the Fishora card.
    The card lives inside a modal <dialog>, so the whole app is in the print
    tree. Hiding by visibility rather than display keeps the card's own layout
