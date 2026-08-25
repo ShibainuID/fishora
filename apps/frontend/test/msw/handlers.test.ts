@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { ALL_SPECIES_IDS, BUYERS, LOTS, PEOPLE } from './fixtures'
+import { SUPPORTED_LABELS } from '@/lib/species'
 import { handlers } from './handlers'
 
 describe('MSW fixtures', () => {
-  it('covers the 11 supported species and locked demo names', () => {
-    expect(ALL_SPECIES_IDS).toHaveLength(11)
+  it('covers every supported species and the locked demo names', () => {
+    // Tracks the species list rather than pinning a count, which went stale the
+    // moment the list narrowed to the photographed species.
+    expect(ALL_SPECIES_IDS).toHaveLength(SUPPORTED_LABELS.length)
     expect(ALL_SPECIES_IDS.every((id) => id.startsWith('species_'))).toBe(true)
     expect(LOTS.every((lot) => ALL_SPECIES_IDS.includes(lot.species_id))).toBe(true)
     expect(BUYERS.pasar).toBe('Pasar Segar Nusantara')

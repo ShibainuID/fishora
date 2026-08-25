@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef } from 'react'
+import Image from 'next/image'
 import {
   motion,
   useMotionTemplate,
@@ -9,7 +10,7 @@ import {
   useTransform,
 } from 'motion/react'
 import { HeroStatic } from '@/components/marketing/hero-static'
-import { LampGlow, MarineSnow, Stratum } from '@/components/marketing/sea-strata'
+import { LampGlow } from '@/components/marketing/sea-strata'
 
 export function HeroDescent() {
   const reduce = useReducedMotion()
@@ -26,8 +27,10 @@ function HeroStill() {
         <LampGlow className="absolute inset-0" />
       </div>
       {PLANES.map((plane) => (
+        // No will-change-transform here: nothing moves, and the hint would cost
+        // a compositor layer per plane for no reason.
         <div key={plane.depth} className={`absolute inset-x-0 ${plane.position}`}>
-          <Stratum depth={plane.depth} className="h-full w-full" />
+          <PlaneImage plane={plane} />
         </div>
       ))}
       <div className="relative z-10">
@@ -37,14 +40,66 @@ function HeroStill() {
   )
 }
 
-// Nearer water travels further, which is what reads as depth.
+/**
+ * Nearer water travels further, which is what reads as depth.
+ *
+ * `crop` moves each plane to a different part of the photograph so five bands
+ * of the same water do not read as one image repeated, and `shade` sinks each
+ * plane further into the abyss, because light is what depth takes away first.
+ */
 const PLANES = [
-  { depth: 0, travel: 10, position: 'top-[26%] h-[30vh]' },
-  { depth: 1, travel: 24, position: 'top-[38%] h-[34vh]' },
-  { depth: 2, travel: 42, position: 'top-[52%] h-[38vh]' },
-  { depth: 3, travel: 62, position: 'top-[68%] h-[42vh]' },
-  { depth: 4, travel: 84, position: 'top-[84%] h-[46vh]' },
+  { depth: 0, travel: 6, position: 'top-[26%] h-[46vh]', crop: 12, shade: 0.1 },
+  { depth: 1, travel: 14, position: 'top-[38%] h-[50vh]', crop: 34, shade: 0.28 },
+  { depth: 2, travel: 24, position: 'top-[52%] h-[54vh]', crop: 55, shade: 0.45 },
+  { depth: 3, travel: 34, position: 'top-[68%] h-[58vh]', crop: 74, shade: 0.62 },
+  { depth: 4, travel: 44, position: 'top-[84%] h-[62vh]', crop: 90, shade: 0.78 },
 ] as const
+
+/**
+ * How much of a band's height is spent fading in at the top.
+ *
+ * The bands are sized around this: a plane has to stay long enough to cover the
+ * whole fade of the plane below it, at both ends of the scroll, or the descent
+ * opens a visible seam between them at some point in the middle.
+ */
+const FADE = 0.35
+
+/**
+ * One band of water.
+ *
+ * The top edge is masked to transparent rather than cut square: five hard
+ * horizontal edges stacked up read as ribbons of photograph, not as a sea. The
+ * mask blends each band into whatever sits behind it, which is the plane above,
+ * so the fade works between planes and not just against the page ground.
+ *
+ * The planes also travel a short distance relative to each other. A wide spread
+ * gives a stronger parallax but pulls the bands apart far enough to show the
+ * ground between them, and a gap in open water reads as a rendering fault.
+ */
+function PlaneImage({ plane }: { plane: (typeof PLANES)[number] }) {
+  const fade = `linear-gradient(to bottom, transparent 0%, #000 ${FADE * 100}%, #000 100%)`
+  return (
+    <div
+      className="relative size-full overflow-hidden"
+      style={{ maskImage: fade, WebkitMaskImage: fade }}
+    >
+      <Image
+        src="/sea.jpg"
+        alt=""
+        fill
+        // The hero is the LCP element, so the first band is not lazy.
+        priority={plane.depth === 0}
+        sizes="100vw"
+        className="object-cover"
+        style={{ objectPosition: `50% ${plane.crop}%` }}
+      />
+      <div
+        className="absolute inset-0 bg-abyss-950"
+        style={{ opacity: plane.shade }}
+      />
+    </div>
+  )
+}
 
 function HeroTrack() {
   const ref = useRef<HTMLDivElement>(null)
@@ -79,8 +134,6 @@ function HeroTrack() {
           {PLANES.map((plane) => (
             <HeroPlane key={plane.depth} plane={plane} progress={scrollYProgress} />
           ))}
-
-          <MarineSnow className="pointer-events-none absolute inset-0 hidden lg:block" />
         </motion.div>
 
         {/* Depth tint: the abyss closing over the composition. */}
@@ -107,7 +160,7 @@ function HeroPlane({
       style={{ y }}
       className={`absolute inset-x-0 ${plane.position} will-change-transform`}
     >
-      <Stratum depth={plane.depth} className="h-full w-full" />
+      <PlaneImage plane={plane} />
     </motion.div>
   )
 }

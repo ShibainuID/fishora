@@ -1,16 +1,25 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { SpeciesArt } from './species-art'
+import { SUPPORTED_LABELS, SPECIES } from '@/lib/species'
 
 describe('SpeciesArt', () => {
-  it('names the species it stands in for', () => {
+  it('shows the catch photograph for a species we hold one for', () => {
     render(<SpeciesArt label="tenggiri" />)
-    expect(screen.getByRole('img', { name: 'Ilustrasi Tenggiri' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Foto Tenggiri' })).toBeInTheDocument()
     expect(screen.getByText('Tenggiri')).toBeInTheDocument()
   })
 
-  it('falls back to the raw label for a species it does not know', () => {
+  it('gives every supported species its own photograph', () => {
+    const photos = SUPPORTED_LABELS.map((label) => SPECIES[label].photo)
+    // A duplicate would put one species' fish on another species' card.
+    expect(new Set(photos).size).toBe(photos.length)
+  })
+
+  it('falls back to open water for a species it does not know', () => {
     render(<SpeciesArt label="ikan_baru" />)
+    // Never another species' fish: an unrecognised label with a confident-looking
+    // photograph of the wrong fish is worse than no photograph.
     expect(screen.getByRole('img', { name: 'Ilustrasi ikan_baru' })).toBeInTheDocument()
   })
 
@@ -19,23 +28,15 @@ describe('SpeciesArt', () => {
     // caller's by stylesheet order, so `absolute inset-0` goes inert and the
     // box collapses to zero height with every child absolutely positioned.
     render(<SpeciesArt label="tuna" className="absolute inset-0" />)
-    const root = screen.getByRole('img', { name: 'Ilustrasi Tuna' })
+    const root = screen.getByRole('img', { name: 'Foto Tuna' })
     expect(root.className).toContain('absolute inset-0')
     expect(root.className).not.toMatch(/(^|\s)relative(\s|$)/)
   })
 
-  it('gives the strata a positioned box of their own', () => {
+  it('gives the image a positioned box of its own', () => {
     render(<SpeciesArt label="tuna" className="absolute inset-0" />)
-    const inner = screen.getByRole('img', { name: 'Ilustrasi Tuna' }).firstElementChild!
+    const inner = screen.getByRole('img', { name: 'Foto Tuna' }).firstElementChild!
     expect(inner.className).toContain('relative')
     expect(inner.className).toContain('size-full')
-  })
-
-  it('is stable for a given species and different across species', () => {
-    const { container: a } = render(<SpeciesArt label="tuna" />)
-    const { container: b } = render(<SpeciesArt label="tuna" />)
-    const { container: c } = render(<SpeciesArt label="kembung" />)
-    expect(a.innerHTML).toBe(b.innerHTML)
-    expect(a.innerHTML).not.toBe(c.innerHTML)
   })
 })

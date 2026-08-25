@@ -281,24 +281,6 @@
   }
 }
 
-/* Marine snow drifts up as the camera sinks. Transform only. */
-@keyframes marine-snow {
-  from {
-    transform: translateY(0);
-    opacity: 0;
-  }
-  12% {
-    opacity: 1;
-  }
-  88% {
-    opacity: 1;
-  }
-  to {
-    transform: translateY(-70vh);
-    opacity: 0;
-  }
-}
-
 /* In-page anchors glide rather than jump. The reduced-motion backstop at the
    bottom of this file forces `scroll-behavior: auto`, so this stays opt-out. */
 html {
