@@ -137,8 +137,10 @@ API key for generated knowledge cards:
 cp .env.example .env
 ```
 
-Without `OPENCODE_GO_API_KEY` everything still starts, and identification and verification work
-normally; only knowledge card generation fails, with a `502`.
+Generation runs through sub2api, so the key that matters is `FISHORA_SUB2API_API_KEY`; the
+`FISHORA_OPENCODE_GO_*` variables are legacy and commented out in `.env.example`. Without a key
+everything still starts, and identification and verification work normally; only knowledge card
+generation fails, with a `502`.
 
 Never commit `.env` or API keys.
 
@@ -164,30 +166,79 @@ Two preconditions are worth checking before blaming the code:
   all, so any flow that needs AI identification has to go through `POST /api/v1/fish/manual`
   instead. Verification, publication, bidding, and knowledge snapshots are unaffected.
 
-### Seeding a database you can actually click through
+### From a fresh clone to a clickable app
 
-`artifacts/` is gitignored, so a fresh clone has no taxonomy CSV and no lots. Two scripts get you to
-a working marketplace without the real dataset:
+`artifacts/` and `ai/results/` are gitignored, so a fresh clone has no taxonomy CSV, no model
+export, and no lots. This sequence gets you a working marketplace without either. Run it from the
+repository root.
+
+Pick the interpreter once. The venv layout differs by platform, so everything below uses `$PY`:
 
 ```bash
-python -m scripts.make_synthetic_taxonomy   # writes the 11 supported labels
-python -m scripts.seed_taxonomy             # loads them into fish_species
-python -m scripts.seed_demo_lots            # landing points, live auctions, one allocated lot
+# Windows (Git Bash / MSYS)
+PY=.venv/Scripts/python.exe
+# macOS and Linux
+PY=.venv/bin/python
 ```
+
+Every command that touches the database needs the connection string, and it has no default:
+
+```bash
+export FISHORA_DATABASE_URL=postgresql+psycopg://fishora:fishora@localhost:55432/fishora
+```
+
+Then:
+
+```bash
+docker compose up -d db                        # PostgreSQL 16 + pgvector on :55432
+"$PY" -m alembic upgrade head                  # schema, through 0005
+"$PY" -m scripts.make_synthetic_taxonomy       # writes the 11 supported labels
+"$PY" -m scripts.seed_taxonomy                 # loads them into fish_species
+"$PY" -m scripts.seed_demo_lots --reset        # landing points, live auctions, one allocated lot
+```
+
+Start the two services in separate terminals. Both need `FISHORA_DATABASE_URL` exported, and
+neither runs with `--reload`, so restart the API after changing backend code:
+
+```bash
+# Terminal 1: the API
+"$PY" -m uvicorn apps.main_api.main:app --host 0.0.0.0 --port 8000
+
+# Terminal 2: the frontend
+cd apps/frontend && pnpm install && pnpm dev --port 3111
+```
+
+Open `http://localhost:3111`. Sign in at `/account`: the picker offers **Rian Setiawan** (operator)
+and **Dewi Anggraini** (buyer), both with password `demo`, which the form fills for you.
+
+The CV service is deliberately absent from that sequence: it needs PyTorch and a model export.
+Without it, identification returns 503 and the operator flow falls back to picking the species by
+hand, which is a first-class path rather than a workaround. Everything downstream, verification,
+publication, bidding, knowledge snapshots and the QR page, is unaffected.
 
 `make_synthetic_taxonomy` stamps every row `synthetic-dev-fixture` and refuses to overwrite a file
 that does not look synthetic, so restoring the real dataset later is safe. `seed_demo_lots` writes
 `demo_`-prefixed rows only, attaches an illustrative knowledge card to each lot so the knowledge
 panel and buyer matching have something to work on, and allocates one Nila lot to `buyer_dewi` so
-the review flow is reachable. It also deletes rows the pytest suite leaves behind when it is pointed
-at a development database rather than a throwaway one.
+the review flow is reachable.
 
-`seed_demo_lots --reset` clears every lot first, including ones published by hand and the one the
-PRD walkthrough publishes on each `playwright test` run. Without it a development database collects
-another allocated Tenggiri every time the e2e suite runs.
+`--reset` clears every lot first, including ones published by hand and the one the PRD walkthrough
+publishes on each `playwright test` run. Without it a development database collects another
+allocated Tenggiri every time the e2e suite runs.
 
 None of these values are authoritative. Replace them with the real dataset before publishing any
 claim about a species.
+
+### Or start everything at once
+
+```bash
+FISHORA_FRONTEND_PORT=3111 bash scripts/run_local.sh
+```
+
+The script verifies CUDA, starts PostgreSQL, applies migrations, seeds taxonomy, then launches the
+CV service, the API and the frontend, printing the resolved URLs, the API base compiled into the
+browser bundle, and the CORS allow-list, so a mismatch is visible before you open a browser. It
+needs the CV stack installed; use the manual sequence above if torch is missing.
 
 Demo logins are `rian` / `demo` (operator) and `dewi` / `demo` (buyer).
 
@@ -264,45 +315,53 @@ Then open `http://localhost:3111`.
 
 ## Run Tests
 
+> **The test suites are not tracked in git.** `tests/`, every `*.test.ts(x)`, `apps/frontend/e2e/`,
+> `playwright.config.ts` and `vitest.config.ts` are gitignored, so a fresh clone has none of them and
+> the commands below find nothing to run. They work on a checkout that already has them on disk.
+
+Same `$PY` and `FISHORA_DATABASE_URL` as above.
+
 ### Backend
 
-Tests that need neither PostgreSQL nor real model artifacts:
-
 ```bash
-.venv/bin/python -m pytest -m "not integration and not real_artifact" -q
+"$PY" -m pytest tests -q
 ```
 
-Integration tests, which need the database and migrations:
+Expect **300 passed, 4 failed, 6 skipped**. The four failures are all
+`tests/main_api/test_embeddings.py` raising `ModuleNotFoundError: No module named 'numpy'`: the torch
+and sentence-transformers stack is not installed in this venv. They are environmental, not product
+failures. Anything else failing is a real regression.
+
+Subsets, when the database is not up:
 
 ```bash
-docker compose up -d db
-export FISHORA_DATABASE_URL=postgresql+psycopg://fishora:fishora@localhost:55432/fishora
-.venv/bin/alembic upgrade head
-.venv/bin/python -m pytest -m integration -q
+"$PY" -m pytest -m "not integration and not real_artifact" -q
 ```
-
-The API suite on its own:
-
-```bash
-.venv/bin/python -m pytest tests/main_api -q
-```
-
-It passes except `tests/main_api/test_embeddings.py` and `tests/main_api/test_corpus.py`. Four of
-those failures are `ModuleNotFoundError: No module named 'numpy'`, that is, the torch and
-sentence-transformers stack is simply not installed in this venv. The remaining thirteen are the
-corpus approval manifest reporting `approval manifest signature mismatch or approved files were
-altered`: `approve_candidates` hashes the record text it holds in memory while `write_text`
-translates newlines on Windows, so the file read back hashes differently. Neither group blocks the
-product paths.
 
 ### Frontend
 
 ```bash
 cd apps/frontend
-pnpm test     # Vitest unit and component tests: 28 files, 111 tests, green
-pnpm lint     # 0 errors, 1 warning (an <img> in marketplace-view.test.tsx)
-pnpm build    # type check plus production build, green
+pnpm test     # Vitest: 35 files, 183 tests
+pnpm lint     # 0 errors, 0 warnings
+pnpm build    # type check plus production build
 ```
+
+### End to end
+
+Playwright drives a real browser against the running stack, so start the API and the frontend first.
+Three viewport projects run: `phone` (Pixel 7), `phone-390` (the narrowest width DESIGN.md commits
+to) and `desktop`.
+
+```bash
+cd apps/frontend
+npx playwright test                      # 94 passed, 14 skipped
+npx playwright test --project=phone-390  # the narrowest layout alone
+```
+
+The skips are honest: the PRD walkthrough runs on one project rather than three because it publishes
+real rows, and the identification specs skip when the CV service is unreachable. `mvp.spec.ts` is
+the eleven-step PRD 27 walkthrough and does exercise the live backend end to end.
 
 ## Troubleshooting
 
@@ -316,7 +375,7 @@ pnpm build    # type check plus production build, green
 | `Missing .venv` | No virtualenv found at `.venv`. The script accepts both `bin/` (POSIX) and `Scripts/` (Windows) layouts |
 | `/health` reports `taxonomy_seeded: false` | The species table is empty. `scripts/seed_taxonomy` needs `artifacts/Dataset/fishora_dataset/metadata/taxonomy.csv` |
 | Identification returns 503 | The CV service is down or was never started (no torch). Use `POST /api/v1/fish/manual` to keep publishing |
-| Knowledge card returns 502 | `OPENCODE_GO_API_KEY` is blank or generation is unreachable. Identification and verification are unaffected |
+| Knowledge card returns 502 | The LLM transport is unreachable. Generation now goes through sub2api (`FISHORA_SUB2API_BASE_URL`, `FISHORA_SUB2API_API_KEY`); the OpenCode Go variables are legacy. Identification and verification are unaffected |
 | Knowledge card returns 409 | The prediction is still `pending`. Verify the species first |
 | `EADDRINUSE` on startup | A previous run is still bound. Override the port, or stop the old process |
 | Frontend loads but every request fails | Check the `API base` line the run script prints. It is compiled into the browser bundle, so it must be reachable *from the browser*, never an internal hostname |
@@ -332,6 +391,6 @@ apps/
 ai/training/      PRD.md, the product requirements document
 docs/plans/       Implementation plans
 scripts/          run_local.sh, taxonomy seeding, corpus pipeline
-tests/            pytest suites: unit, main_api, cv_service, integration
+tests/            pytest suites: unit, main_api, cv_service, integration (untracked)
 DESIGN.md         Design system, component specs, mobile-first mandate
 ```
