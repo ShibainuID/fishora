@@ -729,6 +729,46 @@ def test_committed_corpus_has_no_synthetic_approval_and_covers_all_labels():
     ), "JBAU source must use the canonical title"
 
 
+def test_candidate_corpus_adds_only_directly_supported_prd_gaps():
+    from apps.main_api.services.corpus import CandidateRecord
+
+    candidates_dir = Path(__file__).resolve().parents[2] / "artifacts/knowledge_sources/candidates"
+    records = {
+        path.stem: CandidateRecord.model_validate(json.loads(path.read_text(encoding="utf-8")))
+        for path in candidates_dir.glob("*.json")
+    }
+    assert {
+        "chunk_bandeng_taste_001",
+        "chunk_senangin_processing_001",
+        "chunk_gulamah_physical_001",
+        "chunk_gulamah_commercial_001",
+        "chunk_gulamah_commercial_002",
+        "chunk_gelama_bunga_taste_001",
+        "chunk_gelama_bunga_processing_001",
+        "chunk_mujair_physical_001",
+        "chunk_mujair_commercial_001",
+        "chunk_nila_processing_001",
+        "chunk_tuna_physical_001",
+        "chunk_tuna_taste_001",
+        "chunk_tuna_processing_001",
+        "chunk_tuna_processing_002",
+        "chunk_tenggiri_physical_001",
+        "chunk_tenggiri_commercial_001",
+    } <= records.keys()
+    assert len(records) == 49
+    assert all(record.chunk.category != "substitutes" for record in records.values())
+
+    stage_records = []
+    stage_dir = Path(__file__).resolve().parents[2] / "artifacts/knowledge_sources/offline"
+    for stage in ("research", "fact_extraction", "verification", "knowledge_editor"):
+        payload = json.loads((stage_dir / f"{stage}.json").read_text(encoding="utf-8"))
+        stage_records.append([
+            {key: value for key, value in record.items() if key != "stage"}
+            for record in payload["records"]
+        ])
+    assert stage_records.count(stage_records[0]) == 4
+
+
 # --- require_approved_manifest --------------------------------------------
 
 

@@ -1,0 +1,22 @@
+{
+  "claim_id": "claim_gelama_bunga_taste_001",
+  "chunk": {
+    "id": "chunk_gelama_bunga_taste_001",
+    "species_label": "gelama_bunga",
+    "source_id": "jipsp_6_12_7801",
+    "category": "taste_texture",
+    "content": "Sausage made from 100% Nibea albiflora received a reported texture score of 5.00 and taste score of 5.40; this describes the processed sausage.",
+    "source_quote": "Sosis ikan gulamah 100% menghasilkan kenampakan (5,17%), aroma dan tekstur (5,00%), dan rasa (5,40%) dengan protein sebesar (6,67%)",
+    "stage": "knowledge_editor",
+    "verification_status": "candidate"
+  },
+  "source": {
+    "id": "jipsp_6_12_7801",
+    "title": "Karakteristik Nilai Gizi dan Mutu Sensori Sosis Ikan Gulamah (Nibea albiflora) dengan Penambahan Daging Ayam",
+    "source_type": "journal_article",
+    "url": "https://doi.org/10.20956/jipsp.v6i12.7801",
+    "publisher": "Jurnal IPTEKS Pemanfaatan Sumberdaya Perikanan, Universitas Hasanuddin",
+    "reviewed_at": null,
+    "verification_status": "candidate"
+  }
+}
