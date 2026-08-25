@@ -99,14 +99,20 @@ Create one virtual environment and install CUDA-enabled PyTorch before installin
 
 ```bash
 python3.11 -m venv .venv
-.venv/bin/pip install --upgrade pip
-.venv/bin/pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
-.venv/bin/pip install -e '.[cv,dev]'
+
+# The venv layout differs by platform. Set this once and reuse it everywhere below.
+PY=.venv/Scripts/python.exe   # Windows (Git Bash / MSYS)
+PY=.venv/bin/python           # macOS and Linux
+
+"$PY" -m pip install --upgrade pip
+"$PY" -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+"$PY" -m pip install -e '.[cv,dev]'
 ```
 
-On Windows, the interpreter lives in `.venv/Scripts/` rather than `.venv/bin/`. Substitute
-`.venv/Scripts/python.exe -m pip` for `.venv/bin/pip` throughout. `run_local.sh` detects either
-layout on its own, so the run command below is the same either way.
+`run_local.sh` detects either layout on its own, so the run command below is the same either way.
+
+The torch line is only needed for the CV service. Skip it to run everything else; identification
+then returns 503 and the operator picks the species by hand.
 
 Verify that PyTorch can access the GPU:
 
