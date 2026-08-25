@@ -20,3 +20,7 @@ __pycache__/
 /apps/frontend/vitest.setup.ts
 /apps/frontend/test-results/
 /apps/frontend/playwright-report/
+
+# Uploaded catch photographs (FISHORA_IMAGE_STORAGE_DIR). Operator content, and
+# in production real photographs from a landing point. Never tracked.
+/data/
