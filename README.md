@@ -5,9 +5,115 @@ classifier identifies a landed fish, a human confirms or corrects it, and retrie
 generation turns the verified species into a grounded, source-cited commercial knowledge card in
 Bahasa Indonesia.
 
-The local runtime starts PostgreSQL in Docker and runs the CV service, the API, and the web frontend
-from one command. Only the database is containerised: the CV service needs direct GPU access, so the
-Python services run on the host.
+The local runtime starts PostgreSQL in Docker and runs the CV service, the API and the web frontend
+on the host. Only the database is containerised, so the CV service can reach a GPU directly when one
+is available; it also runs on CPU at roughly a second per image, which is enough to demonstrate the
+whole flow.
+
+**Running this for the first time? Start with [Quick start](#quick-start).**
+
+## Quick start
+
+Everything below is copy-paste from the repository root. It assumes Python 3.11+, Node 20.9+ with
+pnpm, and Docker. No GPU, no API key and no dataset are needed to get a working app.
+
+**1. Pick the interpreter.** The venv layout differs by platform, so the rest of this guide uses
+`$PY`:
+
+```bash
+python -m venv .venv
+PY=.venv/Scripts/python.exe   # Windows (Git Bash / MSYS)
+PY=.venv/bin/python           # macOS and Linux
+"$PY" -m pip install --upgrade pip
+"$PY" -m pip install -e .
+```
+
+**2. Point at the database.** It has no default, and every command below needs it:
+
+```bash
+export FISHORA_DATABASE_URL=postgresql+psycopg://fishora:fishora@localhost:55432/fishora
+```
+
+**3. Create the schema and seed something to click through.** `artifacts/` is gitignored, so a fresh
+clone has no taxonomy and no lots; these scripts stand in for the real dataset:
+
+```bash
+docker compose up -d db
+"$PY" -m alembic upgrade head
+"$PY" -m scripts.make_synthetic_taxonomy
+"$PY" -m scripts.seed_taxonomy
+"$PY" -m scripts.seed_demo_lots --reset
+```
+
+**4. Start the API** (leave it running):
+
+```bash
+"$PY" -m uvicorn apps.main_api.main:app --host 0.0.0.0 --port 8000
+```
+
+**5. Start the frontend** in a second terminal:
+
+```bash
+cd apps/frontend && pnpm install && pnpm dev --port 3111
+```
+
+Open **http://localhost:3111**.
+
+### Signing in
+
+Go to `/account` and pick an account from the dropdown. Both use the password `demo`, which the form
+fills for you:
+
+| Account | Role | What it can do |
+| --- | --- | --- |
+| Rian Setiawan | Operator | Photograph a catch, confirm the species, publish a lot, close and allocate an auction, print the QR card |
+| Dewi Anggraini | Buyer | Browse the marketplace, set a buyer profile, bid by the kilogram, review a species after winning |
+
+### A five-minute tour
+
+1. **`/`** the landing page: the scroll descent, then the flow, then what a QR card carries.
+2. **`/marketplace`** as Dewi: eleven species with real catch photography, filters by species, price
+   and volume.
+3. **`/marketplace/demo_lot_1`**: the knowledge panel, the market-signal reviews, and a bid bar.
+4. **`/preferences`**: set a buyer profile and watch the match count move before you save.
+5. **`/operator`** as Rian: the four-step publish flow.
+6. **`/operator/lots`** as Rian: close an auction, allocate it, then **Buat QR** for the printable
+   3:4 card.
+7. **`/discover/demo_tenggiri-l-1`**: the public page a shopper reaches by scanning that card. No
+   auth, no commercial data.
+
+### Optional: AI species identification
+
+The classifier needs the model export and two extra packages. It runs on CPU:
+
+```bash
+"$PY" -m pip install torch timm
+FISHORA_CV_DEVICE=cpu "$PY" -m uvicorn apps.cv_service.main:app --host 0.0.0.0 --port 8001
+```
+
+With it running, `/operator` identifies a photograph instead of asking for the species. Note that the
+shipped export has `abstain_threshold: 0.0`, so the API reports
+`low_confidence_human_verification_required` for every prediction however high the score, and the
+operator always confirms explicitly. That is the intended human-in-the-loop gate, not a fault.
+
+### Optional: knowledge cards
+
+Generated cards need three things, in this order:
+
+1. `OPENCODE_GO_API_KEY` in `.env`.
+2. The embedding stack: `"$PY" -m pip install numpy sentence-transformers langchain-huggingface torch`.
+3. The E5 weights in the local Hugging Face cache. The embedder is constructed with
+   `local_files_only=True` so a request never triggers a download, which means fetching it once, on
+   purpose:
+
+```bash
+"$PY" -c "from huggingface_hub import snapshot_download; snapshot_download('intfloat/multilingual-e5-base')"
+```
+
+Miss any of those and the endpoint answers `502 knowledge retrieval is temporarily unavailable`.
+Even with all three, cards come back empty with the limitation `Informasi belum tersedia` until an
+approved corpus is ingested: generation is fail-closed and will not assert anything it cannot cite.
+That approval requires a human attestation and is deliberately not automated.
 
 ## System at a Glance
 
@@ -83,13 +189,24 @@ returns `409` by design: an AI guess must not become a public commercial record.
 
 ## Prerequisites
 
-- Python 3.11
+Required:
+
+- Python 3.11 or newer
 - Node.js 20.9 or newer (22.x recommended) and pnpm 10
 - Docker with Docker Compose
-- An NVIDIA GPU with a CUDA-compatible driver
-- A model export containing `model_state_dict.pt`, `inference_config.json`, and `inference.py`
 
-The default model export path is `ai/results/fishora_dinov3_large_frozen/export`.
+Optional, and only for AI species identification:
+
+- A model export containing `model_state_dict.pt`, `inference_config.json` and `inference.py`. The
+  default path is `ai/results/fishora_dinov3_large_frozen/export`.
+- An NVIDIA GPU with a CUDA driver. Not required: the classifier runs on CPU at about a second per
+  image. Without the export at all, the operator names the species by hand, which is a designed path
+  rather than a workaround, and nothing downstream is affected.
+
+Optional, and only for generated knowledge cards:
+
+- `OPENCODE_GO_API_KEY` in `.env`, plus the embedding model cached locally. See
+  [Knowledge cards](#knowledge-cards).
 
 ## Setup
 
@@ -190,68 +307,9 @@ Two preconditions are worth checking before blaming the code:
   all, so any flow that needs AI identification has to go through `POST /api/v1/fish/manual`
   instead. Verification, publication, bidding, and knowledge snapshots are unaffected.
 
-### From a fresh clone to a clickable app
+### What the seed scripts do
 
-`artifacts/` and `ai/results/` are gitignored, so a fresh clone has no taxonomy CSV, no model
-export, and no lots. This sequence gets you a working marketplace without either. Run it from the
-repository root.
-
-Pick the interpreter once. The venv layout differs by platform, so everything below uses `$PY`:
-
-```bash
-# Windows (Git Bash / MSYS)
-PY=.venv/Scripts/python.exe
-# macOS and Linux
-PY=.venv/bin/python
-```
-
-Every command that touches the database needs the connection string, and it has no default:
-
-```bash
-export FISHORA_DATABASE_URL=postgresql+psycopg://fishora:fishora@localhost:55432/fishora
-```
-
-Then:
-
-```bash
-docker compose up -d db                        # PostgreSQL 16 + pgvector on :55432
-"$PY" -m alembic upgrade head                  # schema, through 0005
-"$PY" -m scripts.make_synthetic_taxonomy       # writes the 11 supported labels
-"$PY" -m scripts.seed_taxonomy                 # loads them into fish_species
-"$PY" -m scripts.seed_demo_lots --reset        # landing points, live auctions, one allocated lot
-```
-
-Start the two services in separate terminals. Both need `FISHORA_DATABASE_URL` exported, and
-neither runs with `--reload`, so restart the API after changing backend code:
-
-```bash
-# Terminal 1: the API
-"$PY" -m uvicorn apps.main_api.main:app --host 0.0.0.0 --port 8000
-
-# Terminal 2: the frontend
-cd apps/frontend && pnpm install && pnpm dev --port 3111
-```
-
-Open `http://localhost:3111`. Sign in at `/account`: the picker offers **Rian Setiawan** (operator)
-and **Dewi Anggraini** (buyer), both with password `demo`, which the form fills for you.
-
-To run identification as well, add the CV service. It needs `torch` and `timm` plus the model export
-in `FISHORA_CV_EXPORT_DIR`, and it runs on CPU if that is all you have:
-
-```bash
-"$PY" -m pip install timm
-FISHORA_CV_DEVICE=cpu "$PY" -m uvicorn apps.cv_service.main:app --host 0.0.0.0 --port 8001
-```
-
-CPU inference takes about a second per image, which is fine for a demo. Without the service,
-identification returns 503 and the operator names the species by hand, which is a first-class path
-rather than a workaround. Everything downstream, verification, publication, bidding, knowledge
-snapshots and the QR page, is unaffected either way.
-
-Note that the shipped export has `abstain_threshold: 0.0`, so the API reports
-`low_confidence_human_verification_required` for every prediction however high the score. The
-operator therefore always picks the species explicitly. That is the intended gate, not a fault; see
-the CV confidence note in `apps/frontend/HANDOFF.md` section 9.
+The command sequence lives in [Quick start](#quick-start); this is what those three scripts are for.
 
 `make_synthetic_taxonomy` stamps every row `synthetic-dev-fixture` and refuses to overwrite a file
 that does not look synthetic, so restoring the real dataset later is safe. `seed_demo_lots` writes
@@ -426,8 +484,10 @@ apps/
   cv_service/     FastAPI: DINOv3 inference
   common/         Shared image validation
 ai/training/      PRD.md, the product requirements document
-docs/plans/       Implementation plans
-scripts/          run_local.sh, taxonomy seeding, corpus pipeline
-tests/            pytest suites: unit, main_api, cv_service, integration (untracked)
-DESIGN.md         Design system, component specs, mobile-first mandate
+alembic/          Schema migrations
+scripts/          run_local.sh, taxonomy and demo seeding, corpus pipeline
+artifacts/        Knowledge corpus and model export (gitignored)
+
+Not tracked, present only in a working checkout: the test suites (tests/, *.test.tsx, e2e/),
+DESIGN.md, and the handoff and planning notes.
 ```

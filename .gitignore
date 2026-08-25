@@ -24,3 +24,15 @@ __pycache__/
 # Uploaded catch photographs (FISHORA_IMAGE_STORAGE_DIR). Operator content, and
 # in production real photographs from a landing point. Never tracked.
 /data/
+
+# Handoff and planning notes. Kept on disk, not tracked.
+/handoff.md
+/apps/frontend/HANDOFF.md
+/docs/plans/
+
+# Agent instruction files. next dev regenerates these on every run.
+/apps/frontend/AGENTS.md
+/apps/frontend/CLAUDE.md
+
+# create-next-app boilerplate; the root README is the real setup guide.
+/apps/frontend/README.md
