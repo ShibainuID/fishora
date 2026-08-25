@@ -227,19 +227,23 @@ class KnowledgeGenerator:
     ``generator`` is an OpenCode client-like object, or a zero-arg factory
     returning one (production laziness: the factory is only invoked when
     evidence exists, so a blank-key client is never built for empty evidence).
+
+    ``empty_card`` and ``build_card`` are public so the multi-agent
+    orchestrator reuses these exact fail-closed invariants instead of
+    reimplementing them (HANDOFF section 9, P0).
     """
 
-    def __init__(self, generator):
+    def __init__(self, generator=None):
         self._generator = generator
 
     def generate(self, species: SpeciesRecord, evidence: list[RetrievedChunk]) -> KnowledgeCard:
         if not evidence:
-            return self._empty_card(species)
+            return self.empty_card(species)
         client = self._generator() if callable(self._generator) else self._generator
         generated = client.generate(SYSTEM_PROMPT, evidence, species)
-        return self._build_card(species, evidence, generated)
+        return self.build_card(species, evidence, generated)
 
-    def _empty_card(self, species: SpeciesRecord) -> KnowledgeCard:
+    def empty_card(self, species: SpeciesRecord) -> KnowledgeCard:
         common_name, scientific_name, taxonomy_status, limitations = _relational_identity(species)
         return KnowledgeCard(
             common_name=common_name,
@@ -256,7 +260,7 @@ class KnowledgeGenerator:
             sources=[],
         )
 
-    def _build_card(
+    def build_card(
         self,
         species: SpeciesRecord,
         evidence: list[RetrievedChunk],

@@ -32,6 +32,21 @@ export function percent(fraction: number): string {
   return `${Math.round(fraction * 100)}%`
 }
 
+// The market runs on WIB, and an unpinned zone renders one string on the
+// server and another in the browser, which React reports as a hydration error.
+const stamp = new Intl.DateTimeFormat('id-ID', {
+  day: 'numeric',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'Asia/Jakarta',
+})
+
+/** An ISO instant -> `24 Agu, 17.15` in WIB. */
+export function dateTime(iso: string): string {
+  return stamp.format(new Date(iso))
+}
+
 export type ConfidenceBand = 'high' | 'medium' | 'low'
 
 export function confidenceBand(fraction: number): ConfidenceBand {

@@ -4,7 +4,9 @@ import { useState } from 'react'
 import { Button } from '@/components/common/button'
 import { Sheet } from '@/components/common/sheet'
 import { QrSheet } from '@/components/qr/qr-sheet'
-import { allocateLot, closeLot } from '@/lib/api/commerce'
+import { BidHistory } from '@/components/lot/bid-history'
+import { Skeleton } from '@/components/common/skeleton'
+import { allocateLot, closeLot, listBids, type Bid } from '@/lib/api/commerce'
 import { rupiahPerKg } from '@/lib/format'
 import { resolveSpecies } from '@/lib/species'
 import type { components } from '@/lib/api/schema'
@@ -23,8 +25,22 @@ export function OperatorLots({ lots }: { lots: Lot[] }) {
   const [items, setItems] = useState(lots)
   const [pending, setPending] = useState<Pending | null>(null)
   const [qr, setQr] = useState<Lot | null>(null)
+  const [monitored, setMonitored] = useState<Lot | null>(null)
+  const [bids, setBids] = useState<Bid[] | null>(null)
   const closing = pending?.kind === 'close'
   const allocating = pending?.kind === 'allocate'
+
+  // On demand, one lot at a time: this page lists many lots and most of their
+  // histories are never opened.
+  const openBids = async (lot: Lot) => {
+    setMonitored(lot)
+    setBids(null)
+    try {
+      setBids(await listBids(lot.id))
+    } catch {
+      setBids([])
+    }
+  }
 
   return (
     <>
@@ -50,6 +66,9 @@ export function OperatorLots({ lots }: { lots: Lot[] }) {
                   Allocate to winning bidder
                 </Button>
               )}
+              <Button type="button" variant="secondary" onClick={() => openBids(lot)}>
+                Lihat penawaran
+              </Button>
               {/* Available at every status, not only once allocated. The QR
                   points at the public page for the lot, which an operator has
                   reason to show a buyer while the auction is still running. */}
@@ -98,6 +117,20 @@ export function OperatorLots({ lots }: { lots: Lot[] }) {
           <p className="text-body text-ink">
             Alokasikan ke Dewi Anggraini sebesar {rupiahPerKg(Number(pending.lot.current_highest_per_kg ?? pending.lot.starting_price_per_kg))}?
           </p>
+        )}
+      </Sheet>
+      <Sheet
+        open={Boolean(monitored)}
+        onClose={() => setMonitored(null)}
+        title="Riwayat penawaran"
+      >
+        {bids === null ? (
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        ) : (
+          <BidHistory bids={bids} />
         )}
       </Sheet>
       {qr && (

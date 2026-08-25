@@ -249,11 +249,12 @@ export function MarketplaceView({
           />
         ) : (
           <div className="grid grid-cols-1 gap-4 px-4 sm:grid-cols-2 lg:px-0 xl:grid-cols-3">
-            {visible.map((lot) => (
+            {visible.map((lot, index) => (
               <Link key={lot.id} href={`/marketplace/${lot.id}`}>
                 <LotCard
                   lot={lot}
                   matchPercent={showMatched ? matchScores[lot.id] : undefined}
+                  priority={index === 0}
                 />
               </Link>
             ))}

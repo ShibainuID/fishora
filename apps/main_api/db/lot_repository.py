@@ -6,11 +6,18 @@ from typing import Callable
 from uuid import uuid4
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from apps.main_api.contracts import BidRecord, LandingPointRecord, LotRecord
 from apps.main_api.db.models import Bid, LandingPoint, Lot
-from apps.main_api.errors import BidOutbid, LotClosed, LotNotAllocatable, LotNotFound
+from apps.main_api.errors import (
+    BidOutbid,
+    LotAlreadyPublished,
+    LotClosed,
+    LotNotAllocatable,
+    LotNotFound,
+)
 
 
 class SqlLotRepository:
@@ -37,7 +44,15 @@ class SqlLotRepository:
         )
         with self._session_factory() as session:
             session.add(row)
-            session.commit()
+            try:
+                session.commit()
+            except IntegrityError as exc:
+                # The service pre-checks, so reaching here means two publishes
+                # raced. Same domain error either way, never a 500.
+                session.rollback()
+                if "uq_lots_prediction_id" not in str(exc.orig):
+                    raise
+                raise LotAlreadyPublished(lot.prediction_id) from exc
         return lot
 
     def get(self, lot_id: str) -> LotRecord | None:
@@ -47,6 +62,11 @@ class SqlLotRepository:
     def get_by_slug(self, public_slug: str) -> LotRecord | None:
         with self._session_factory() as session:
             row = session.scalar(select(Lot).where(Lot.public_slug == public_slug))
+            return self._to_lot(row)
+
+    def get_by_prediction(self, prediction_id: str) -> LotRecord | None:
+        with self._session_factory() as session:
+            row = session.scalar(select(Lot).where(Lot.prediction_id == prediction_id))
             return self._to_lot(row)
 
     def all(self) -> list[LotRecord]:

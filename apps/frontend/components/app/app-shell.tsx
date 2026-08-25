@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Fish, SquaresFour, Star, User, Sliders } from '@phosphor-icons/react/dist/ssr'
+import { Logo } from '@/components/common/logo'
 import { ThemeToggle } from '@/components/common/theme-toggle'
 import { Z } from '@/lib/z'
 
@@ -73,7 +74,7 @@ export function AppShell({
         <div className="mx-auto flex h-14 w-full max-w-[1200px] items-center justify-between gap-4 px-4 lg:px-8">
           {/* The wordmark is the way back to the marketing site. */}
           <Link href="/" className="text-h3 flex min-h-11 items-center text-ink">
-            Fishora
+            <Logo />
           </Link>
 
           {/* The tab bar below is phone-only, so without this the app has no

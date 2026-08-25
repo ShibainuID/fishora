@@ -68,7 +68,7 @@ class IdentificationService:
         return IdentificationResult(
             prediction_id=record.id,
             model_version=envelope.model_version,
-            status=envelope.status,
+            status=_reportable_status(envelope.status, envelope.threshold),
             prediction=prediction,
             top_candidates=top_candidates,
             threshold=envelope.threshold,
@@ -80,3 +80,17 @@ class IdentificationService:
         if species is None:
             raise UnsupportedCvLabel(label)
         return SpeciesCandidate(species_id=species.id, normalized_label=species.normalized_label, confidence=confidence)
+
+
+def _reportable_status(status: str, threshold: float) -> str:
+    """Downgrade confidence the model was never in a position to claim.
+
+    A threshold of zero accepts every candidate, so `confident_prediction` under
+    it carries no information: a plain grey image scored about 0.99 against the
+    shipped export. Repeating that verdict would tell an operator the model is
+    sure when it has not been asked a question it could fail. The threshold and
+    the confidences are still reported exactly as measured.
+    """
+    if threshold <= 0.0:
+        return "low_confidence_human_verification_required"
+    return status

@@ -86,6 +86,18 @@ class LotNotFound(Exception):
         self.lot_id = lot_id
 
 
+class LotAlreadyPublished(Exception):
+    """A lot already exists for this prediction. Maps to HTTP 409.
+
+    HANDOFF 11 models Prediction 1 -> 0..1 AuctionLot: one landed catch is one
+    auction, so republishing must be refused rather than double-listing it.
+    """
+
+    def __init__(self, prediction_id: str):
+        super().__init__(f"prediction {prediction_id!r} already has a published lot")
+        self.prediction_id = prediction_id
+
+
 class LotClosed(Exception):
     """The auction window is over or the lot is no longer active. Maps to HTTP 409."""
 

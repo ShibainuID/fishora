@@ -10,9 +10,10 @@ import { Field } from '@/components/common/field'
 import { Sheet } from '@/components/common/sheet'
 import { ReviewForm } from '@/components/buyer/review-form'
 import { MatchReasons } from '@/components/lot/match-reasons'
+import { BidHistory } from '@/components/lot/bid-history'
 import { Countdown } from '@/components/lot/countdown'
 import { ApiError } from '@/lib/api/errors'
-import { placeBid, type Review } from '@/lib/api/commerce'
+import { placeBid, type Bid, type Review } from '@/lib/api/commerce'
 import { kilograms, rupiahPerKg } from '@/lib/format'
 import { Z } from '@/lib/z'
 import type { components } from '@/lib/api/schema'
@@ -26,6 +27,7 @@ export function LotDetail({
   card,
   reasons,
   reviews,
+  bids = [],
   canReview = false,
   photoUrl,
 }: {
@@ -33,12 +35,15 @@ export function LotDetail({
   card: KnowledgeCard
   reasons: Reason[]
   reviews: Review[]
+  /** Newest last or first: BidHistory orders them. */
+  bids?: Bid[]
   /** Only the buyer holding the allocation may write one. */
   canReview?: boolean
   /** A real photograph when one exists. Falls back to the species composition. */
   photoUrl?: string
 }) {
   const [posted, setPosted] = useState<Review[]>([])
+  const [placed, setPlaced] = useState<Bid[]>([])
   const [highest, setHighest] = useState(Number(lot.current_highest_per_kg ?? lot.starting_price_per_kg))
   const [amount, setAmount] = useState(String(highest + 1000))
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -58,6 +63,7 @@ export function LotDetail({
     try {
       const bid = await placeBid(lot.id, amount)
       setHighest(Number(bid.amount_per_kg))
+      setPlaced((current) => [bid, ...current])
       setSheetOpen(false)
     } catch (cause) {
       if (cause instanceof ApiError && cause.kind === 'outbid' && cause.currentHighestPerKg) {
@@ -76,11 +82,7 @@ export function LotDetail({
   return (
     <div data-page="lot-detail" className="flex flex-col gap-6 px-4 pb-28 lg:pb-8">
       <SpeciesHeader label={label} verified />
-      {reasons.length > 0 && (
-        <div className="lg:hidden">
-          <MatchReasons reasons={reasons} />
-        </div>
-      )}
+      {reasons.length > 0 && <MatchReasons reasons={reasons} />}
       {photoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- operator upload, arbitrary origin
         <img src={photoUrl} alt="" className="aspect-[4/3] w-full rounded-2xl object-cover" />
@@ -102,6 +104,10 @@ export function LotDetail({
       </dl>
       <KnowledgeCardView card={card} label={label} />
       <MarketSignals reviews={[...posted, ...reviews]} />
+      <section className="flex flex-col gap-3">
+        <h2 className="text-h3 text-ink">Riwayat penawaran</h2>
+        <BidHistory bids={[...placed, ...bids]} />
+      </section>
       {canReview && <ReviewForm lotId={lot.id} onSubmitted={(review) => setPosted((current) => [review, ...current])} />}
 
       <div

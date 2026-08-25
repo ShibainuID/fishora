@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { List, X } from '@phosphor-icons/react/dist/ssr'
+import { Logo } from '@/components/common/logo'
 
 const LINKS = [
   { href: '#platform', label: 'Platform' },
@@ -36,11 +37,8 @@ export function LandingNav() {
   return (
     <header className="sticky top-0 z-40 bg-abyss-950/92 lg:backdrop-blur-xl">
       <div className="mx-auto flex h-[60px] w-full max-w-[1200px] items-center gap-3 px-4 lg:h-[68px] lg:px-8">
-        <Link
-          href="/"
-          className="flex min-h-11 items-center text-[1.0625rem] font-semibold tracking-[-0.02em]"
-        >
-          Fishora<span className="text-accent">.</span>
+        <Link href="/" className="flex min-h-11 items-center text-[1.0625rem]">
+          <Logo />
         </Link>
 
         <nav className="ml-auto hidden items-center gap-1 lg:flex" aria-label="Primary">

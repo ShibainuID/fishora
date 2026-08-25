@@ -141,7 +141,9 @@ def publish_lot(payload: PublishLotRequest, request: Request):
 @router.get("", response_model=list[LotResponse])
 def list_lots(
     request: Request,
-    species_id: str | None = None,
+    species_id: list[str] | None = Query(default=None),
+    intended_use: list[str] | None = Query(default=None),
+    characteristic: list[str] | None = Query(default=None),
     min_price: Decimal | None = None,
     max_price: Decimal | None = None,
     min_quantity: Decimal | None = None,
@@ -152,10 +154,21 @@ def list_lots(
     buyer_lon: float | None = Query(default=None),
     serviceability_radius_km: float | None = Query(default=None),
 ):
+    """HANDOFF Slice C filters.
+
+    `species_id`, `intended_use` and `characteristic` repeat, and repeats are
+    OR: `?intended_use=digoreng&intended_use=fillet` returns lots suited to
+    either. The lists AND with each other and with the range filters. OR
+    mirrors the matching engine, which scores each criterion on set
+    intersection, so the buyer profile preview and the saved recommendation
+    count cannot disagree.
+    """
     service = _service(request)
     operator_id = require_role(request, "operator").id if mine else None
     lots = service.list_lots(
-        species_id=species_id,
+        species_ids=species_id,
+        intended_uses=intended_use,
+        characteristics=characteristic,
         operator_id=operator_id,
         min_price=min_price,
         max_price=max_price,

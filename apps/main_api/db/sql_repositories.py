@@ -21,6 +21,15 @@ class SqlSpeciesRepository:
         with self._session_factory() as session:
             return self._to_record(session.get(FishSpecies, species_id))
 
+    def list_all(self) -> list[SpeciesRecord]:
+        # Ordered by label: an unordered result reshuffles the operator's
+        # species picker between requests.
+        with self._session_factory() as session:
+            rows = session.scalars(
+                select(FishSpecies).order_by(FishSpecies.normalized_label)
+            ).all()
+            return [self._to_record(row) for row in rows]
+
     @staticmethod
     def _to_record(row: FishSpecies | None) -> SpeciesRecord | None:
         if row is None:

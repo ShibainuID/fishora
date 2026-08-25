@@ -96,10 +96,13 @@ class Lot(Base):
         CheckConstraint("auction_ends_at > auction_starts_at", name="ck_lots_auction_window"),
         CheckConstraint("size_category IN ('S', 'M', 'L')", name="ck_lots_size_category"),
         UniqueConstraint("public_slug", name="uq_lots_public_slug"),
+        # HANDOFF 11: Prediction 1 -> 0..1 AuctionLot.
+        UniqueConstraint("prediction_id", name="uq_lots_prediction_id"),
     )
 
     id: Mapped[str] = mapped_column(String(120), primary_key=True)
-    prediction_id: Mapped[str] = mapped_column(ForeignKey("predictions.id"), nullable=False, index=True)
+    # No index=True: uq_lots_prediction_id already indexes this column.
+    prediction_id: Mapped[str] = mapped_column(ForeignKey("predictions.id"), nullable=False)
     operator_id: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
     species_id: Mapped[str] = mapped_column(ForeignKey("fish_species.id"), nullable=False, index=True)
     landing_point_id: Mapped[str] = mapped_column(ForeignKey("landing_points.id"), nullable=False)

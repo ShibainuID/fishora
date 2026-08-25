@@ -66,13 +66,19 @@ async function defaultCountMatches(): Promise<MatchCount> {
  * after made every adjustment a blind guess, and the point of the profile is
  * that a buyer can see what each constraint costs them.
  */
-async function defaultPreview(payload: PreferencePayload): Promise<number> {
+/** GET /lots treats repeated `intended_use` / `characteristic` as OR, matching
+ *  the engine's set intersection, so the preview predicts the saved count. */
+export function previewQuery(payload: PreferencePayload): string {
   const query = new URLSearchParams()
   if (payload.max_price_per_kg) query.set('max_price', payload.max_price_per_kg)
   if (payload.min_quantity_kg) query.set('min_quantity', payload.min_quantity_kg)
   for (const use of payload.intended_uses) query.append('intended_use', use)
   for (const char of payload.characteristics) query.append('characteristic', char)
-  const lots = await listLots(query.toString())
+  return query.toString()
+}
+
+async function defaultPreview(payload: PreferencePayload): Promise<number> {
+  const lots = await listLots(previewQuery(payload))
   return lots.length
 }
 

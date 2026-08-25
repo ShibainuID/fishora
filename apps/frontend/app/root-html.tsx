@@ -30,6 +30,9 @@ export function RootHtml({
     <html
       lang={lang}
       className={`${geistSans.variable} ${geistMono.variable} antialiased ${htmlClassName}`.trim()}
+      // Scopes the smooth scrolling in globals.css to in-page anchors. Without
+      // it Next applies it to route transitions too, which reads as lag.
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <head>

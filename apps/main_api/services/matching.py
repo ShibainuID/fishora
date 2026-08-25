@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from decimal import Decimal
 
@@ -29,17 +30,46 @@ class MatchResult:
     reasons: list[MatchReason]
 
 
-def _fold(values: list[str]) -> set[str]:
+def fold_terms(values: list[str]) -> set[str]:
     return {item.casefold().strip() for item in values if item and item.strip()}
 
 
-def _lot_uses(lot: LotRecord) -> list[str]:
-    snapshot = lot.knowledge_snapshot or {}
-    return list(snapshot.get("commercial_uses") or [])
+_WORD = re.compile(r"[^\W\d_]+", re.UNICODE)
 
 
-def _lot_characteristics(lot: LotRecord) -> list[str]:
+def fold_words(values: list[str]) -> set[str]:
+    """Every word across the values, casefolded.
+
+    A knowledge card states taste and texture as sentences and lists processing
+    methods as short phrases, while a buyer states one word. Comparing the two
+    as whole strings can never intersect, so the comparison is by word.
+    """
+    words: set[str] = set()
+    for value in values:
+        if value:
+            words.update(match.group().casefold() for match in _WORD.finditer(value))
+    return words
+
+
+def lot_uses(lot: LotRecord) -> list[str]:
+    """What the fish can be used for.
+
+    Both fields, because a buyer's answer to "what do you cook or sell" can be
+    either. PRD 8.3.5 reads "Suitable for grilling", a processing method, while
+    `commercial_uses` holds segments like Restoran, so reading only the latter
+    scored a cooking method against a list of customer types.
+    """
     snapshot = lot.knowledge_snapshot or {}
+    return [
+        *(snapshot.get("processing_methods") or []),
+        *(snapshot.get("commercial_uses") or []),
+    ]
+
+
+def lot_characteristics(lot: LotRecord) -> list[str]:
+    snapshot = lot.knowledge_snapshot or {}
+    # `characteristics` is not a KnowledgeCard field; kept only for snapshots
+    # written before the card contract settled.
     values = list(snapshot.get("characteristics") or [])
     for key in ("taste", "texture", "physical_characteristics"):
         raw = snapshot.get(key)
@@ -53,8 +83,8 @@ def match_lot(
     prefs: BuyerPreferenceRecord,
     landing: LandingPointRecord | None,
 ) -> MatchResult:
-    uses_met = bool(_fold(prefs.intended_uses) & _fold(_lot_uses(lot)))
-    chars_met = bool(_fold(prefs.characteristics) & _fold(_lot_characteristics(lot)))
+    uses_met = bool(fold_words(prefs.intended_uses) & fold_words(lot_uses(lot)))
+    chars_met = bool(fold_words(prefs.characteristics) & fold_words(lot_characteristics(lot)))
     price_met = prefs.max_price_per_kg is None or lot.starting_price_per_kg <= prefs.max_price_per_kg
     volume_met = prefs.min_quantity_kg is None or lot.quantity_kg >= prefs.min_quantity_kg
     if landing is None:

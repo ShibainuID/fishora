@@ -58,7 +58,9 @@ export function activeFilterCount(filters: MarketplaceFilters): number {
  *  poll: if these drift, polling replaces filtered results with unfiltered. */
 export function lotApiQuery(filters: MarketplaceFilters): string {
   const params = new URLSearchParams()
-  if (filters.species.length) params.set('species_id', `species_${filters.species[0]}`)
+  // One repeated param per species: sending only the first made the poll ask
+  // for the wrong set, which the client re-filter then hid.
+  for (const label of filters.species) params.append('species_id', `species_${label}`)
   if (filters.minPrice) params.set('min_price', filters.minPrice)
   if (filters.maxPrice) params.set('max_price', filters.maxPrice)
   if (filters.minQuantity) params.set('min_quantity', filters.minQuantity)

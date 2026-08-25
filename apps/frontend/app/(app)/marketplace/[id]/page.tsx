@@ -1,6 +1,14 @@
 import { LotDetail } from '@/components/lot/lot-detail'
-import { getDiscover, getLot, listReviews, type Review } from '@/lib/api/commerce'
-import { getMeAsServer } from '@/lib/api/server'
+import {
+  getDiscover,
+  getLot,
+  listBids,
+  listReviews,
+  type Bid,
+  type MatchReason,
+  type Review,
+} from '@/lib/api/commerce'
+import { getMeAsServer, getRecommendationsAsServer } from '@/lib/api/server'
 import type { KnowledgeCard } from '@/lib/api/fish'
 
 const EMPTY_CARD: KnowledgeCard = {
@@ -40,10 +48,24 @@ export default async function LotPage({
     // A missing signal list must not take the lot page down with it.
   }
 
+  let bids: Bid[] = []
+  try {
+    bids = await listBids(id)
+  } catch {
+    // Same: a lot with an unreadable bid list is still worth reading about.
+  }
+
   let canReview = false
+  // Explainability is per buyer, so it exists only for a signed-in one. An
+  // operator or a visitor gets nothing here rather than an empty panel.
+  let reasons: MatchReason[] = []
   try {
     const me = await getMeAsServer()
     canReview = me.role === 'buyer' && lot.allocated_buyer_id === me.id
+    if (me.role === 'buyer') {
+      const { items } = await getRecommendationsAsServer(me.id)
+      reasons = items.find((item) => item.lot.id === lot.id)?.reasons ?? []
+    }
   } catch {
     // Anonymous or expired session: the list alone, with no form.
   }
@@ -52,8 +74,9 @@ export default async function LotPage({
     <LotDetail
       lot={lot}
       card={card}
-      reasons={[]}
+      reasons={reasons}
       reviews={reviews}
+      bids={bids}
       canReview={canReview}
     />
   )

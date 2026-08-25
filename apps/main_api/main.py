@@ -12,6 +12,7 @@ from apps.main_api.api.fish import knowledge_router, router as fish_router
 from apps.main_api.api.jobs import router as jobs_router
 from apps.main_api.api.lots import router as lots_router
 from apps.main_api.api.reviews import router as reviews_router
+from apps.main_api.api.species import router as species_router
 from apps.main_api.config import DEFAULT_CORS_ALLOW_ORIGINS, MainSettings, parse_origins
 from apps.main_api.db.lot_repository import SqlLandingPointRepository, SqlLotRepository
 from apps.main_api.db.preference_repository import SqlPreferenceRepository
@@ -24,6 +25,7 @@ from apps.main_api.errors import (
     Forbidden,
     InvalidGeneratedKnowledge,
     InvalidLot,
+    LotAlreadyPublished,
     LotClosed,
     LotNotAllocatable,
     LotNotFound,
@@ -72,6 +74,7 @@ def create_main_app(settings: MainSettings | None = None, deps: AppDependencies 
     app.include_router(discover_router)
     app.include_router(reviews_router)
     app.include_router(jobs_router)
+    app.include_router(species_router)
     return app
 
 
@@ -231,6 +234,10 @@ def _register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(LotNotFound)
     async def _lot_not_found(request: Request, exc: LotNotFound):
         return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+    @app.exception_handler(LotAlreadyPublished)
+    async def _lot_already_published(request: Request, exc: LotAlreadyPublished):
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
 
     @app.exception_handler(LotClosed)
     async def _lot_closed(request: Request, exc: LotClosed):

@@ -7,6 +7,7 @@ import { FlowStrip } from '@/components/marketing/flow-strip'
 import { HeroDescent } from '@/components/marketing/hero-descent'
 import { LandingNav } from '@/components/marketing/landing-nav'
 import { SpeciesArt } from '@/components/fish/species-art'
+import { Logo } from '@/components/common/logo'
 import type { components } from '@/lib/api/schema'
 
 type Lot = components['schemas']['LotResponse']
@@ -225,9 +226,7 @@ function SiteFooter() {
     <footer className="border-t border-abyss-900 py-16">
       <div className={`${SHELL} grid gap-10 md:grid-cols-3`}>
         <div>
-          <p className="text-h3">
-            Fishora<span className="text-accent">.</span>
-          </p>
+          <Logo className="text-h3" />
           <p className="text-body-sm mt-3 max-w-[32ch] text-abyss-200">
             Species identification, verified knowledge, and a B2B auction for the catch that has just
             landed.

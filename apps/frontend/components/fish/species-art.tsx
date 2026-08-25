@@ -20,10 +20,13 @@ export function SpeciesArt({
   label,
   className = '',
   sizes = '(max-width: 640px) 100vw, 33vw',
+  priority = false,
 }: {
   label: string
   className?: string
   sizes?: string
+  /** Set on the first card in a grid: it is the LCP element. */
+  priority?: boolean
 }) {
   const species = resolveSpecies(label)
   const known = isSpeciesLabel(label)
@@ -42,6 +45,7 @@ export function SpeciesArt({
           alt=""
           fill
           sizes={sizes}
+          priority={priority}
           className="object-cover"
         />
 

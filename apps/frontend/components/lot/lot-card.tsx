@@ -11,11 +11,13 @@ export interface LotCardProps {
   lot: Lot
   /** A real photograph when one exists. Falls back to the species composition. */
   photoUrl?: string
+  /** Set on the first card in a grid: it is the LCP element. */
+  priority?: boolean
   /** Only passed from the matched view. */
   matchPercent?: number
 }
 
-export function LotCard({ lot, photoUrl, matchPercent }: LotCardProps) {
+export function LotCard({ lot, photoUrl, matchPercent, priority = false }: LotCardProps) {
   const label = lot.species_id.replace('species_', '')
   const names = resolveSpecies(label)
   const live = lot.status === 'active'
@@ -26,7 +28,7 @@ export function LotCard({ lot, photoUrl, matchPercent }: LotCardProps) {
         {photoUrl ? (
           <Image src={photoUrl} alt={names.commonName} fill className="object-cover" sizes="(max-width: 640px) 100vw, 33vw" />
         ) : (
-          <SpeciesArt label={label} className="absolute inset-0" />
+          <SpeciesArt label={label} className="absolute inset-0" priority={priority} />
         )}
       </div>
       <div className="flex flex-col gap-1 px-1">

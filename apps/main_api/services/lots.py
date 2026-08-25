@@ -10,7 +10,14 @@ from decimal import Decimal
 from uuid import uuid4
 
 from apps.main_api.contracts import BidRecord, LotRecord
-from apps.main_api.errors import InvalidLot, LotNotFound, PredictionNotFound, PredictionNotVerified
+from apps.main_api.errors import (
+    InvalidLot,
+    LotAlreadyPublished,
+    LotNotFound,
+    PredictionNotFound,
+    PredictionNotVerified,
+)
+from apps.main_api.services.matching import fold_words, lot_characteristics, lot_uses
 
 DEFAULT_AUCTION_HOURS = 4
 # A lot that never closes cannot be allocated, and one that closes instantly
@@ -63,6 +70,8 @@ class LotService:
             raise InvalidLot("quantity and starting price must be greater than zero")
         if size_category not in _POSITIVE_SIZES:
             raise InvalidLot("size_category must be S, M, or L")
+        if self._lot_repo.get_by_prediction(prediction_id) is not None:
+            raise LotAlreadyPublished(prediction_id)
 
         starts = now or datetime.now(timezone.utc)
         lot_id = uuid4().hex
@@ -112,7 +121,9 @@ class LotService:
     def list_lots(
         self,
         *,
-        species_id: str | None = None,
+        species_ids: list[str] | None = None,
+        intended_uses: list[str] | None = None,
+        characteristics: list[str] | None = None,
         min_price: Decimal | None = None,
         max_price: Decimal | None = None,
         min_quantity: Decimal | None = None,
@@ -124,9 +135,21 @@ class LotService:
         serviceability_radius_km: float | None = None,
     ) -> list[LotRecord]:
         lots = self._lot_repo.all()
+        wanted_species = set(species_ids or ())
+        wanted_uses = fold_words(list(intended_uses or ()))
+        wanted_characteristics = fold_words(list(characteristics or ()))
         filtered = []
         for lot in lots:
-            if species_id and lot.species_id != species_id:
+            if wanted_species and lot.species_id not in wanted_species:
+                continue
+            # OR within a term list, AND across the two lists: the matching
+            # engine scores each criterion on set intersection, and the buyer
+            # preview reads this endpoint to predict that score.
+            if wanted_uses and not wanted_uses & fold_words(lot_uses(lot)):
+                continue
+            if wanted_characteristics and not wanted_characteristics & fold_words(
+                lot_characteristics(lot)
+            ):
                 continue
             if status and lot.status != status:
                 continue
