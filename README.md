@@ -84,7 +84,30 @@ fills for you:
 
 ### Optional: AI species identification
 
-The classifier needs the model export and two extra packages. It runs on CPU:
+The classifier needs the model export and two extra packages. It runs on CPU.
+
+First, download the model export. It is not tracked in git (see `ai/results/` in
+`.gitignore`), so a fresh clone has no weights. Get the archive from the shared
+Google Drive folder and unpack it into the `ai/` directory as follows:
+
+```bash
+# 1. Download the archive from the shared folder:
+#    https://drive.google.com/drive/folders/1PzeQ4AEnZdK48Nmq29az-2sImDiYubPk?usp=sharing
+#    Save it as ai/fishora_export.zip (or whatever archive name the folder provides).
+
+# 2. Extract it inside ai/ so the export lands at the default path:
+cd ai
+unzip fishora_export.zip
+cd ..
+```
+
+The unpacked export must match the expected location
+`ai/results/fishora_dinov3_large_frozen/export/` and contain `model_state_dict.pt`,
+`inference_config.json` and `inference.py`. If the archive omits the
+`results/fishora_dinov3_large_frozen/` part of the path, move the `export/` folder to
+`ai/results/fishora_dinov3_large_frozen/` after extracting.
+
+Then install the extra packages and start the CV service:
 
 ```bash
 "$PY" -m pip install torch timm
@@ -198,7 +221,9 @@ Required:
 Optional, and only for AI species identification:
 
 - A model export containing `model_state_dict.pt`, `inference_config.json` and `inference.py`. The
-  default path is `ai/results/fishora_dinov3_large_frozen/export`.
+  default path is `ai/results/fishora_dinov3_large_frozen/export`. It is not in git, so download the
+  archive from the shared Google Drive folder and unpack it into `ai/` — see
+  [AI species identification](#ai-species-identification).
 - An NVIDIA GPU with a CUDA driver. Not required: the classifier runs on CPU at about a second per
   image. Without the export at all, the operator names the species by hand, which is a designed path
   rather than a workaround, and nothing downstream is affected.
