@@ -81,7 +81,6 @@ export function LotDetail({
           <MatchReasons reasons={reasons} />
         </div>
       )}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
       {photoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- operator upload, arbitrary origin
         <img src={photoUrl} alt="" className="aspect-[4/3] w-full rounded-2xl object-cover" />

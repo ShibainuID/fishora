@@ -182,6 +182,10 @@ panel and buyer matching have something to work on, and allocates one Nila lot t
 the review flow is reachable. It also deletes rows the pytest suite leaves behind when it is pointed
 at a development database rather than a throwaway one.
 
+`seed_demo_lots --reset` clears every lot first, including ones published by hand and the one the
+PRD walkthrough publishes on each `playwright test` run. Without it a development database collects
+another allocated Tenggiri every time the e2e suite runs.
+
 None of these values are authoritative. Replace them with the real dataset before publishing any
 claim about a species.
 

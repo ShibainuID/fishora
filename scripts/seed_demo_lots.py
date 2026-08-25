@@ -159,6 +159,19 @@ def _clear_demo_rows(session) -> int:
     return removed
 
 
+def _clear_all_lots(session) -> int:
+    """Clear every lot, not just the seeded ones.
+
+    The PRD walkthrough publishes a real lot on each run, so a development
+    database collects one more allocated Tenggiri every time the e2e suite is
+    run and the operator's list stops being readable.
+    """
+    removed = session.execute(delete(CommercialBuyerReview)).rowcount or 0
+    removed += session.execute(delete(Bid)).rowcount or 0
+    removed += session.execute(delete(Lot)).rowcount or 0
+    return removed
+
+
 def _species(session, label: str):
     from apps.main_api.db.models import FishSpecies
 
@@ -224,6 +237,11 @@ def main() -> int:
         action="store_true",
         help="leave pytest's synthetic rows in place",
     )
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="clear every lot first, including ones published by hand or by the e2e walkthrough",
+    )
     args = parser.parse_args()
 
     # Passed in, not called at import: the auction windows must be relative to
@@ -236,8 +254,12 @@ def main() -> int:
             removed = _purge_test_rows(session)
             print(f"removed {removed} row(s) left by the test suite")
 
-        cleared = _clear_demo_rows(session)
-        print(f"cleared {cleared} row(s) from the previous demo seed")
+        if args.reset:
+            wiped = _clear_all_lots(session)
+            print(f"reset: cleared {wiped} row(s) across every lot")
+        else:
+            cleared = _clear_demo_rows(session)
+            print(f"cleared {cleared} row(s) from the previous demo seed")
 
         slugs = [_write_lot(session, now, i, spec) for i, spec in enumerate(DEMO_LOTS, start=1)]
         allocated_index = len(DEMO_LOTS) + 1

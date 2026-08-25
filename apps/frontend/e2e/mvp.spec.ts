@@ -9,7 +9,7 @@ const API = 'http://localhost:8000'
 // downscale path rather than its early return.
 const JPEG = readFileSync(join(__dirname, 'fixtures', 'catch.jpg'))
 
-async function signIn(page: Page, username: string, password: string) {
+async function signIn(page: Page, username: string) {
   await page.goto('/account')
   const keluar = page.getByRole('button', { name: 'Keluar' })
   if (await keluar.isVisible()) {
@@ -43,7 +43,7 @@ test('PRD 27 eleven-step walkthrough against a live backend when it is up', asyn
   )
 
   await test.step('1. Operator login at /account', async () => {
-    await signIn(page, 'rian', 'demo')
+    await signIn(page, 'rian')
     await expect(page.getByText('Rian Setiawan')).toBeVisible()
   })
 
@@ -94,7 +94,7 @@ test('PRD 27 eleven-step walkthrough against a live backend when it is up', asyn
   })
 
   await test.step('6. Buyer login dewi / demo', async () => {
-    await signIn(page, 'dewi', 'demo')
+    await signIn(page, 'dewi')
     await expect(page.getByText('Dewi Anggraini')).toBeVisible()
   })
 
@@ -114,7 +114,7 @@ test('PRD 27 eleven-step walkthrough against a live backend when it is up', asyn
   })
 
   await test.step('9. Operator Tutup lelang then Allocate', async () => {
-    await signIn(page, 'rian', 'demo')
+    await signIn(page, 'rian')
     await page.goto('/operator/lots')
     const lotRow = page.locator('main ul > li').first()
     await lotRow.getByRole('button', { name: 'Tutup lelang' }).click()

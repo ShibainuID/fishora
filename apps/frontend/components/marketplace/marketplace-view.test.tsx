@@ -16,6 +16,7 @@ Object.defineProperty(document, 'visibilityState', {
 })
 
 vi.mock('next/image', () => ({
+  // eslint-disable-next-line @next/next/no-img-element -- stubbing next/image is the point
   default: ({ alt, src }: { alt: string; src: string }) => <img alt={alt} src={src} />,
 }))
 
