@@ -21,12 +21,15 @@ export function SpeciesArt({
   className = '',
   sizes = '(max-width: 640px) 100vw, 33vw',
   priority = false,
+  showName = true,
 }: {
   label: string
   className?: string
   sizes?: string
   /** Set on the first card in a grid: it is the LCP element. */
   priority?: boolean
+  /** Clear only where the name is already stated next to the image. */
+  showName?: boolean
 }) {
   const species = resolveSpecies(label)
   const known = isSpeciesLabel(label)
@@ -52,11 +55,14 @@ export function SpeciesArt({
         {/* The name sits over photographs of very different brightness, so it
             gets its own scrim rather than trusting any one image to be dark
             enough behind it. */}
-        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-abyss-950/90 to-transparent" />
-
-        <p className="text-num-sm absolute bottom-3 left-3 text-abyss-50">
-          {species.commonName}
-        </p>
+        {showName && (
+          <>
+            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-abyss-950/90 to-transparent" />
+            <p className="text-num-sm absolute bottom-3 left-3 text-abyss-50">
+              {species.commonName}
+            </p>
+          </>
+        )}
       </div>
     </div>
   )

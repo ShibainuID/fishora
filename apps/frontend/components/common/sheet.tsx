@@ -14,9 +14,25 @@ export interface SheetProps {
   title: string
   footer?: ReactNode
   children: ReactNode
+  /** Controls beside Close in the header, e.g. Print. */
+  actions?: ReactNode
+  /**
+   * `sheet` rises from the bottom edge on phones, which is the reach-friendly
+   * default. `modal` centres at every width and lets its content set the size,
+   * for something with a fixed shape of its own such as a printable card.
+   */
+  variant?: 'sheet' | 'modal'
 }
 
-export function Sheet({ open, onClose, title, footer, children }: SheetProps) {
+export function Sheet({
+  open,
+  onClose,
+  title,
+  footer,
+  children,
+  actions,
+  variant = 'sheet',
+}: SheetProps) {
   const ref = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
@@ -69,7 +85,8 @@ export function Sheet({ open, onClose, title, footer, children }: SheetProps) {
         // the browser rule that keeps a closed dialog hidden, which leaves every
         // sheet permanently on screen. Keying off [open] also preserves the exit
         // transition, since the attribute outlives the open prop.
-        'hidden items-end justify-center open:flex md:items-center',
+        'hidden justify-center open:flex md:items-center',
+        variant === 'modal' ? 'items-center' : 'items-end',
         'backdrop:bg-abyss-950/55',
       ].join(' ')}
     >
@@ -84,26 +101,38 @@ export function Sheet({ open, onClose, title, footer, children }: SheetProps) {
           if (!open) ref.current?.close()
         }}
         className={[
-          'flex w-full flex-col bg-surface',
-          'max-h-[88dvh] md:max-h-[85dvh] md:w-[min(34rem,calc(100vw-3rem))]',
-          'rounded-t-[var(--radius-card)] md:rounded-[var(--radius-card)]',
-          'shadow-[var(--shadow-e3)]',
+          'flex flex-col bg-surface shadow-[var(--shadow-e3)]',
           'transition-transform duration-300 ease-[var(--ease-out-quint)]',
+          variant === 'modal'
+            ? 'w-auto max-w-[96vw] rounded-[var(--radius-card)]'
+            : [
+                'w-full max-h-[88dvh] md:max-h-[85dvh] md:w-[min(34rem,calc(100vw-3rem))]',
+                'rounded-t-[var(--radius-card)] md:rounded-[var(--radius-card)]',
+              ].join(' '),
         ].join(' ')}
       >
         <header className="flex items-center justify-between gap-4 border-b border-line px-4 py-3">
           <h2 className="text-h3 text-ink">{title}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="grid size-11 shrink-0 place-items-center rounded-full text-ink-muted transition-colors hover:bg-bg-sunken hover:text-ink active:scale-[0.98]"
-          >
-            <X className="size-5" aria-hidden />
-          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            {actions}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="grid size-11 shrink-0 place-items-center rounded-full text-ink-muted transition-colors hover:bg-bg-sunken hover:text-ink active:scale-[0.98]"
+            >
+              <X className="size-5" aria-hidden />
+            </button>
+          </div>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+        <div
+          className={
+            variant === 'modal'
+              ? 'min-h-0 flex-1 p-3'
+              : 'min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4'
+          }
+        >
           {children}
         </div>
 

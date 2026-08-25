@@ -6,6 +6,7 @@ import { Camera, UploadSimple, X } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/common/button'
 import { Field } from '@/components/common/field'
 import { Select } from '@/components/common/select'
+import { LANDING_POINTS, LANDING_POINT_IDS, type LandingPointName } from '@/lib/landing-points'
 import { KnowledgeCardView } from '@/components/fish/knowledge-card'
 import { PredictionCard } from '@/components/fish/prediction-card'
 import type { ActionFailure, ActionResult } from '@/lib/api/action-result'
@@ -21,16 +22,6 @@ import { SPECIES, SUPPORTED_LABELS, type SpeciesLabel } from '@/lib/species'
 import { Z } from '@/lib/z'
 
 const DRAFT_KEY = 'fishora.operator.draft'
-const LANDING_POINTS = [
-  'PPI Muara Angke',
-  'TPI Cilacap',
-  'PPI Karangsong',
-] as const // mock
-const LANDING_POINT_IDS: Record<(typeof LANDING_POINTS)[number], string> = {
-  'PPI Muara Angke': 'lp_muara_angke',
-  'TPI Cilacap': 'lp_cilacap',
-  'PPI Karangsong': 'lp_karangsong',
-}
 
 type PublishLotPayload = {
   prediction_id: string
@@ -49,6 +40,11 @@ const DURATIONS = [
   { id: '24h', label: '24 jam', hours: 24 },
 ] as const
 const SIZES = ['S', 'M', 'L'] as const
+
+// Action-bar buttons share the row: each one may shrink below its label width
+// rather than pushing the row past the viewport, and clips instead of spilling
+// its pill. Padding opens up once there is room for it.
+const FLEX_ACTION = 'min-w-0 flex-1 overflow-hidden px-4 sm:px-6'
 
 function subscribeToConnectivity(onChange: () => void) {
   window.addEventListener('online', onChange)
@@ -321,7 +317,7 @@ export function IdentifyFlow({
         quantity_kg: quantityKg,
         starting_price_per_kg: pricePerKg,
         size_category: size,
-        landing_point_id: LANDING_POINT_IDS[landingPoint as (typeof LANDING_POINTS)[number]],
+        landing_point_id: LANDING_POINT_IDS[landingPoint as LandingPointName],
         seller_fisher_group: fisherGroup.trim() || undefined,
         auction_hours: DURATIONS.find((option) => option.id === duration)?.hours ?? 4,
       })
@@ -413,11 +409,8 @@ export function IdentifyFlow({
         )}
       </div>
 
-      <div
-        className="shrink-0 border-t border-line bg-surface"
-        style={{ zIndex: Z.actionBar }}
-      >
-        <div className="mx-auto flex w-full max-w-lg gap-2 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] lg:px-0 [&>button:first-of-type]:min-w-0 [&>button:first-of-type]:flex-1">
+      <div className="shrink-0" style={{ zIndex: Z.actionBar }}>
+        <div className="mx-auto flex w-full max-w-lg items-center gap-2 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] lg:px-0">
         <input
           ref={cameraRef}
           type="file"
@@ -440,11 +433,16 @@ export function IdentifyFlow({
         {step === 1 && !image && (
           <>
             {live ? (
-              <Button size="lg" block onClick={shoot}>
+              <Button size="lg" className={FLEX_ACTION} onClick={shoot}>
                 Ambil foto
               </Button>
             ) : (
-              <Button size="lg" block icon={<Camera size={20} />} onClick={startCamera}>
+              <Button
+                size="lg"
+                className={FLEX_ACTION}
+                icon={<Camera size={20} />}
+                onClick={startCamera}
+              >
                 Kamera
               </Button>
             )}
@@ -461,6 +459,7 @@ export function IdentifyFlow({
             <Button
               size="lg"
               variant="secondary"
+              className={FLEX_ACTION}
               onClick={() => {
                 setImage(null)
                 setPreview(null)
@@ -469,18 +468,24 @@ export function IdentifyFlow({
             >
               Ambil ulang
             </Button>
-            <Button size="lg" block loading={busy} onClick={runIdentify}>
+            <Button size="lg" className={FLEX_ACTION} loading={busy} onClick={runIdentify}>
               Identifikasi
             </Button>
           </>
         )}
         {step === 3 && (
-          <Button size="lg" block onClick={() => setStep(4)}>
+          <Button size="lg" className={FLEX_ACTION} onClick={() => setStep(4)}>
             Lanjut
           </Button>
         )}
         {step === 4 && (
-          <Button size="lg" block type="button" loading={busy} onClick={runPublish}>
+          <Button
+            size="lg"
+            className={FLEX_ACTION}
+            type="button"
+            loading={busy}
+            onClick={runPublish}
+          >
             Terbitkan
           </Button>
         )}

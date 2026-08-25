@@ -323,6 +323,52 @@ html {
   }
 }
 
+/* Printing the Fishora card.
+   The card lives inside a modal <dialog>, so the whole app is in the print
+   tree. Hiding by visibility rather than display keeps the card's own layout
+   intact while everything around it stops painting, and the dialog has to be
+   unpinned from the top layer or the print lands one page of backdrop. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .qr-print-card,
+  .qr-print-card * {
+    visibility: visible;
+  }
+
+  dialog[open] {
+    position: static;
+    display: block;
+    max-width: none;
+    background: transparent;
+  }
+
+  dialog[open]::backdrop {
+    display: none;
+  }
+
+  .qr-print-card {
+    position: fixed;
+    top: 0;
+    left: 0;
+    /* The ratio is the point of the card, so height follows width rather than
+       stretching to the sheet. */
+    width: 100mm;
+    height: auto;
+    box-shadow: none;
+    /* Without this the photograph and the scrim drop out and the card prints
+       as bare text. */
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  @page {
+    margin: 12mm;
+  }
+}
+
 /* Reduced motion backstop. */
 @media (prefers-reduced-motion: reduce) {
   *,

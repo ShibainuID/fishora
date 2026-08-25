@@ -1,90 +1,67 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
-import { Button } from '@/components/common/button'
+import { Printer } from '@phosphor-icons/react/dist/ssr'
 import { Sheet } from '@/components/common/sheet'
-import { QR_EXPORTS, discoverUrl } from '@/lib/qr'
+import { QrCard } from '@/components/qr/qr-card'
+import { discoverUrl } from '@/lib/qr'
+import type { components } from '@/lib/api/schema'
+
+type Lot = components['schemas']['LotResponse']
 
 export function QrSheet({
   open,
   onClose,
-  slug,
-  speciesName,
+  lot,
 }: {
   open: boolean
   onClose: () => void
-  slug: string
-  speciesName: string
+  lot: Lot
 }) {
-  const url = discoverUrl(slug)
-  // No store listing exists, so the app link lands on the site root unless overridden.
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || '/'
+  const url = discoverUrl(lot.public_slug)
   const [copied, setCopied] = useState(false)
 
   return (
-    <Sheet open={open} onClose={onClose} title="Fishora QR">
-      <section data-testid="qr-code-fish">
-        <h3 className="text-label text-ink">Kode ikan ini</h3>
-        <p className="text-body-sm mt-1 text-ink-muted">
-          Pindai untuk membuka profil {speciesName}.
-        </p>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          alt={`Kode QR profil ${speciesName}`}
-          src={`/api/qr/${slug}`}
-          className="mx-auto mt-4 size-40"
-        />
-        <label className="text-label mt-4 block text-ink">
-          URL
-          <input readOnly value={url} className="mt-2 min-h-11 w-full rounded-[var(--radius-input)] border border-line px-3" />
-        </label>
-        <Button
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title="Fishora QR"
+      variant="modal"
+      actions={
+        <button
           type="button"
-          variant="secondary"
-          className="mt-3"
-          onClick={async () => {
-            await navigator.clipboard.writeText(url)
-            setCopied(true)
-          }}
+          // Hands off to the device: the operator picks the printer, the paper
+          // and the copies, and a kiosk or a phone share sheet works the same.
+          onClick={() => window.print()}
+          aria-label="Cetak kartu"
+          title="Cetak kartu"
+          className="grid size-11 shrink-0 place-items-center rounded-full text-ink-muted transition-colors hover:bg-bg-sunken hover:text-ink active:scale-[0.98]"
         >
-          {copied ? 'Disalin' : 'Salin URL'}
-        </Button>
-        <ul className="mt-6 flex flex-col gap-2">
-          {QR_EXPORTS.map((item) => (
-            <li key={item.id}>
-              <a
-                href={`/api/qr/${slug}?size=${item.mm}`}
-                data-size={item.mm}
-                className="text-body-sm flex min-h-11 items-center text-ink"
-              >
-                {item.label} {item.mm}mm
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section data-testid="qr-code-app" className="mt-6 border-t border-line pt-4">
-        <h3 className="text-label text-ink">Kode Fishora</h3>
-        <p className="text-body-sm mt-1 text-ink-muted">
-          Cetak kode ini di kartu yang sama. Kode ini membuka Fishora, bukan profil ikan.
-        </p>
-        {/* eslint-disable-next-line @next/next/no-img-element -- generated PNG from our own route */}
-        <img
-          src="/api/qr/app"
-          alt="Kode QR untuk membuka Fishora"
-          width={160}
-          height={160}
-          className="mt-3 rounded-2xl bg-surface-raised p-2"
-        />
-        <Link
-          href={appUrl}
-          className="text-body-sm mt-3 flex min-h-11 items-center text-ink underline"
-        >
-          Buka Fishora
-        </Link>
-      </section>
+          <Printer className="size-5" aria-hidden />
+        </button>
+      }
+      footer={
+        <div className="flex items-center gap-2">
+          <input
+            readOnly
+            aria-label="URL"
+            value={url}
+            className="text-body-sm min-h-11 min-w-0 flex-1 rounded-[var(--radius-input)] border border-line-input bg-transparent px-3 text-ink"
+          />
+          <button
+            type="button"
+            onClick={async () => {
+              await navigator.clipboard.writeText(url)
+              setCopied(true)
+            }}
+            className="text-body-sm min-h-11 shrink-0 rounded-full border border-line-strong px-4 text-ink"
+          >
+            {copied ? 'Disalin' : 'Salin URL'}
+          </button>
+        </div>
+      }
+    >
+      <QrCard lot={lot} />
     </Sheet>
   )
 }

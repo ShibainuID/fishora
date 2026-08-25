@@ -134,12 +134,7 @@ export function OperatorLots({ lots }: { lots: Lot[] }) {
         )}
       </Sheet>
       {qr && (
-        <QrSheet
-          open
-          onClose={() => setQr(null)}
-          slug={qr.public_slug}
-          speciesName={qr.species_id.replace('species_', '')}
-        />
+        <QrSheet open onClose={() => setQr(null)} lot={qr} />
       )}
     </>
   )
