@@ -1,17 +1,18 @@
+import Image from 'next/image'
 import { SPECIES, isSpeciesLabel } from '@/lib/species'
-import { Stratum } from '@/components/marketing/sea-strata'
 
 /**
  * Stands in for catch photography until real photographs exist.
  *
- * Not a stock photo: a random image would put an unrelated scene on a card
- * labelled Tenggiri, which misinforms a buyer deciding what to bid on. Not a
- * drawn fish either, because eleven hand-drawn silhouettes would look worse
- * than nothing. Instead each species gets a deterministic depth composition and
- * its own name, so a grid of lots reads as a designed system and every card is
- * still visually distinct.
+ * Not a stock photo of a fish: a random fish image on a card labelled Tenggiri
+ * misinforms a buyer deciding what to bid on. This is open water instead, which
+ * is ambient rather than a claim about the species, and the name is always
+ * printed over it.
  *
- * Deterministic from the label, so the same fish always looks the same.
+ * The crop and the light are derived from the label, so the same species always
+ * looks the same and no two of the eleven land on the same frame. That is what
+ * keeps a grid of lots reading as distinct cards rather than one image
+ * repeated.
  *
  * The caller owns the box. className lands on the root, so a caller can pass
  * `absolute inset-0` or `aspect-[4/3] w-full` and either works; the root never
@@ -21,31 +22,32 @@ import { Stratum } from '@/components/marketing/sea-strata'
 export function SpeciesArt({
   label,
   className = '',
+  sizes = '(max-width: 640px) 100vw, 33vw',
 }: {
   label: string
   className?: string
+  sizes?: string
 }) {
   const name = isSpeciesLabel(label) ? SPECIES[label].commonName : label
   const tone = toneFor(label)
 
   return (
     <div
-      className={`overflow-hidden bg-abyss-800 ${className}`}
+      className={`overflow-hidden bg-abyss-900 ${className}`}
       role="img"
       aria-label={`Ilustrasi ${name}`}
     >
-      {/* Containing block for the strata, kept off the root so the caller's
+      {/* Containing block for the layers, kept off the root so the caller's
           position utility is free to win. */}
       <div className="relative size-full">
-        {/* Depth, angled per species so no two cards share a horizon. */}
-        <div
-          className="absolute inset-0"
-          style={{ transform: `rotate(${tone.tilt}deg) scale(1.25)` }}
-        >
-          <Stratum depth={0} className="absolute inset-x-0 top-[26%] h-[74%] w-full" />
-          <Stratum depth={2} className="absolute inset-x-0 top-[50%] h-[64%] w-full" />
-          <Stratum depth={4} className="absolute inset-x-0 top-[74%] h-[50%] w-full" />
-        </div>
+        <Image
+          src="/sea.jpg"
+          alt=""
+          fill
+          sizes={sizes}
+          className="object-cover"
+          style={{ objectPosition: `${tone.cropX}% ${tone.cropY}%` }}
+        />
 
         {/* One light per species, placed differently each time. */}
         <div
@@ -53,7 +55,12 @@ export function SpeciesArt({
           style={{ left: `${tone.lightX}%`, top: `${tone.lightY}%`, opacity: tone.lightOpacity }}
         />
 
-        <p className="text-num-sm absolute bottom-3 left-3 text-abyss-100">{name}</p>
+        {/* The name sits over a photograph whose brightness varies with the
+            crop, so it gets its own scrim rather than trusting the image to be
+            dark enough everywhere. */}
+        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-abyss-950 to-transparent" />
+
+        <p className="text-num-sm absolute bottom-3 left-3 text-abyss-50">{name}</p>
       </div>
     </div>
   )
@@ -69,9 +76,10 @@ function toneFor(label: string) {
     hash = (hash * 31 + label.charCodeAt(i)) % 9973
   }
   return {
-    tilt: -8 + (hash % 17),
+    cropX: 10 + (hash % 80),
+    cropY: 15 + (hash % 70),
     lightX: 18 + (hash % 58),
     lightY: 8 + (hash % 26),
-    lightOpacity: 0.22 + ((hash % 5) * 0.05),
+    lightOpacity: 0.16 + ((hash % 5) * 0.04),
   }
 }

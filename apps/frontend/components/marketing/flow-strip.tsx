@@ -1,4 +1,4 @@
-import { Stratum } from '@/components/marketing/sea-strata'
+import Image from 'next/image'
 
 /**
  * The eight steps of the core flow, each with the sentence that step is for.
@@ -7,14 +7,14 @@ import { Stratum } from '@/components/marketing/sea-strata'
  * nothing and read as unfinished.
  */
 const STEPS = [
-  { verb: 'Catch', line: 'A boat lands, and the catch is grouped by species and size.' },
-  { verb: 'Identify', line: 'One photo returns a ranked species prediction with its confidence.' },
-  { verb: 'Verify', line: 'The operator confirms or corrects it. Nothing publishes unverified.' },
-  { verb: 'Explain', line: 'Retrieval builds a knowledge card from verified sources only.' },
-  { verb: 'Publish', line: 'Volume, size, opening price, and landing point become a live lot.' },
-  { verb: 'Match', line: 'Buyers see lots that fit their stated use, price, and radius.' },
-  { verb: 'Bid', line: 'Bidding runs by the kilogram until the auction closes.' },
-  { verb: 'Fishora QR', line: 'The winner prints a card that carries the fish knowledge forward.' },
+  { verb: 'Catch', line: 'A boat lands, and the catch is grouped by species and size.', crop: 8 },
+  { verb: 'Identify', line: 'One photo returns a ranked species prediction with its confidence.', crop: 22 },
+  { verb: 'Verify', line: 'The operator confirms or corrects it. Nothing publishes unverified.', crop: 36 },
+  { verb: 'Explain', line: 'Retrieval builds a knowledge card from verified sources only.', crop: 50 },
+  { verb: 'Publish', line: 'Volume, size, opening price, and landing point become a live lot.', crop: 64 },
+  { verb: 'Match', line: 'Buyers see lots that fit their stated use, price, and radius.', crop: 78 },
+  { verb: 'Bid', line: 'Bidding runs by the kilogram until the auction closes.', crop: 90 },
+  { verb: 'Fishora QR', line: 'The winner prints a card that carries the fish knowledge forward.', crop: 15 },
 ]
 
 /**
@@ -77,11 +77,18 @@ function FlowPanel({
       // panel and a sliver of the next fit, which made the section look empty.
       className="w-[78vw] shrink-0 overflow-hidden rounded-2xl border border-abyss-800 sm:w-[20rem]"
     >
-      {/* A depth band, not SpeciesArt: these are steps, not species, and
-          SpeciesArt prints its own label, which repeated the verb below it. */}
+      {/* Not SpeciesArt: these are steps, not species, and SpeciesArt prints
+          its own label, which repeated the verb below it. Each step takes a
+          different slice of the same water so the panels are not identical. */}
       <div className="relative aspect-[16/9] w-full overflow-hidden bg-abyss-900" aria-hidden>
-        <Stratum depth={1} className="absolute inset-x-0 top-[34%] h-[70%] w-full" />
-        <Stratum depth={3} className="absolute inset-x-0 top-[58%] h-[60%] w-full" />
+        <Image
+          src="/sea.jpg"
+          alt=""
+          fill
+          sizes="(max-width: 640px) 78vw, 20rem"
+          className="object-cover opacity-80"
+          style={{ objectPosition: `${step.crop}% 50%` }}
+        />
       </div>
       <div className="p-5">
         <h3 className="text-h3">{step.verb}</h3>
