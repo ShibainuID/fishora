@@ -13,7 +13,7 @@ export interface KnowledgeCardViewProps {
 
 export function KnowledgeCardView({ card, label }: KnowledgeCardViewProps) {
   return (
-    <article className="rounded-2xl border-l-2 border-l-verified bg-surface px-5 py-5">
+    <article className="rounded-2xl bg-surface px-5 py-5">
       <header className="text-body-sm mb-4 inline-flex items-center gap-1.5 text-verified">
         <ShieldCheck className="size-4" weight="fill" aria-hidden />
         Pengetahuan terverifikasi

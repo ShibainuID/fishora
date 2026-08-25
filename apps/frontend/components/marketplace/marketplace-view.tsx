@@ -33,6 +33,31 @@ interface PollSnapshot {
   fresh: number
 }
 
+function ViewTab({
+  href,
+  current,
+  children,
+}: {
+  href: string
+  current: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={current ? 'page' : undefined}
+      className={[
+        // A rule under the current label rather than a filled pill, so the page
+        // background carries through the way the shell's own tabs do.
+        'text-body-sm flex min-h-11 min-w-0 items-center justify-center truncate border-b-2 px-3',
+        current ? 'border-ink text-ink' : 'border-transparent text-ink-muted hover:text-ink',
+      ].join(' ')}
+    >
+      {children}
+    </Link>
+  )
+}
+
 // An external store, not state in an effect: the interval, the tab visibility
 // and the fetch all live outside React, and useSyncExternalStore is how this
 // codebase reads such values.
@@ -161,6 +186,12 @@ export function MarketplaceView({
   const current = live?.lots ?? lots
   const fresh = live?.fresh ?? 0
 
+  // Switching views keeps the filters the buyer already set.
+  const viewHref = (wantsMatched: boolean) => {
+    const query = serializeFilters({ ...filters, matched: wantsMatched })
+    return query ? `${pathname}?${query}` : pathname
+  }
+
   const apply = (next: MarketplaceFilters) => {
     const query = serializeFilters(next)
     router.replace(query ? `${pathname}?${query}` : pathname)
@@ -179,88 +210,114 @@ export function MarketplaceView({
   }, [current, filters])
 
   return (
-    <div className="flex gap-8 pb-24 lg:pb-8">
-      <FilterRail filters={filters} onChange={apply} />
-      <div className="min-w-0 flex-1">
-        <div className="sticky top-14 z-[30] flex items-center gap-2 border-b border-line bg-surface px-4 py-3 lg:static lg:border-0 lg:px-0">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="lg:hidden"
-            icon={<Funnel size={16} />}
-            onClick={() => setSheetOpen(true)}
-          >
-            Filters{count ? ` ${count}` : ''}
-          </Button>
-          <Link
-            href={filters.matched ? '/marketplace' : '/marketplace?matched=1'}
-            className="text-body-sm min-h-11 px-3 text-ink"
-          >
-            {filters.matched ? 'Matched for me' : 'All lots'}
-          </Link>
-          {fresh > 0 && (
-            <button
-              type="button"
-              onClick={poll.dismiss}
-              className="text-body-sm min-h-11 rounded-full border border-line px-3 text-ink"
-            >
-              {fresh} lot baru
-            </button>
-          )}
-          <button type="button" aria-label="Urutkan" className="ml-auto grid size-11 place-items-center lg:hidden">
-            <Sliders size={20} />
-          </button>
-        </div>
+    <div className="pb-24 lg:pb-8">
+      {/* The heading spans both columns. Inside the grid column it would have
+          pushed the cards down while the filter rail beside them started at
+          the top of the page. */}
+      <header>
+        <h1 className="text-h1 text-ink">
+          {showMatched ? 'Matched for me' : 'All lots'}
+        </h1>
+        <p className="text-body-sm mt-1 max-w-[52ch] text-ink-muted">
+          {showMatched
+            ? 'Diurutkan menurut kecocokan dengan preferensi Anda.'
+            : 'Semua lot lelang yang masih aktif.'}
+        </p>
+      </header>
 
-        {count > 0 && (
-          <div
-            tabIndex={0}
-            role="group"
-            aria-label="Filter aktif"
-            className="flex gap-2 overflow-x-auto px-4 py-3 whitespace-nowrap lg:px-0"
-          >
-            {filters.species.map((label) => (
+      <div className="mt-4 flex gap-8 lg:mt-6">
+        <FilterRail filters={filters} onChange={apply} />
+        <div className="min-w-0 flex-1">
+          {/* No fill of its own: the toolbar sits on the page background as part
+              of the heading block, carrying only the baseline the current tab is
+              drawn against. It wraps rather than scrolls, so a narrow screen
+              never cuts a control in half. */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-line pb-2">
+            {/* Both views are named and the current one is marked. The single
+                link before this showed the view you were already on while
+                navigating to the other one. */}
+            <nav aria-label="Tampilan lot" className="-mb-2 flex min-w-0 gap-1">
+              <ViewTab href={viewHref(false)} current={!showMatched}>
+                All lots
+              </ViewTab>
+              <ViewTab href={viewHref(true)} current={showMatched}>
+                Matched for me
+              </ViewTab>
+            </nav>
+            {fresh > 0 && (
               <button
-                key={label}
                 type="button"
-                className="text-body-sm min-h-11 rounded-full border border-line px-3"
-                onClick={() => apply({ ...filters, species: filters.species.filter((item) => item !== label) })}
+                onClick={poll.dismiss}
+                className="text-body-sm min-h-11 shrink-0 rounded-full border border-line px-3 text-ink"
               >
-                {SPECIES[label].commonName}
+                {fresh} lot baru
               </button>
-            ))}
-          </div>
-        )}
-
-        {showMatched && profileMissing ? (
-          <MatchedEmpty hasProfile={false} />
-        ) : inventoryEmpty && current.length === 0 ? (
-          <EmptyState icon={Fish} message="Belum ada lot aktif." action={<Button type="button">Muat ulang</Button>} />
-        ) : visible.length === 0 ? (
-          <EmptyState
-            icon={Funnel}
-            message="Tidak ada lot yang cocok dengan filter ini."
-            action={
-              <Button type="button" variant="secondary" onClick={() => apply({ ...filters, species: [], minPrice: '', maxPrice: '', minQuantity: '', maxQuantity: '' })}>
-                Hapus filter
+            )}
+            <div className="ml-auto flex shrink-0 items-center gap-2 lg:hidden">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                icon={<Funnel size={16} />}
+                onClick={() => setSheetOpen(true)}
+              >
+                Filters{count ? ` ${count}` : ''}
               </Button>
-            }
-          />
-        ) : (
-          <div className="grid grid-cols-1 gap-4 px-4 sm:grid-cols-2 lg:px-0 xl:grid-cols-3">
-            {visible.map((lot, index) => (
-              <Link key={lot.id} href={`/marketplace/${lot.id}`}>
-                <LotCard
-                  lot={lot}
-                  matchPercent={showMatched ? matchScores[lot.id] : undefined}
-                  priority={index === 0}
-                />
-              </Link>
-            ))}
+              <button type="button" aria-label="Urutkan" className="grid size-11 shrink-0 place-items-center">
+                <Sliders size={20} />
+              </button>
+            </div>
           </div>
-        )}
-      </div>
+
+          {count > 0 && (
+            <div
+              tabIndex={0}
+              role="group"
+              aria-label="Filter aktif"
+              className="flex gap-2 overflow-x-auto py-3 whitespace-nowrap"
+            >
+              {filters.species.map((label) => (
+                <button
+                  key={label}
+                  type="button"
+                  className="text-body-sm min-h-11 shrink-0 rounded-full border border-line px-3"
+                  onClick={() => apply({ ...filters, species: filters.species.filter((item) => item !== label) })}
+                >
+                  {SPECIES[label].commonName}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {showMatched && profileMissing ? (
+            <MatchedEmpty hasProfile={false} />
+          ) : inventoryEmpty && current.length === 0 ? (
+            <EmptyState icon={Fish} message="Belum ada lot aktif." action={<Button type="button">Muat ulang</Button>} />
+          ) : visible.length === 0 ? (
+            <EmptyState
+              icon={Funnel}
+              message="Tidak ada lot yang cocok dengan filter ini."
+              action={
+                <Button type="button" variant="secondary" onClick={() => apply({ ...filters, species: [], minPrice: '', maxPrice: '', minQuantity: '', maxQuantity: '' })}>
+                  Hapus filter
+                </Button>
+              }
+            />
+          ) : (
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {visible.map((lot, index) => (
+                <Link key={lot.id} href={`/marketplace/${lot.id}`}>
+                  <LotCard
+                    lot={lot}
+                    matchPercent={showMatched ? matchScores[lot.id] : undefined}
+                    priority={index === 0}
+                  />
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+        </div>
       <FilterSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}

@@ -60,7 +60,10 @@ export function Select({
           aria-invalid={invalid || undefined}
           // appearance-none: the native arrow is drawn in the platform's own
           // colours and does not follow the theme.
-          className="text-body min-h-11 w-full appearance-none bg-surface px-3 pr-10 text-ink outline-none"
+          // rounded-[inherit]: the opaque fill this control needs for its popup
+          // was painted square over the wrapper's rounded corners, so the
+          // border appeared to have none.
+          className="text-body min-h-11 w-full appearance-none rounded-[inherit] bg-surface px-3 pr-10 text-ink outline-none"
         >
           {options.map((option) => (
             <option
