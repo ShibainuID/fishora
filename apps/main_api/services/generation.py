@@ -61,7 +61,7 @@ class OpenCodeGoClient:
     """LangChain client making one OpenCode Go Responses API call per generation."""
 
     def __init__(self, settings, session_id: str | None = None):
-        llm = make_opencode_go_llm(settings, session_id=session_id)
+        llm = make_llm(settings, session_id=session_id)
         self._structured_llm = llm.with_structured_output(
             GeneratedKnowledgeCard,
             method="json_schema",
@@ -99,14 +99,31 @@ class OpenCodeGoClient:
 USER_AGENT = "fishora-knowledge-cards/0.1"
 
 
-def make_opencode_go_llm(settings, timeout: float | None = None, session_id: str | None = None):
+def make_llm(settings, timeout: float | None = None, session_id: str | None = None):
     """Create the shared Luna client used by every orchestration agent.
 
-    OpenCode Go rejects requests without a stable ``x-opencode-session`` header
-    (400 MissingSessionID) and asks clients to identify themselves with their
-    own user agent (finding W20). One session id per card keeps the calls of
-    that card together; callers that do not pass one get a fresh id.
+    ``settings.llm_provider`` picks the gateway. OpenRouter (the default) is
+    reached over Chat Completions, with reasoning effort in its unified
+    ``reasoning`` field. OpenCode Go uses the Responses API and rejects requests
+    without a stable ``x-opencode-session`` header (400 MissingSessionID) and
+    asks clients to identify themselves with their own user agent (finding W20).
+    One session id per card keeps the calls of that card together; callers that
+    do not pass one get a fresh id.
     """
+    effort = getattr(settings, "opencode_go_reasoning_effort", None)
+    timeout = timeout if timeout is not None else settings.opencode_go_timeout_seconds
+    if getattr(settings, "llm_provider", "opencode_go") == "openrouter":
+        api_key = settings.openrouter_api_key.get_secret_value()
+        if not api_key.strip():
+            raise ValueError("OPENROUTER_API_KEY must be set to construct the production client")
+        return ChatOpenAI(
+            model=settings.openrouter_model,
+            base_url=settings.openrouter_base_url,
+            api_key=api_key,
+            timeout=timeout,
+            **({"extra_body": {"reasoning": {"effort": effort}}} if effort else {}),
+            default_headers={"X-Title": "Fishora", "User-Agent": USER_AGENT},
+        )
     api_key = settings.opencode_go_api_key.get_secret_value()
     if not api_key.strip():
         raise ValueError("OPENCODE_GO_API_KEY must be set to construct the production client")
@@ -114,15 +131,18 @@ def make_opencode_go_llm(settings, timeout: float | None = None, session_id: str
         model=settings.opencode_go_model,
         base_url=settings.opencode_go_base_url,
         api_key=api_key,
-        timeout=timeout if timeout is not None else settings.opencode_go_timeout_seconds,
+        timeout=timeout,
         use_responses_api=True,
-        **({"reasoning": {"effort": settings.opencode_go_reasoning_effort}}
-           if getattr(settings, "opencode_go_reasoning_effort", None) else {}),
+        **({"reasoning": {"effort": effort}} if effort else {}),
         default_headers={
             "x-opencode-session": session_id or f"fishora-{uuid.uuid4().hex}",
             "User-Agent": USER_AGENT,
         },
     )
+
+
+# The evaluation scripts call the client by its original name.
+make_opencode_go_llm = make_llm
 
 
 def _user_payload(species: SpeciesRecord, evidence: list[RetrievedChunk]) -> str:

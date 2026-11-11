@@ -35,6 +35,12 @@ class MainSettings(BaseSettings):
     embedding_model_name: str = Field(default="intfloat/multilingual-e5-base", validation_alias=AliasChoices("FISHORA_EMBEDDING_MODEL_NAME", "embedding_model_name"))
     embedding_dimension: int = Field(default=768, validation_alias=AliasChoices("FISHORA_EMBEDDING_DIMENSION", "embedding_dimension"))
     embedding_device: str = Field(default="cpu", validation_alias=AliasChoices("FISHORA_EMBEDDING_DEVICE", "embedding_device"))
+    # Which gateway serves the card LLM: "openrouter" (default) or "opencode_go".
+    # Timeout and reasoning effort below apply to both.
+    llm_provider: str = Field(default="openrouter", validation_alias=AliasChoices("FISHORA_LLM_PROVIDER", "llm_provider"))
+    openrouter_base_url: str = Field(default="https://openrouter.ai/api/v1", validation_alias=AliasChoices("FISHORA_OPENROUTER_BASE_URL", "openrouter_base_url"))
+    openrouter_api_key: SecretStr = Field(default=SecretStr(""), validation_alias=AliasChoices("OPENROUTER_API_KEY", "openrouter_api_key"))
+    openrouter_model: str = Field(default="openai/gpt-6-luna", validation_alias=AliasChoices("FISHORA_OPENROUTER_MODEL", "openrouter_model"))
     opencode_go_base_url: str = Field(default="https://opencode.ai/zen/go/v1", validation_alias=AliasChoices("FISHORA_OPENCODE_GO_BASE_URL", "opencode_go_base_url"))
     # Blank key allowed; the production OpenCode client constructor enforces it.
     opencode_go_api_key: SecretStr = Field(default=SecretStr(""), validation_alias=AliasChoices("OPENCODE_GO_API_KEY", "opencode_go_api_key"))
@@ -55,6 +61,12 @@ class MainSettings(BaseSettings):
     # Off by default because local development is plain http, where a Secure
     # cookie is never sent back. Turn it on behind https.
     session_cookie_secure: bool = Field(default=False, validation_alias=AliasChoices("FISHORA_SESSION_COOKIE_SECURE", "session_cookie_secure"))
+
+    @property
+    def llm_api_key(self) -> str:
+        """The API key of the active LLM provider (blank when unset)."""
+        key = self.openrouter_api_key if self.llm_provider == "openrouter" else self.opencode_go_api_key
+        return key.get_secret_value().strip()
 
     @property
     def cors_origins(self) -> list[str]:
