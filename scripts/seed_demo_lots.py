@@ -242,6 +242,12 @@ def main() -> int:
     now = datetime.now(timezone.utc)
 
     settings = MainSettings()
+    # The API seeds the demo landing points when it starts; seed them here too,
+    # so a fresh database can take demo lots before the API has ever run.
+    from apps.main_api.db.lot_repository import SqlLandingPointRepository
+    from apps.main_api.services.landing_points import seed_demo_landing_points
+
+    seed_demo_landing_points(SqlLandingPointRepository(session_factory(settings)))
     with session_factory(settings)() as session:
         if not args.keep_test_rows:
             removed = _purge_test_rows(session)
