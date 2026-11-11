@@ -49,13 +49,13 @@ PY=.venv/bin/python           # macOS and Linux
 export FISHORA_DATABASE_URL=postgresql+psycopg://fishora:fishora@localhost:55432/fishora
 ```
 
-**3. Create the schema and seed something to click through.** `artifacts/` is gitignored, so a fresh
-clone has no taxonomy and no lots; these scripts stand in for the real dataset:
+**3. Create the schema and seed something to click through.** The taxonomy of the 11 species is the
+real one from the CV training dataset, committed at `artifacts/Dataset/fishora_dataset/metadata/taxonomy.csv`
+(the rest of `artifacts/` stays out of git). The lots are illustrative demo data:
 
 ```bash
 docker compose up -d db
 "$PY" -m alembic upgrade head
-"$PY" -m scripts.make_synthetic_taxonomy
 "$PY" -m scripts.seed_taxonomy
 "$PY" -m scripts.seed_demo_lots --reset
 ```
@@ -438,10 +438,11 @@ Two preconditions are worth checking before blaming the code:
 
 ### What the seed scripts do
 
-The command sequence lives in [Quick start](#quick-start); this is what those three scripts are for.
+The command sequence lives in [Quick start](#quick-start); this is what the seed scripts are for.
 
-`make_synthetic_taxonomy` stamps every row `synthetic-dev-fixture` and refuses to overwrite a file
-that does not look synthetic, so restoring the real dataset later is safe. `seed_demo_lots` writes
+`seed_taxonomy` upserts the 11 species from the committed taxonomy CSV. `make_synthetic_taxonomy`
+is only a fallback for a checkout without that file: it stamps every row `synthetic-dev-fixture` and
+refuses to overwrite a file that does not look synthetic. `seed_demo_lots` writes
 `demo_`-prefixed rows only, attaches an illustrative knowledge card to each lot so the knowledge
 panel and buyer matching have something to work on, and allocates one Nila lot to `buyer_dewi` so
 the review flow is reachable.
@@ -488,7 +489,7 @@ addresses (`localhost:55432`, `localhost:8001`) for the service names.
 | Service | What it does |
 |---|---|
 | `db` | PostgreSQL + pgvector, same volume and port (55432) as the host workflow |
-| `init` | Migrations, taxonomy (the synthetic fixture if `artifacts/` has none), demo lots into an empty database, then exits |
+| `init` | Migrations, taxonomy (the committed CSV; the synthetic fixture only if it is missing), demo lots into an empty database, then exits |
 | `api` | Main API on `FISHORA_MAIN_API_PORT`, E5 weights baked into the image, `data/` and `reports/` mounted |
 | `frontend` | `next build` + `next start` on `FISHORA_FRONTEND_PORT`. `NEXT_PUBLIC_API_BASE_URL` is a build argument, so rebuild after changing it |
 | `cv` | Opt-in: `COMPOSE_PROFILES=cv` in `.env`. Needs the export under `ai/` and an NVIDIA GPU visible to Docker |
