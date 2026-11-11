@@ -195,10 +195,26 @@ class KnowledgeCard(BaseModel):
     sources: list[SourceMetadata]
 
 
+class WebFinding(BaseModel):
+    field: str
+    text: str
+    url: str
+    title: str
+
+
+class WebResearch(BaseModel):
+    """Unverified web leads for the card's empty fields (operator view only)."""
+
+    status: Literal["running", "done", "failed"]
+    fields: list[str] = []
+    findings: list[WebFinding] = []
+
+
 class KnowledgeResponse(BaseModel):
     prediction_id: str
     species_id: str
     card: KnowledgeCard
+    web_research: WebResearch | None = None
 
 
 # Relational taxonomy overrides: per species label, the scientific name the

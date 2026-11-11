@@ -46,10 +46,25 @@ export interface KnowledgeCard {
   sources: SourceMetadata[]
 }
 
+export interface WebFinding {
+  field: string
+  text: string
+  url: string
+  title: string
+}
+
+/** Unverified web leads for the card's empty fields. Operator view only. */
+export interface WebResearch {
+  status: 'running' | 'done' | 'failed'
+  fields: string[]
+  findings: WebFinding[]
+}
+
 export interface KnowledgeResponse {
   prediction_id: string
   species_id: string
   card: KnowledgeCard
+  web_research?: WebResearch | null
 }
 
 /**

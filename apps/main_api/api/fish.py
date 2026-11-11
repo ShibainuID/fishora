@@ -8,13 +8,14 @@ from pydantic import BaseModel, Field, ValidationError
 
 from apps.main_api.config import MainSettings
 from apps.main_api.services.card_llm import card_llm
-from apps.main_api.services.generation import KnowledgeCard, KnowledgeResponse
+from apps.main_api.services.generation import KnowledgeCard, KnowledgeResponse, WebResearch
 from apps.main_api.services.identification import IdentificationService
 from apps.main_api.services.manual_entry import ManualEntryService
 from apps.main_api.services.session import require_role
 from apps.main_api.services.knowledge import KnowledgeService
 from apps.main_api.services.reference_cards import fill_from_reference
 from apps.main_api.services.verification import VerificationService
+from apps.main_api.services import web_research
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +129,10 @@ async def verify(payload: VerifyRequest, request: Request, background_tasks: Bac
                 getattr(deps, "species_repo", None),
                 job_repo,
             )
+            # Runs after the card is stored, so the card is never held up by the search.
+            background_tasks.add_task(web_research.run_for_job, job.id, job_repo,
+                                      getattr(deps, "species_repo", None),
+                                      getattr(request.app.state, "settings", None), llm)
         except Exception:
             logger.exception("could not schedule the knowledge job for prediction %s", result.prediction_id)
     return VerificationResponse(
@@ -169,7 +174,7 @@ async def manual(
 
 
 @knowledge_router.get("/predictions/{prediction_id}/knowledge", response_model=KnowledgeResponse)
-async def knowledge_card(prediction_id: str, request: Request):
+async def knowledge_card(prediction_id: str, request: Request, background_tasks: BackgroundTasks):
     from fastapi.responses import JSONResponse
 
     # Buyers read a card through the lot's knowledge snapshot, never this route.
@@ -197,7 +202,8 @@ async def knowledge_card(prediction_id: str, request: Request):
                 if job.final_card is not None:
                     try:
                         card = KnowledgeCard.model_validate(fill_from_reference(job.final_card, job.species_id))
-                        return KnowledgeResponse(prediction_id=job.prediction_id, species_id=job.species_id, card=card)
+                        return KnowledgeResponse(prediction_id=job.prediction_id, species_id=job.species_id, card=card,
+                                                 web_research=(job.trace or {}).get("web_research"))
                     except ValidationError:
                         logger.exception("knowledge job %s stored a card that fails validation", job.id)
                         return JSONResponse(status_code=502, content={"detail": "knowledge generation failed", "job_id": job.id, "status": "failed"})
@@ -214,13 +220,21 @@ async def knowledge_card(prediction_id: str, request: Request):
         llm=_card_llm(request, session_id=f"fishora-card-sync-{prediction_id}"),
     )
     response = await run_in_threadpool(service.get_for_prediction, prediction_id)
+    research = None
     if job_repo is not None:
         # Kept as the completed job, so the next read, the lot published from
         # this catch and its QR card all show this card rather than a regenerated one.
         try:
+            stored = response.card.model_dump(mode="json")
             job_repo.create(prediction_id, prediction_id, response.species_id)
-            job_repo.update(prediction_id, status="completed", final_card=response.card.model_dump(mode="json"))
+            job_repo.update(prediction_id, status="completed", final_card=stored)
+            settings = getattr(request.app.state, "settings", None)
+            fields = web_research.gaps(stored) if web_research.enabled(settings) else []
+            if fields:
+                research = {"status": "running", "fields": fields, "findings": []}
+                background_tasks.add_task(web_research.run_for_job, prediction_id, job_repo, deps.species_repo,
+                                          settings, _card_llm(request, session_id=f"fishora-web-{prediction_id}"))
         except Exception:
             logger.exception("could not keep the knowledge card for prediction %s", prediction_id)
     filled = fill_from_reference(response.card.model_dump(mode="json"), response.species_id)
-    return response.model_copy(update={"card": KnowledgeCard.model_validate(filled)})
+    return response.model_copy(update={"card": KnowledgeCard.model_validate(filled), "web_research": WebResearch(**research) if research else None})

@@ -9,6 +9,7 @@ import { Field } from '@/components/common/field'
 import { Select } from '@/components/common/select'
 import { FALLBACK_LANDING_POINTS } from '@/lib/landing-points'
 import { KnowledgeCardView } from '@/components/fish/knowledge-card'
+import { WebFindings } from '@/components/fish/web-findings'
 import { PredictionCard } from '@/components/fish/prediction-card'
 import type { ActionFailure, ActionResult } from '@/lib/api/action-result'
 import { listLandingPoints, publishLot as defaultPublishLot, type LandingPoint, type Lot } from '@/lib/api/commerce'
@@ -415,15 +416,20 @@ export function IdentifyFlow({
     setKnowledge(null)
     setKnowledgeMessage('')
     setKnowledgeStatus('loading')
+    let shown = false
     for (let attempt = 0; attempt < CARD_POLL_ATTEMPTS; attempt++) {
       const result = await loadKnowledge(predictionId)
       if (cardPoll.current !== predictionId) return
       if (result.ok && hasCard(result.data)) {
         setKnowledge(result.data)
         setKnowledgeStatus('ready')
-        return
-      }
-      if (!result.ok) {
+        shown = true
+        // The card is shown; keep asking only while the web search for its
+        // empty fields is still running.
+        if (result.data.web_research?.status !== 'running') return
+      } else if (!result.ok) {
+        // A failed re-poll must not hide a card that is already on screen.
+        if (shown) return
         setKnowledgeMessage(result.userMessage)
         setKnowledgeStatus('unavailable')
         return
@@ -431,6 +437,7 @@ export function IdentifyFlow({
       await new Promise((resolve) => setTimeout(resolve, CARD_POLL_MS))
       if (cardPoll.current !== predictionId) return
     }
+    if (shown) return
     setKnowledgeMessage('The knowledge card is not ready yet.')
     setKnowledgeStatus('unavailable')
   }
@@ -541,6 +548,9 @@ export function IdentifyFlow({
             )}
             {knowledgeStatus === 'ready' && knowledge?.card && (
               <KnowledgeCardView card={knowledge.card} label={label} />
+            )}
+            {knowledgeStatus === 'ready' && knowledge?.web_research && (
+              <WebFindings research={knowledge.web_research} />
             )}
           </div>
         )}

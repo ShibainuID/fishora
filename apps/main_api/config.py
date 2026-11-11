@@ -41,6 +41,9 @@ class MainSettings(BaseSettings):
     openrouter_base_url: str = Field(default="https://openrouter.ai/api/v1", validation_alias=AliasChoices("FISHORA_OPENROUTER_BASE_URL", "openrouter_base_url"))
     openrouter_api_key: SecretStr = Field(default=SecretStr(""), validation_alias=AliasChoices("OPENROUTER_API_KEY", "openrouter_api_key"))
     openrouter_model: str = Field(default="openai/gpt-6-luna", validation_alias=AliasChoices("FISHORA_OPENROUTER_MODEL", "openrouter_model"))
+    # Search the web for the fields a card leaves empty (OpenRouter only). The
+    # findings are shown to the operator as unverified leads, never to buyers.
+    web_research_enabled: bool = Field(default=True, validation_alias=AliasChoices("FISHORA_WEB_RESEARCH", "web_research_enabled"))
     opencode_go_base_url: str = Field(default="https://opencode.ai/zen/go/v1", validation_alias=AliasChoices("FISHORA_OPENCODE_GO_BASE_URL", "opencode_go_base_url"))
     # Blank key allowed; the production OpenCode client constructor enforces it.
     opencode_go_api_key: SecretStr = Field(default=SecretStr(""), validation_alias=AliasChoices("OPENCODE_GO_API_KEY", "opencode_go_api_key"))
