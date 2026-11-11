@@ -34,6 +34,7 @@ from apps.main_api.errors import (
     LotClosed,
     LotNotAllocatable,
     LotNotFound,
+    InvalidUnlistedSpecies,
     OpenCodeUnavailable,
     PredictionNotFound,
     PredictionNotVerified,
@@ -248,6 +249,10 @@ def _register_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(UnsupportedSpecies)
     async def _unsupported_species(request: Request, exc: UnsupportedSpecies):
+        return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+    @app.exception_handler(InvalidUnlistedSpecies)
+    async def _invalid_unlisted_species(request: Request, exc: InvalidUnlistedSpecies):
         return JSONResponse(status_code=422, content={"detail": str(exc)})
 
     @app.exception_handler(PhotoRejected)

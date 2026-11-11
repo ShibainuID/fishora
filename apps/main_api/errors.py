@@ -25,6 +25,11 @@ class UnsupportedSpecies(Exception):
         self.species_id = species_id
 
 
+class InvalidUnlistedSpecies(Exception):
+    """A local name or scientific name an operator gave for an unlisted fish is
+    not a plain name. Maps to HTTP 422."""
+
+
 class PhotoRejected(Exception):
     """The CV gates refused the photo: not a fish, or not one of the known species.
     Nothing is saved; the operator retakes the photo or names the species by hand."""

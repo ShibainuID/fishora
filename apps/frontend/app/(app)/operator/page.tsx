@@ -1,6 +1,13 @@
 import { IdentifyFlow } from '@/components/operator/identify-flow'
 import { requireRole } from '@/lib/api/guard'
-import { confirmSpecies, declareSpecies, identifyCatch, loadKnowledge } from './actions'
+import {
+  confirmSpecies,
+  declareSpecies,
+  declareUnlisted,
+  identifyCatch,
+  loadKnowledge,
+  lookupSpeciesName,
+} from './actions'
 
 export default async function OperatorPage() {
   // Every action on this page needs an operator session; ask for one up front.
@@ -11,6 +18,8 @@ export default async function OperatorPage() {
       confirmSpecies={confirmSpecies}
       loadKnowledge={loadKnowledge}
       declareSpecies={declareSpecies}
+      lookupSpecies={lookupSpeciesName}
+      declareUnlisted={declareUnlisted}
     />
   )
 }

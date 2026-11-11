@@ -10,6 +10,7 @@ import { Select } from '@/components/common/select'
 import { FALLBACK_LANDING_POINTS } from '@/lib/landing-points'
 import { KnowledgeCardView } from '@/components/fish/knowledge-card'
 import { WebFindings } from '@/components/fish/web-findings'
+import { UnlistedSpecies } from '@/components/operator/unlisted-species'
 import { PredictionCard } from '@/components/fish/prediction-card'
 import type { ActionFailure, ActionResult } from '@/lib/api/action-result'
 import { listLandingPoints, publishLot as defaultPublishLot, type LandingPoint, type Lot } from '@/lib/api/commerce'
@@ -19,6 +20,8 @@ import type {
   KnowledgeResponse,
   KnowledgeResult,
   ManualEntryResult,
+  SpeciesLookupResult,
+  UnlistedFields,
 } from '@/lib/api/fish'
 import { hasCard } from '@/lib/api/fish'
 import { downscaleImage } from '@/lib/image'
@@ -127,6 +130,9 @@ export interface IdentifyFlowProps {
     formData: FormData,
     speciesId: string
   ) => Promise<ActionResult<ManualEntryResult>>
+  /** Both present: a catch outside the 11 species can be listed by its local name. */
+  lookupSpecies?: (localName: string) => Promise<ActionResult<SpeciesLookupResult>>
+  declareUnlisted?: (formData: FormData, fields: UnlistedFields) => Promise<ActionResult<ManualEntryResult>>
   publishLot?: (payload: PublishLotPayload) => Promise<Lot | unknown>
 }
 
@@ -136,6 +142,8 @@ export function IdentifyFlow({
   confirmSpecies,
   loadKnowledge,
   declareSpecies,
+  lookupSpecies,
+  declareUnlisted,
   publishLot = defaultPublishLot,
 }: IdentifyFlowProps) {
   const router = useRouter()
@@ -374,14 +382,24 @@ export function IdentifyFlow({
     setStep(1)
   }
 
-  async function pickManual(species: SpeciesLabel) {
+  function pickManual(species: SpeciesLabel) {
+    return declareCatch((body) => declareSpecies(body, `species_${species}`))
+  }
+
+  // A fish outside the trained species, declared under its local name.
+  function pickUnlisted(fields: UnlistedFields) {
+    if (!declareUnlisted) return
+    return declareCatch((body) => declareUnlisted(body, fields))
+  }
+
+  async function declareCatch(declare: (body: FormData) => Promise<ActionResult<ManualEntryResult>>) {
     if (!image) return
     setManualOpen(false)
     setBusy(true)
     try {
       const body = new FormData()
       body.append('file', await downscaleImage(image))
-      const declared = await declareSpecies(body, `species_${species}`)
+      const declared = await declare(body)
       if (!declared.ok) {
         setIdentifyError(declared)
         return
@@ -399,7 +417,7 @@ export function IdentifyFlow({
         threshold: 0,
         verification_status: 'pending',
       })
-      setLabel(species)
+      setLabel(declared.data.normalized_label)
       setIdentifyError(null)
 
       setStep(3)
@@ -512,6 +530,11 @@ export function IdentifyFlow({
             onManualOpen={() => setManualOpen(true)}
             onPickManual={pickManual}
             onRetry={runIdentify}
+            unlisted={
+              lookupSpecies && declareUnlisted ? (
+                <UnlistedSpecies busy={busy} onLookup={lookupSpecies} onDeclare={(fields) => void pickUnlisted(fields)} />
+              ) : null
+            }
           />
         )}
 
@@ -698,6 +721,7 @@ function CaptureStep({
   onManualOpen,
   onPickManual,
   onRetry,
+  unlisted,
 }: {
   live: boolean
   videoRef: React.RefObject<HTMLVideoElement | null>
@@ -707,6 +731,8 @@ function CaptureStep({
   onManualOpen: () => void
   onPickManual: (label: SpeciesLabel) => void
   onRetry: () => void
+  /** Shown under the species list: listing a fish outside the 11 species. */
+  unlisted?: React.ReactNode
 }) {
   return (
     <div className="mt-6 flex min-h-0 flex-1 flex-col gap-4">
@@ -778,6 +804,7 @@ function CaptureStep({
           ))}
         </ul>
       )}
+      {manualOpen && unlisted}
     </div>
   )
 }

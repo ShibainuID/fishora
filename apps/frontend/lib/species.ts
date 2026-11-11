@@ -84,7 +84,11 @@ export function resolveSpecies(label: string): SpeciesNames {
   if (isSpeciesLabel(label)) return SPECIES[label]
   // Open water, not a fish: showing some other species' photograph next to an
   // unrecognised label would misinform a buyer about what is in the lot.
-  return { commonName: label, localName: label, scientificName: null, photo: '/sea.jpg' }
+  // A species an operator listed outside the trained set: `kakap_merah` reads
+  // as `Kakap merah`.
+  const words = label.replace(/_/g, ' ')
+  const name = words.charAt(0).toUpperCase() + words.slice(1)
+  return { commonName: name, localName: name, scientificName: null, photo: '/sea.jpg' }
 }
 
 /** `Milkfish (Bandeng)`, or just `Gembolo` where there is no English name. */

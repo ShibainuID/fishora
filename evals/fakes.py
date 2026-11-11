@@ -191,6 +191,12 @@ class InMemorySpeciesRepository:
     def list_all(self) -> list[SpeciesRecord]:
         return list(self._by_id.values())
 
+    def create(self, record: SpeciesRecord) -> SpeciesRecord:
+        if record.id in self._by_id or self.get_by_normalized_label(record.normalized_label):
+            raise ValueError(f"species {record.id!r} already exists")
+        self._by_id[record.id] = record
+        return record
+
 
 class InMemoryPredictionRepository:
     def __init__(self):

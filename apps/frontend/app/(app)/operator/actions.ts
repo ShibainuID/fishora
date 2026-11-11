@@ -5,12 +5,16 @@ import { ApiError, type ApiFetchOptions } from '@/lib/api/client'
 import type { ActionResult } from '@/lib/api/action-result'
 import {
   declareSpeciesManually,
+  declareUnlistedSpecies,
   getKnowledge,
   identifyFish,
+  lookupSpecies,
   verifySpecies,
   type IdentificationResult,
   type KnowledgeResult,
   type ManualEntryResult,
+  type SpeciesLookupResult,
+  type UnlistedFields,
 } from '@/lib/api/fish'
 
 // A server action runs on the Next server, whose fetch carries no browser
@@ -104,6 +108,35 @@ export async function declareSpecies(
   }
   try {
     return { ok: true, data: await declareSpeciesManually(file, speciesId, await withSession()) }
+  } catch (error) {
+    return fail(error)
+  }
+}
+
+export async function lookupSpeciesName(localName: string): Promise<ActionResult<SpeciesLookupResult>> {
+  try {
+    return { ok: true, data: await lookupSpecies(localName, await withSession()) }
+  } catch (error) {
+    return fail(error)
+  }
+}
+
+export async function declareUnlisted(
+  formData: FormData,
+  fields: UnlistedFields
+): Promise<ActionResult<ManualEntryResult>> {
+  const file = formData.get('file')
+  if (!(file instanceof File)) {
+    return {
+      ok: false,
+      kind: 'image_invalid',
+      userMessage: 'Unsupported image format. Use JPG or PNG.',
+      retryable: false,
+      status: 400,
+    }
+  }
+  try {
+    return { ok: true, data: await declareUnlistedSpecies(file, fields, await withSession()) }
   } catch (error) {
     return fail(error)
   }

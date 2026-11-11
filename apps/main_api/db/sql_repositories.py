@@ -30,6 +30,17 @@ class SqlSpeciesRepository:
             ).all()
             return [self._to_record(row) for row in rows]
 
+    def create(self, record: SpeciesRecord) -> SpeciesRecord:
+        """A species an operator listed for a catch outside the trained set."""
+        with self._session_factory() as session:
+            session.add(FishSpecies(
+                id=record.id, normalized_label=record.normalized_label, common_name_id=record.common_name_id,
+                scientific_name=record.scientific_name, taxonomic_rank=record.taxonomic_rank,
+                taxonomy_status=record.taxonomy_status, notes=record.notes,
+            ))
+            session.commit()
+        return record
+
     @staticmethod
     def _to_record(row: FishSpecies | None) -> SpeciesRecord | None:
         if row is None:

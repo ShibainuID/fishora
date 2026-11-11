@@ -129,6 +129,51 @@ export function declareSpeciesManually(file: File, speciesId: string, init: ApiF
   return apiFetch<ManualEntryResult>('/api/v1/fish/manual', { ...init, method: 'POST', body })
 }
 
+/** A scientific name a source ties to the local name the operator typed. */
+export interface NameMatch {
+  scientific_name: string
+  english_name: string | null
+  rank: string
+  url: string
+  title: string
+  /** Set when Fishora already lists this species (trained or added earlier). */
+  existing_species_id: string | null
+}
+
+export interface SpeciesLookupResult {
+  local_name: string
+  candidates: NameMatch[]
+}
+
+/** Web lookup for a fish outside the trained species. Takes about ten seconds. */
+export function lookupSpecies(localName: string, init: ApiFetchOptions = {}) {
+  return apiFetch<SpeciesLookupResult>('/api/v1/fish/lookup-species', {
+    ...init,
+    method: 'POST',
+    headers: { ...init.headers, 'content-type': 'application/json' },
+    body: JSON.stringify({ local_name: localName }),
+    timeoutMs: 60_000,
+  })
+}
+
+export interface UnlistedFields {
+  localName: string
+  scientificName?: string | null
+  rank?: string | null
+  sourceUrl?: string | null
+}
+
+/** Declares a catch outside the trained species under its local name. */
+export function declareUnlistedSpecies(file: File, fields: UnlistedFields, init: ApiFetchOptions = {}) {
+  const body = new FormData()
+  body.append('file', file)
+  body.append('local_name', fields.localName)
+  if (fields.scientificName) body.append('scientific_name', fields.scientificName)
+  if (fields.rank) body.append('taxonomic_rank', fields.rank)
+  if (fields.sourceUrl) body.append('source_url', fields.sourceUrl)
+  return apiFetch<ManualEntryResult>('/api/v1/fish/unlisted', { ...init, method: 'POST', body })
+}
+
 export function getKnowledge(predictionId: string, init: ApiFetchOptions = {}) {
   // Longer budget: this path runs retrieval plus generation.
   return apiFetch<KnowledgeResult>(

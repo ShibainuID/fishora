@@ -6,6 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, File, Form, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field, ValidationError
 
+from apps.common.image import validate_image_bytes
 from apps.main_api.config import MainSettings
 from apps.main_api.services.card_llm import card_llm
 from apps.main_api.services.generation import KnowledgeCard, KnowledgeResponse, WebResearch
@@ -15,7 +16,7 @@ from apps.main_api.services.session import require_role
 from apps.main_api.services.knowledge import KnowledgeService
 from apps.main_api.services.reference_cards import fill_from_reference
 from apps.main_api.services.verification import VerificationService
-from apps.main_api.services import web_research
+from apps.main_api.services import species_lookup, web_research
 
 logger = logging.getLogger(__name__)
 
@@ -164,6 +165,83 @@ async def manual(
         content_type=file.content_type,
         species_id=species_id,
     )
+    return ManualEntryResponse(
+        prediction_id=result.prediction_id,
+        model_version=result.model_version,
+        verified_species_id=result.verified_species_id,
+        normalized_label=result.normalized_label,
+        verification_status=result.verification_status,
+    )
+
+
+class SpeciesLookupRequest(BaseModel):
+    local_name: str = Field(min_length=1, max_length=species_lookup.MAX_NAME_LENGTH)
+
+
+class NameMatchResponse(BaseModel):
+    scientific_name: str
+    english_name: str | None
+    rank: str
+    url: str
+    title: str
+    # Set when the name is one Fishora already supports: declare it as that species.
+    existing_species_id: str | None
+
+
+class SpeciesLookupResponse(BaseModel):
+    local_name: str
+    candidates: list[NameMatchResponse]
+
+
+@router.post("/lookup-species", response_model=SpeciesLookupResponse)
+async def lookup_species(payload: SpeciesLookupRequest, request: Request):
+    """Scientific-name candidates for a fish outside the trained species, found by
+    web search and kept only when a source names both the local and the scientific name."""
+    require_role(request, "operator")
+    settings = getattr(request.app.state, "settings", None)
+    name = species_lookup.clean_name(payload.local_name)
+    if not web_research.enabled(settings):
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse(status_code=503, content={"detail": "species lookup is unavailable"})
+    try:
+        matches = await run_in_threadpool(species_lookup.lookup, name, settings, request.app.state.deps.species_repo)
+    except Exception as exc:
+        logger.warning("species lookup for %r failed: %s: %s", name, type(exc).__name__, exc)
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse(status_code=503, content={"detail": "species lookup is unavailable"})
+    return SpeciesLookupResponse(local_name=name, candidates=[asdict(m) for m in matches])
+
+
+@router.post("/unlisted", response_model=ManualEntryResponse)
+async def unlisted(
+    request: Request,
+    file: UploadFile = File(...),
+    local_name: str = Form(...),
+    scientific_name: str | None = Form(None),
+    taxonomic_rank: str | None = Form(None),
+    source_url: str | None = Form(None),
+):
+    """Declare a catch outside the trained species under the operator's local name,
+    with the scientific name they picked from the lookup (or none). The species is
+    added for expert review if Fishora does not know it yet."""
+    user = require_role(request, "operator")
+    deps = request.app.state.deps
+    settings = request.app.state.settings
+    image = await file.read()
+    max_bytes = settings.cv_max_image_bytes if settings is not None else DEFAULT_MAX_IMAGE_BYTES
+    # The photo is checked before the species is added, so a bad upload leaves no new species behind.
+    validate_image_bytes(image, file.content_type, max_bytes)
+    species = species_lookup.register(deps.species_repo, local_name, scientific_name=scientific_name,
+                                      taxonomic_rank=taxonomic_rank, source_url=source_url,
+                                      operator_id=getattr(user, "id", None))
+    result = ManualEntryService(
+        species_repo=deps.species_repo,
+        prediction_repo=deps.prediction_repo,
+        image_store=deps.image_store,
+        max_image_bytes=max_bytes,
+    ).declare(image, filename=file.filename or "image", content_type=file.content_type, species_id=species.id)
     return ManualEntryResponse(
         prediction_id=result.prediction_id,
         model_version=result.model_version,
