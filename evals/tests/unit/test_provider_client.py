@@ -1,4 +1,4 @@
-"""OpenCode Go client contract (W20) and the blank-key path (W3)."""
+"""LLM client contract per provider (OpenCode Go: W20) and the blank-key path (W3)."""
 
 import pytest
 from pydantic import SecretStr
@@ -16,7 +16,27 @@ from apps.main_api.services.generation import (
 
 def _settings(key: str) -> MainSettings:
     return MainSettings(_env_file=None, database_url="postgresql+psycopg://t@localhost/t",
-                        opencode_go_api_key=SecretStr(key))
+                        llm_provider="opencode_go", opencode_go_api_key=SecretStr(key))
+
+
+def _openrouter(key: str) -> MainSettings:
+    return MainSettings(_env_file=None, database_url="postgresql+psycopg://t@localhost/t",
+                        openrouter_api_key=SecretStr(key))
+
+
+def test_openrouter_is_the_default_provider():
+    llm = make_opencode_go_llm(_openrouter("test-key"))
+    assert llm.model_name == "openai/gpt-6-luna"
+    assert str(llm.openai_api_base).startswith("https://openrouter.ai/api/v1")
+    assert not llm.use_responses_api
+    assert llm.extra_body == {"reasoning": {"effort": "low"}}
+    assert llm.default_headers["User-Agent"] == USER_AGENT
+
+
+def test_openrouter_blank_key_means_no_card_llm():
+    from apps.main_api.services.card_llm import card_llm
+    assert card_llm(None, _openrouter(""), "s") is None
+    assert card_llm(None, _openrouter("test-key"), "s") is not None
 
 
 def test_client_sends_session_and_user_agent():
