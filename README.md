@@ -143,7 +143,8 @@ prediction is still confirmed or corrected by the operator before a knowledge ca
 
 Generated cards need three things, in this order:
 
-1. `OPENCODE_GO_API_KEY` in `.env`.
+1. An OpenRouter key in `.env` (`cp .env.example .env`, then set `OPENROUTER_API_KEY`). Get one at
+   [openrouter.ai/keys](https://openrouter.ai/keys).
 2. The E5 weights in the local Hugging Face cache. The embedder is constructed with
    `local_files_only=True` so a request never triggers a download, which means fetching it once, on
    purpose:
@@ -152,9 +153,11 @@ Generated cards need three things, in this order:
 "$PY" -c "from huggingface_hub import snapshot_download; snapshot_download('intfloat/multilingual-e5-base')"
 ```
 
-Cards are written by the writer-critic workflow on `gpt-6-luna` at `low` reasoning effort
-(`FISHORA_OPENCODE_GO_REASONING_EFFORT`, default `low`): one writer call drafts one claim per fact,
-and a claim verifier keeps only claims its cited evidence supports.
+Cards are written by the writer-critic workflow on `openai/gpt-6-luna` through OpenRouter at `low`
+reasoning effort (`FISHORA_OPENCODE_GO_REASONING_EFFORT`, default `low`; it applies to either
+provider): one writer call drafts one claim per fact, and a claim verifier keeps only claims its
+cited evidence supports. `FISHORA_LLM_PROVIDER=opencode_go` switches back to OpenCode Go with
+`OPENCODE_GO_API_KEY`.
 
 Miss any of those and the endpoint answers `502 knowledge retrieval is temporarily unavailable`.
 Even with all three, cards come back empty with the limitation `No information available yet` until an
@@ -175,6 +178,30 @@ export FISHORA_CORPUS_APPROVAL_KEY=$("$PY" -c "import secrets; print(secrets.tok
 "$PY" -m scripts.corpus_pipeline ingest --approved-dir artifacts/knowledge_sources/approved \
   --approval-manifest artifacts/knowledge_sources/approval-manifest.json
 ```
+
+Both commands read `FISHORA_DATABASE_URL` and `FISHORA_CORPUS_APPROVAL_KEY` from the environment
+(not from `.env`), and must run in the same shell: `ingest` checks the manifest against the key
+`approve` signed it with.
+
+### Optional: web leads and fish outside the 11 species
+
+Both use the web search tool of OpenRouter (about $0.007 per search) and need nothing beyond the
+OpenRouter key. `FISHORA_WEB_RESEARCH=0` turns them off.
+
+- **Web leads for empty card fields.** When the approved corpus leaves a card field empty, a
+  background step lets the model search an allow-list of reference, government and journal sites
+  (`apps/main_api/services/web_research.py`). Every claim must cite a URL from its own search
+  results and passes the same claim verifier as the card, against that page's excerpt. The operator
+  sees the survivors under the card as **Web leads, not verified**, with their links. They are
+  stored in the knowledge job's trace, never in the card, the lot snapshot or the corpus.
+- **A catch outside the 11 trained species.** When the photo is rejected or the fish is not in the
+  list, the operator opens **Choose the species myself**, then **Not in this list?**, and types the
+  local name (for example `baronang`). A web lookup proposes scientific names, keeping only those
+  whose source page names both the local and the scientific name
+  (`apps/main_api/services/species_lookup.py`). The operator picks one or lists the fish under its
+  local name alone. A new species is added as `TAXONOMY_REVIEW_REQUIRED`, buyers see that its name
+  needs expert review, its card starts empty and gets web leads, and the lot publishes as usual. The
+  CV model does not know it until it is retrained.
 
 ### Knowledge sources
 
@@ -232,7 +259,7 @@ Browser ──HTTP──> Frontend :3111
    └────HTTP────> Main API :8000 ──> CV service :8001 ──> DINOv3 (CUDA)
                       │
                       ├──> PostgreSQL + pgvector :55432
-                      └──> OpenCode Go (knowledge card generation)
+                      └──> OpenRouter (knowledge cards, web leads, species lookup)
 ```
 
 ## API Surface
@@ -245,6 +272,8 @@ Identification and knowledge:
 | POST | `/api/v1/fish/identify` | Multipart image upload, returns a prediction and ranked candidates |
 | POST | `/api/v1/fish/verify` | Human confirms or corrects the predicted species |
 | POST | `/api/v1/fish/manual` | Operator declares the species themselves, used when the CV service is down |
+| POST | `/api/v1/fish/lookup-species` | Scientific-name candidates for a local fish name, found by web search |
+| POST | `/api/v1/fish/unlisted` | Declare a catch outside the 11 species under its local name; adds the species for review |
 | GET | `/api/v1/predictions/{id}/knowledge` | Grounded knowledge card for a **verified** prediction |
 
 Commerce, buyers, and session:
@@ -301,8 +330,8 @@ Optional, and only for AI species identification:
 
 Optional, and only for generated knowledge cards:
 
-- `OPENCODE_GO_API_KEY` in `.env`, plus the embedding model cached locally. See
-  [Knowledge cards](#knowledge-cards).
+- `OPENROUTER_API_KEY` in `.env`, plus the embedding model cached locally. See
+  [Knowledge cards](#optional-knowledge-cards).
 
 ## Setup
 
@@ -349,17 +378,17 @@ cd ../..
 
 ### 3. Configuration
 
-Defaults are ready for local use. Create `.env` only to override them or to supply an OpenCode Go
+Defaults are ready for local use. Create `.env` only to override them or to supply an OpenRouter
 API key for generated knowledge cards:
 
 ```bash
 cp .env.example .env
 ```
 
-Set `OPENCODE_GO_API_KEY` in `.env`. A verified species gets its card from the writer-critic
+Set `OPENROUTER_API_KEY` in `.env`. A verified species gets its card from the writer-critic
 workflow (`apps/main_api/services/workflow.py`): one writer call, then a claim verifier that checks
-every claim against the chunk it cites. Both share one OpenCode Go client configured with
-`FISHORA_OPENCODE_GO_MODEL=gpt-6-luna`. The earlier four-expert graph is kept for comparison in
+every claim against the chunk it cites. Both share one client, OpenRouter by default
+(`FISHORA_LLM_PROVIDER=openrouter`, `FISHORA_OPENROUTER_MODEL=openai/gpt-6-luna`). The earlier four-expert graph is kept for comparison in
 `evals/iteration2.py`. Without the key
 everything still starts, and identification and verification work normally; only knowledge card
 generation fails, with a `502`.
@@ -759,7 +788,8 @@ the review critique. A change without a source finding does not go in.
 | `Missing .venv` | No virtualenv found at `.venv`. The script accepts both `bin/` (POSIX) and `Scripts/` (Windows) layouts |
 | `/health` reports `taxonomy_seeded: false` | The species table is empty. `scripts/seed_taxonomy` needs `artifacts/Dataset/fishora_dataset/metadata/taxonomy.csv` |
 | Identification returns 503 | The CV service is down or was never started (no torch). Use `POST /api/v1/fish/manual` to keep publishing |
-| Knowledge card returns 502 | `OPENCODE_GO_API_KEY` is blank or OpenCode Go is unreachable. Identification and verification are unaffected |
+| Knowledge card returns 502 | `OPENROUTER_API_KEY` is blank or OpenRouter is unreachable. Identification and verification are unaffected |
+| Species lookup returns 503 | No OpenRouter key, `FISHORA_LLM_PROVIDER` is not `openrouter`, or `FISHORA_WEB_RESEARCH=0`. The operator can still list the fish under its local name |
 | Knowledge card returns 409 | The prediction is still `pending`. Verify the species first |
 | `EADDRINUSE` on startup | A previous run is still bound. Override the port, or stop the old process |
 | Frontend loads but every request fails | Check the `API base` line the run script prints. It is compiled into the browser bundle, so it must be reachable *from the browser*, never an internal hostname |
