@@ -4,8 +4,8 @@ set -eu
 
 python -m alembic upgrade head
 
-# artifacts/ is gitignored, so a fresh clone has no taxonomy. Only generate the
-# synthetic fixture when the file is missing; a real dataset is left alone.
+# The real taxonomy CSV is committed; the synthetic fixture is only a fallback
+# for a checkout without it, and a real file is never overwritten.
 if [ ! -f artifacts/Dataset/fishora_dataset/metadata/taxonomy.csv ]; then
   python -m scripts.make_synthetic_taxonomy
 fi

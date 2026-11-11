@@ -1,0 +1,12 @@
+raw_folder,raw_label,normalized_label,scientific_name,common_name_id,taxonomic_rank,confidence,source,notes
+tuna.v1i.folder,tuna,tuna,Thunnus spp.,tuna,GENUS,MEDIUM,ROBOFLOW,"Folder label is a common name covering likely multiple species (possibly also skipjack/bonito, Katsuwonus/Euthynnus). Do not treat as single species class without expert verification."
+ikan tenggiri.v1i.folder,ikan tenggiri,tenggiri,Scomberomorus commerson,tenggiri,SPECIES,MEDIUM,ROBOFLOW,'Tenggiri' primarily refers to S. commerson in Indonesia (FishBase preferred vernacular); S. guttatus (tenggiri papan) also traded under the same name - visual spot check recommended.
+training gembolo.v1i.folder,training gembolo,gembolo,,gembolo,VERNACULAR_AMBIGUOUS,LOW,ROBOFLOW,"Local name maps to DIFFERENT species by region: kembung/Rastrelliger spp. (Sumbar), Selaroides leptolepis (Bengkulu), Caranx spp./trevally (trade usage). Requires expert identification from contact sheets; potential label overlap with Rastrelliger Faughni class must be checked."
+Chanos Chanos,Chanos Chanos,bandeng,Chanos chanos,bandeng,SPECIES,HIGH,FISH_GRES,
+Eleutheronema Tetradactylum,Eleutheronema Tetradactylum,senangin,Eleutheronema tetradactylum,senangin,SPECIES,HIGH,FISH_GRES,
+Johnius Trachycephalus,Johnius Trachycephalus,gulamah,Johnius trachycephalus,gelama (croaker),SPECIES,HIGH,FISH_GRES,Common Indonesian name for this sciaenid not verified; folder uses scientific name so identity is unambiguous.
+Nibea Albiflora,Nibea Albiflora,gelama_bunga,Nibea albiflora,gelama (croaker),SPECIES,HIGH,FISH_GRES,Scientific-name folder; individual image correctness subject to audit.
+Oreochromis Mossambicus,Oreochromis Mossambicus,mujair,Oreochromis mossambicus,mujair,SPECIES,HIGH,FISH_GRES,
+Oreochromis Niloticus,Oreochromis Niloticus,nila,Oreochromis niloticus,nila,SPECIES,HIGH,FISH_GRES,
+Rastrelliger Faughni,Rastrelliger Faughni,kembung,Rastrelliger faughni,kembung,SPECIES,HIGH,FISH_GRES,
+Upeneus Moluccensis,Upeneus Moluccensis,kuniran,Upeneus moluccensis,kuniran,SPECIES,HIGH,FISH_GRES,
